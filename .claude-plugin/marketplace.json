@@ -1,0 +1,13 @@
+{
+  "name": "ui-chan",
+  "owner": {
+    "name": "UnclePeke"
+  },
+  "plugins": [
+    {
+      "name": "ui-chan",
+      "source": "./",
+      "description": "デスクトップマスコット「うい」— MCP ツール（set_cue / get_state / adjust_affinity / clear）と人格自動注入"
+    }
+  ]
+}

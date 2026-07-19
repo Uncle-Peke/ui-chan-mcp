@@ -1,0 +1,33 @@
+{
+  "name": "ui-chan-mcp",
+  "version": "0.3.0",
+  "description": "Desktop mascot MCP server — control a PSD-based mascot (speech bubble, Cue-driven look + voice) from any MCP-capable agent",
+  "main": "dist/app/main.js",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && esbuild src/renderer/renderer.ts --bundle --platform=browser --format=iife --outfile=dist/renderer/bundle.js && node -e \"require('fs').copyFileSync('src/renderer/index.html','dist/renderer/index.html')\"",
+    "app": "npm run build && electron .",
+    "mcp": "node dist/mcp-server.js",
+    "dump-psd": "node tools/dump-psd.mjs",
+    "validate-cues": "node -e \"const {loadCues}=require('./dist/app/cues');const r=loadCues('cues','cue.schema.json');console.log(JSON.stringify(r.errors,null,2));process.exit(r.errors.length?1:0)\"",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write ."
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "ag-psd": "^31.0.2",
+    "ajv": "^8.17.1",
+    "ws": "^8.21.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.4",
+    "@types/node": "^26.1.1",
+    "@types/ws": "^8.18.1",
+    "electron": "^43.1.1",
+    "esbuild": "^0.28.1",
+    "typescript": "^7.0.2"
+  }
+}

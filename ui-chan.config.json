@@ -1,0 +1,174 @@
+{
+  "$comment": "PSDToolキット形式のPSDに対する共通設定。見た目＋声は cues/<Cue名>.json で個別管理（1ファイル=1Cue、cue.schema.json準拠、保存すると即時リロード）。select は '*'ラジオレイヤーの排他選択、show/hide は通常レイヤーの表示切替。全Cue共通の下地は cues/default.json（他と同じ形式の1つのCue）。存在しないレイヤーパスは警告のうえ無視される。",
+  "assetsDir": "assets",
+  "window": {
+    "width": 420,
+    "height": 680,
+    "margin": 16
+  },
+  "port": 8123,
+  "idle": {
+    "$comment": "chatter/idlingCuesはどちらもIdlingCue（Cue+セリフのステップ列）を再生する同じ仕組みで、周期(minSec/maxSec)だけが別。chatterは滅多に喋らない独り言用、idlingCuesは無言の小さな仕草も含めた頻繁な生存感用",
+    "revertAfterSec": 5,
+    "chatter": {
+      "enabled": true,
+      "minSec": 180,
+      "maxSec": 360,
+      "items": [
+        { "steps": [{ "cue": "toujou", "text": "ねぇ、まだ起きてる〜？", "reading": "ねぇ、まだおきてる〜？" }] },
+        { "steps": [{ "cue": "nemui", "text": "ひま〜。なんか話そうよ。", "reading": "ひま〜。なんかはなそうよ。" }] },
+        { "steps": [{ "cue": "shinpai", "text": "きみさ、ちゃんと休憩してる？", "reading": "きみさ、ちゃんときゅうけいしてる？" }] },
+        { "steps": [{ "cue": "sleepy", "text": "……ふぁ〜あ。ねむ。", "reading": "……ふぁ〜あ。ねむ。" }] },
+        { "steps": [{ "cue": "ame", "text": "雨、降らないかなぁ。", "reading": "あめ、ふらないかなぁ。" }] },
+        { "steps": [{ "cue": "troubled", "text": "わたしのこと、忘れてない？", "reading": "わたしのこと、わすれてない？" }] },
+        { "steps": [{ "cue": "mutto", "text": "え〜、まだ終わらないの？めんどくさ。", "reading": "え〜、まだおわらないの？めんどくさ。" }] },
+        { "steps": [{ "cue": "smile", "text": "ここにいるよ。ゆっくりでいいからね。", "reading": "ここにいるよ。ゆっくりでいいからね。" }] },
+        { "steps": [{ "cue": "deredere", "text": "きみが集中してるの、見てるだけで満足〜。", "reading": "きみがしゅうちゅうしてるの、みてるだけでまんぞく〜。" }] },
+        { "steps": [{ "cue": "shinpai", "text": "肩、こってない？のびでもしなよ。", "reading": "かた、こってない？のびでもしなよ。" }] }
+      ]
+    },
+    "idlingCues": {
+      "enabled": true,
+      "minSec": 12,
+      "maxSec": 30,
+      "items": [
+        {
+          "name": "傘さし",
+          "steps": [
+            { "cue": "kangae", "text": "あれ、雨かな…？", "reading": "あれ、あめかな…？", "holdMs": 2200 },
+            { "cue": "ame", "text": "降ってきちゃった。", "reading": "ふってきちゃった。", "holdMs": 3500 },
+            { "cue": "normal_umbrella", "holdMs": 3000 }
+          ]
+        },
+        {
+          "name": "のび",
+          "steps": [
+            { "cue": "sleepy", "text": "ふぁ……", "reading": "ふぁ……", "holdMs": 1500 },
+            { "cue": "happy_banzai", "text": "んー、のびのび〜！", "reading": "んー、のびのび〜！", "holdMs": 2500 },
+            { "cue": "smile", "holdMs": 1500 }
+          ]
+        },
+        {
+          "name": "考えごと",
+          "steps": [
+            { "cue": "kangae", "text": "次、なにしよっかな。", "reading": "つぎ、なにしよっかな。", "holdMs": 2500 },
+            { "cue": "normal_think", "holdMs": 2000 },
+            { "cue": "smile", "holdMs": 1200 }
+          ]
+        },
+        {
+          "name": "ドヤ独り言",
+          "steps": [
+            { "cue": "smug_hands_on_hips", "text": "ま、あたしがついてれば安心でしょ。", "reading": "ま、あたしがついてればあんしんでしょ。", "holdMs": 3000 },
+            { "cue": "smug_arms_crossed", "holdMs": 2000 }
+          ]
+        },
+        {
+          "name": "呼びかけ",
+          "steps": [
+            { "cue": "toujou", "text": "ねぇ、ちゃんといる〜？", "reading": "ねぇ、ちゃんといる〜？", "holdMs": 2500 },
+            { "cue": "normal", "holdMs": 1500 }
+          ]
+        },
+        {
+          "name": "退屈",
+          "steps": [
+            { "cue": "normal_arms_crossed", "text": "ひま〜。", "reading": "ひま〜。", "holdMs": 2000 },
+            { "cue": "sleepy", "text": "……ねむくなってきた。", "reading": "……ねむくなってきた。", "holdMs": 2500 }
+          ]
+        },
+        {
+          "name": "あくび",
+          "steps": [
+            { "cue": "idling_yawn_1", "holdMs": 260 },
+            { "cue": "idling_yawn_2", "holdMs": 1500 },
+            { "cue": "idling_yawn_3", "holdMs": 420 }
+          ]
+        },
+        {
+          "name": "きょろきょろ",
+          "steps": [
+            { "cue": "idling_lookaround_1", "holdMs": 700 },
+            { "cue": "idling_lookaround_2", "holdMs": 650 },
+            { "cue": "idling_lookaround_3", "holdMs": 500 }
+          ]
+        },
+        {
+          "name": "ぼんやり",
+          "steps": [{ "cue": "idling_ponder", "holdMs": 1900 }]
+        },
+        {
+          "name": "うたた寝",
+          "steps": [
+            { "cue": "idling_doze_1", "holdMs": 900 },
+            { "cue": "idling_doze_2", "holdMs": 700 },
+            { "cue": "idling_doze_3", "holdMs": 500 }
+          ]
+        },
+        {
+          "name": "くすくす",
+          "steps": [
+            { "cue": "idling_giggle_1", "holdMs": 650 },
+            { "cue": "idling_giggle_2", "holdMs": 650 }
+          ]
+        },
+        {
+          "name": "ため息",
+          "steps": [
+            { "cue": "idling_sigh_1", "holdMs": 500 },
+            { "cue": "idling_sigh_2", "holdMs": 1200 }
+          ]
+        }
+      ]
+    }
+  },
+  "affinity": {
+    "$comment": "うい の好感度。セッション内のみ（永続化しない）＝毎起動 default から。MCPツール adjust_affinity で稼働中に変動。bands は atLeast の最大一致でバンド決定。ういビームは beamThreshold 以上で発射",
+    "default": 35,
+    "min": 0,
+    "max": 100,
+    "beamThreshold": 65,
+    "bands": [
+      { "atLeast": 0, "name": "cold", "note": "つれない・塩対応寄り" },
+      { "atLeast": 35, "name": "normal", "note": "普通" },
+      { "atLeast": 70, "name": "dere", "note": "デレ・甘め" }
+    ]
+  },
+  "tts": {
+    "enabled": true,
+    "provider": "voisona-talk",
+    "url": "http://127.0.0.1:32766",
+    "voice_name": "",
+    "language": "ja_JP",
+    "app_name": "VoiSona Talk"
+  },
+  "lipSync": {
+    "charsPerSec": 9,
+    "audioPollMs": 33,
+    "mouths": {
+      "a": "あ",
+      "e": "え",
+      "i": "いー",
+      "o": "お",
+      "u": "ゆ",
+      "n": "ん"
+    }
+  },
+  "speech": {
+    "$comment": "set_cueのduration_ms省略時の表示時間算出。テキスト駆動: baseMs + 文字数*msPerCharをminMs〜maxMsにクランプ。音声駆動: 合成音声の長さ+audioPaddingMs（audioMinMs床）",
+    "baseMs": 1500,
+    "msPerChar": 120,
+    "minMs": 2500,
+    "maxMs": 20000,
+    "audioPaddingMs": 600,
+    "audioMinMs": 1500
+  },
+  "ambient": {
+    "$comment": "レンダラーのBlink（Cue外で独立ループする唯一の演出）のタイミング",
+    "blinkMinIntervalMs": 3500,
+    "blinkMaxIntervalMs": 7000,
+    "blinkDurationMs": 130
+  },
+  "cuesDir": "cues",
+  "personaFile": "persona/ui-chan.md"
+}

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ui-chan-mcp.local/schema/cue.schema.json",
+  "title": "Cue",
+  "description": "1つの完成した見た目＋声を表す最小単位。1ファイル=1Cue、継承なし、完全に自己完結。視覚は生のPSDレイヤーパスのみ（名前付き抽象フィールドを作らない）。強さ違いは intensity ではなく別ファイルの別Cueとして表現する。say/set_expressionの分離に起因していたタイミング問題を避けるため、テキスト（セリフ）はこのファイルには含めない — テキストは set_cue 呼び出し時の引数（このスキーマの対象外）。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "select": {
+      "type": "array",
+      "description": "'*'ラジオレイヤーを選択するパスの配列。同じ階層(親フォルダ)のラジオを指定順に上書きできる。後に来る指定が勝つ。base（全Cue共通の初期状態、config側で定義）の後、このCueのselectが適用される。",
+      "items": {
+        "type": "string",
+        "pattern": "^!",
+        "description": "'/'区切りのPSDレイヤー名パス。ルートは常に必須フォルダ('!'始まり)。例: \"!目/*にっこり2\""
+      },
+      "default": []
+    },
+    "show": {
+      "type": "array",
+      "description": "ラジオではない通常レイヤー（汗・涙などの重ね着）を表示状態にするパスの配列。",
+      "items": {
+        "type": "string",
+        "pattern": "^!"
+      },
+      "default": []
+    },
+    "hide": {
+      "type": "array",
+      "description": "通常レイヤーを非表示にするパスの配列。base側で既に非表示のものをこのCueで明示的に隠す必要は通常ない。",
+      "items": {
+        "type": "string",
+        "pattern": "^!"
+      },
+      "default": []
+    },
+    "blink": {
+      "type": "boolean",
+      "description": "このCue表示中にまばたきアニメーションを有効にするか。目を大きく見開く／閉じているCue等ではfalseにして意図しないまばたきを防ぐ用途。省略時の扱いは実装依存（現行実装ではundefined=false扱い）。",
+      "default": false
+    },
+    "voice": {
+      "type": "object",
+      "description": "このCue固有の声色。VoiSona Talk REST APIの speech_synthesis_global_parameters のうち、Cueに焼き込む値（baked）だけを持つ。pitch/speed/volume/intonationはここに含めない — それらはset_cue呼び出し時のアドリブ引数（1行のセリフごとの演技）であり、このスキーマの対象外。",
+      "additionalProperties": false,
+      "properties": {
+        "style_weights": {
+          "type": "object",
+          "description": "スタイル名 → 重み。例 {\"Happy\": 0.7, \"Bashful\": 0.3}。実行時にボイスの style_names 順の配列へ変換して送信する（ブレンド計算はしない、素通し）。スタイル名は使用するVoiSonaボイスに依存するため、GET /api/talk/v1/voices/{voice_name}/{voice_version} の style_names で実在を確認すること。",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "description": "個々のスタイルの重み。上限・正規化要否はVoiSonaのバージョン/ボイスに依存するため、実装時に talk_api.yaml で要確認。"
+          },
+          "propertyNames": {
+            "minLength": 1
+          }
+        },
+        "alp": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "default": 0,
+          "description": "声質パラメータ。VoiSona global_parameters.alp をそのまま焼き込む。"
+        },
+        "huskiness": {
+          "type": "number",
+          "minimum": -20,
+          "maximum": 20,
+          "default": 0,
+          "description": "かすれ具合。VoiSona global_parameters.huskiness をそのまま焼き込む。"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "select": [
+        "!眉/*上がり",
+        "!目/*にっこり2",
+        "!口/*あは",
+        "!頬・顔色/*頬2"
+      ],
+      "show": [],
+      "hide": [],
+      "blink": false,
+      "voice": {
+        "style_weights": { "Happy": 1.0 },
+        "alp": 0,
+        "huskiness": 0
+      }
+    }
+  ]
+}

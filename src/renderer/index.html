@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; media-src blob:" />
+  <title>ui-chan</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      font-family: 'Hiragino Maru Gothic ProN', 'Hiragino Sans', sans-serif;
+      user-select: none;
+    }
+    #stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    #bubble-area {
+      flex: 0 0 auto;
+      min-height: 120px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 8px 10px 0;
+      box-sizing: border-box;
+      /* キャラクターの頭上（PSDの傘用余白ぶん）まで吹き出しを下げる */
+      transform: translateY(46px);
+      z-index: 1;
+      position: relative;
+    }
+    #bubble {
+      position: relative;
+      max-width: 100%;
+      /* 背景は髪の実ピクセル色 rgb(243,235,233)〜rgb(224,209,212)（淡い銀グレー）、
+         枠・矢印・影はリボン/靴下の実ピクセル色 rgb(78,91,181) = #4e5bb5 */
+      background: linear-gradient(180deg, rgba(250, 245, 243, 0.97), rgba(228, 216, 219, 0.97));
+      border: 2px solid #4e5bb5;
+      border-radius: 16px;
+      padding: 10px 14px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #2e2a35;
+      box-shadow: 0 3px 10px rgba(78, 91, 181, 0.28);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      word-break: break-word;
+    }
+    #bubble.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -9px;
+      left: 50%;
+      margin-left: -7px;
+      border-width: 9px 7px 0;
+      border-style: solid;
+      border-color: #4e5bb5 transparent transparent;
+    }
+    #canvas-wrap {
+      flex: 1 1 auto;
+      position: relative;
+      -webkit-app-region: drag;
+    }
+    #canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #placeholder {
+      display: none;
+      position: absolute;
+      inset: 12px;
+      background: rgba(30, 34, 52, 0.92);
+      border: 2px dashed #7a8ac0;
+      border-radius: 16px;
+      color: #e8ecff;
+      padding: 20px;
+      font-size: 13px;
+      line-height: 1.8;
+      -webkit-app-region: drag;
+    }
+    #placeholder h1 {
+      font-size: 16px;
+      margin: 0 0 12px;
+    }
+    #placeholder code {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div id="bubble-area"><div id="bubble"></div></div>
+    <div id="canvas-wrap">
+      <canvas id="canvas"></canvas>
+      <div id="placeholder">
+        <h1>ui-chan: 素材が見つかりません</h1>
+        <p>
+          立ち絵のPSDファイルを <code id="assets-dir">ui_sozai/</code> ディレクトリに
+          配置して、アプリを再起動してください。
+        </p>
+        <p>
+          PSDTool形式（<code>!</code>=必須レイヤー、<code>*</code>=ラジオ切替）の
+          PSDに対応しています。レイヤー名と表情のマッピングは
+          <code>ui-chan.config.json</code> で設定できます。
+        </p>
+      </div>
+    </div>
+  </div>
+  <script src="bundle.js"></script>
+</body>
+</html>
