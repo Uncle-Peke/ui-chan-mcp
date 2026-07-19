@@ -1,16 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="GoImports">
-    <option name="excludedPackages">
-      <array>
-        <option value="github.com/pkg/errors" />
-        <option value="golang.org/x/net/context" />
-      </array>
-    </option>
-  </component>
-  <component name="TerminalProjectNonSharedOptionsProvider">
-    <envs>
-      <env key="TERM_PROGRAM" value="IntelliJ IDEA" />
-    </envs>
+  <component name="ProjectRootManager" version="2" project-jdk-name="corretto-25" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/out" />
   </component>
 </project>

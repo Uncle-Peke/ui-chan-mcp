@@ -72,7 +72,6 @@ function buildSnapshot(): MascotStateSnapshot {
     psdFile: psdFile ? path.basename(psdFile) : null,
     ...rest,
     connectedAgents: [...agents.values()],
-    availableCues: state.listCues(),
     tts: tts ? tts.status() : { enabled: false },
     warnings: [...rendererWarnings, ...cueErrors, ...(cueWarning ? [cueWarning] : [])],
     affinity: state.affinitySnapshot(),

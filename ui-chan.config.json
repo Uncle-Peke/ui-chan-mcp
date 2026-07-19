@@ -8,7 +8,7 @@
   },
   "port": 8123,
   "idle": {
-    "$comment": "chatter/idlingCuesはどちらもIdlingCue（Cue+セリフのステップ列）を再生する同じ仕組みで、周期(minSec/maxSec)だけが別。chatterは滅多に喋らない独り言用、idlingCuesは無言の小さな仕草も含めた頻繁な生存感用",
+    "$comment": "chatter/idlingCuesはどちらもIdlingCue（Cue+セリフのステップ列）を再生する同じ仕組みで、周期(minSec/maxSec)だけが別。chatterは滅多に喋らない独り言用、idlingCuesは無言の小さな仕草も含めた頻繁な生存感用。各ステップのholdMsは無言ステップ（textなし）専用のタイマー。textがあるステップは実際にそのセリフを喋り終えるまで待ってから次に進むため、holdMsを書いても無視される",
     "revertAfterSec": 5,
     "chatter": {
       "enabled": true,
@@ -35,23 +35,23 @@
         {
           "name": "傘さし",
           "steps": [
-            { "cue": "kangae", "text": "あれ、雨かな…？", "reading": "あれ、あめかな…？", "holdMs": 2200 },
-            { "cue": "ame", "text": "降ってきちゃった。", "reading": "ふってきちゃった。", "holdMs": 3500 },
+            { "cue": "kangae", "text": "あれ、雨かな…？", "reading": "あれ、あめかな…？" },
+            { "cue": "ame", "text": "降ってきちゃった。", "reading": "ふってきちゃった。" },
             { "cue": "normal_umbrella", "holdMs": 3000 }
           ]
         },
         {
           "name": "のび",
           "steps": [
-            { "cue": "sleepy", "text": "ふぁ……", "reading": "ふぁ……", "holdMs": 1500 },
-            { "cue": "happy_banzai", "text": "んー、のびのび〜！", "reading": "んー、のびのび〜！", "holdMs": 2500 },
+            { "cue": "sleepy", "text": "ふぁ……", "reading": "ふぁ……" },
+            { "cue": "happy_banzai", "text": "んー、のびのび〜！", "reading": "んー、のびのび〜！" },
             { "cue": "smile", "holdMs": 1500 }
           ]
         },
         {
           "name": "考えごと",
           "steps": [
-            { "cue": "kangae", "text": "次、なにしよっかな。", "reading": "つぎ、なにしよっかな。", "holdMs": 2500 },
+            { "cue": "kangae", "text": "次、なにしよっかな。", "reading": "つぎ、なにしよっかな。" },
             { "cue": "normal_think", "holdMs": 2000 },
             { "cue": "smile", "holdMs": 1200 }
           ]
@@ -59,22 +59,22 @@
         {
           "name": "ドヤ独り言",
           "steps": [
-            { "cue": "smug_hands_on_hips", "text": "ま、あたしがついてれば安心でしょ。", "reading": "ま、あたしがついてればあんしんでしょ。", "holdMs": 3000 },
+            { "cue": "smug_hands_on_hips", "text": "ま、あたしがついてれば安心でしょ。", "reading": "ま、あたしがついてればあんしんでしょ。" },
             { "cue": "smug_arms_crossed", "holdMs": 2000 }
           ]
         },
         {
           "name": "呼びかけ",
           "steps": [
-            { "cue": "toujou", "text": "ねぇ、ちゃんといる〜？", "reading": "ねぇ、ちゃんといる〜？", "holdMs": 2500 },
+            { "cue": "toujou", "text": "ねぇ、ちゃんといる〜？", "reading": "ねぇ、ちゃんといる〜？" },
             { "cue": "normal", "holdMs": 1500 }
           ]
         },
         {
           "name": "退屈",
           "steps": [
-            { "cue": "normal_arms_crossed", "text": "ひま〜。", "reading": "ひま〜。", "holdMs": 2000 },
-            { "cue": "sleepy", "text": "……ねむくなってきた。", "reading": "……ねむくなってきた。", "holdMs": 2500 }
+            { "cue": "normal_arms_crossed", "text": "ひま〜。", "reading": "ひま〜。" },
+            { "cue": "sleepy", "text": "……ねむくなってきた。", "reading": "……ねむくなってきた。" }
           ]
         },
         {

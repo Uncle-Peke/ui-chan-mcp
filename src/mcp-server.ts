@@ -5,6 +5,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import WebSocket from 'ws';
 import { z } from 'zod';
+import { loadCues } from './app/cues';
 import { setCueShape } from './shared/set-cue-schema';
 import type { MascotConfig, WsResponse } from './shared/types';
 
@@ -221,9 +222,8 @@ server.registerTool(
       "Switch the mascot's Cue — a complete look (face + pose + voice color, baked together as " +
       'one self-contained unit) — and optionally speak a line at the same time. Cue and line are ' +
       'confirmed together in a single call, so the face and the voice never disagree about which ' +
-      'Cue is "current". Cues hot-reload from cues/*.json, so call get_state first and check its ' +
-      'availableCues for the current list rather than assuming it matches any list seen earlier in ' +
-      'this conversation. Unknown cue names fall back to "default" ' +
+      'Cue is "current". Pick the cue name from the Cue catalog in this persona\'s context. ' +
+      'Unknown cue names fall back to "default" ' +
       "(see the returned note, or get_state's warnings). " +
       'text is optional: omit it to change the look silently (e.g. a wordless reaction while you ' +
       'keep working). When text is given, ALWAYS also pass reading (its full hiragana reading) so ' +
@@ -272,6 +272,27 @@ server.registerTool(
   wrapTool('clear', () => ({})),
 );
 
+/** The Cue catalog (name + optional description) is generated fresh from
+ *  whatever is actually in cues/ every time the persona prompt is read —
+ *  never from a hand-maintained doc, so it can't silently drift out of sync
+ *  the way docs/CUES.md's old "早見表" table could. Cues flagged
+ *  `internal: true` are excluded: they're building blocks for the IdlingCue
+ *  system (state.ts), not meant to be picked directly via set_cue. */
+function buildCueCatalog(): string {
+  const cuesDir = path.join(projectRoot, config.cuesDir ?? 'cues');
+  const cueSchemaPath = path.join(projectRoot, 'cue.schema.json');
+  const { cues, errors } = loadCues(cuesDir, cueSchemaPath);
+  const lines = Object.entries(cues)
+    .filter(([, cue]) => !cue.internal)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, cue]) => `- \`${name}\`${cue.description ? ` — ${cue.description}` : ''}`);
+  const warning = errors.length > 0 ? `\n\n(cue読み込みエラー: ${errors.join('; ')})` : '';
+  return (
+    '## 利用可能なCue一覧（set_cueのcue引数。起動時点のcues/の内容から自動生成）\n\n' +
+    `${lines.join('\n')}${warning}`
+  );
+}
+
 server.registerPrompt(
   'persona',
   {
@@ -300,6 +321,11 @@ server.registerPrompt(
       }
     } catch {
       /* no context dir */
+    }
+    try {
+      parts.push(buildCueCatalog());
+    } catch (e) {
+      parts.push(`Cue一覧の生成に失敗しました: ${e instanceof Error ? e.message : e}`);
     }
     return {
       messages: [

@@ -95,11 +95,11 @@ claude mcp add ui-chan \
 | ツール | 引数 | 説明 |
 |---|---|---|
 | `set_cue` | `cue`, `text?`, `reading?`, `duration_ms?`, `pitch?`, `speed?`, `volume?`, `intonation?` | Cue（見た目＋声）を切り替え、任意でセリフを同時に話す。`text` を省略すると無言でCueだけ変わる。未知の`cue`名は`default`にフォールバックし`note`が付く。`pitch`/`speed`/`volume`/`intonation` はその一行だけのアドリブ演技パラメータ |
-| `get_state` | — | 現在の状態・接続エージェント・利用可能なCue一覧・好感度（`affinity`）一覧 |
+| `get_state` | — | 現在の状態・接続エージェント・好感度（`affinity`）・警告 |
 | `adjust_affinity` | `delta`, `reason?` | 好感度を相対的に増減（セッション内のみ・再起動でリセット）。褒められたら＋、旦那面・塩鮭案件で−。ういビームの発射可否を左右 |
 | `clear` | — | 吹き出し・Cueを初期状態（`default`）にリセット |
 
-Cueの一覧は `get_state` の `availableCues` で取得できます（`cues/*.json` のファイル名がそのままCue名）。
+Cueの一覧は`get_state`ではなく、`persona`プロンプトが起動のたびに`cues/*.json`から動的生成してAIのコンテキストに渡します（`get_state`はあくまで現在のランタイム状態のためのツール）。
 
 ## アーキテクチャ
 
@@ -140,9 +140,16 @@ Agent (Claude Code 等) ──stdio──▶ dist/mcp-server.js ──WebSocket(
   `warnings` に出ます
 - `cues/default.json` は全Cue共通の下地（旧`config.base`＋腕の基本ポーズに相当）で、他のCueと
   同じ形式の1ファイル。`set_cue`はこの`default`のdirectivesの上に指定されたCueのdirectivesを重ねて合成する
+- `description`（任意） — このCueがどんな場面・気持ちを表すかの短い説明。`set_cue`の実行には一切
+  使われず、`persona` MCPプロンプトが起動のたびに`cues/`の中身から動的にAI向けカタログを生成する
+  ためだけに読まれる（手書きの早見表を持たないので、Cue追加時にドキュメント更新を忘れてズレる、
+  ということが起きない）
+- `internal`（任意・真偽値） — `true`にすると、そのCueはAI向けカタログから除外される（`set_cue`で
+  直接呼べば動作はする）。IdlingCueが内部的に組み立てるための部品Cue（`cues/idling_*.json`）に付与
 
-Cue選定・新規Cue追加のための場面別早見表・PSDレイヤー名カタログは `context/CUES.md` を参照
-（実行時にはロードされない、制作用の参照ドキュメント）。
+Cue選定・PSDレイヤー名カタログなど、**新規Cue制作のための人間向け参照ドキュメント**は
+`docs/CUES.md` を参照。実行時にもAIのコンテキストにもロードされない（`context/`ではなく
+あえて`docs/`に置いている）。
 
 ## 設定（ui-chan.config.json）
 
@@ -175,7 +182,12 @@ MCP が提供できるのはツール（＝身体）だけで、**キャラク�
 
 - `persona/ui-chan.md`（`personaFile` で変更可）— 基本人格とツール使用方針（「reading を必ず付ける」「セリフは 1〜2 文で区切る」等）
 - `context/*.md` — 追加コンテキスト。`SOUL.md`（価値観・内面）、`VOCABULARY.md`（語彙・口癖・NGワード）、
-  `CUES.md`（Cue早見表）など、Markdown を置いた分だけファイル名順で全部読み込まれます
+  `AFFINITY.md`（好感度の機微）など、Markdown を置いた分だけファイル名順で全部読み込まれます。
+  **AIに読ませたくない内容（PSDレイヤーパスの生カタログ等）はここに置かない** — `context/`は
+  中身を問わず丸ごとAIに注入される場所なので、人間向けの制作リファレンスは`docs/`に置く
+  （`docs/CUES.md`がその例）
+- 利用できる Cue の一覧・意味は `context/*.md` ではなく、`persona` プロンプトが `cues/*.json` の
+  `description` から起動のたびに動的生成して渡す（`set_cue`のカタログ）
 
 読み込ませる方法は 3 つ（上ほど推奨）：
 

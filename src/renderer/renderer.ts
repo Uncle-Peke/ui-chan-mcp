@@ -367,7 +367,7 @@ function stopLipSync(): void {
   lipCurrentMouth = null;
 }
 
-function startLipSync(text: string, reading: string | null | undefined): void {
+function startLipSync(text: string, reading?: string | null): void {
   stopLipSync();
   if (!lipConfig || !psd) return;
   lipFrames = toLipFrames(reading && reading.trim().length > 0 ? reading : text);
@@ -404,7 +404,7 @@ function stopAudio(): void {
 function startAudioLipSync(
   audio: TtsAudio,
   fallbackText: string,
-  fallbackReading: string | null | undefined,
+  fallbackReading?: string | null,
 ): void {
   stopAudio();
   const bytes = Uint8Array.from(atob(audio.wavBase64), (c) => c.charCodeAt(0));

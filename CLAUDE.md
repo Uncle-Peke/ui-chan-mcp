@@ -108,9 +108,19 @@ wire type — there is no `find` directive on the wire anymore.
 - There is no `set_face`/`set_pose`/`set_expression`/`say`. `set_cue` is the
   only agent-facing visual tool, and it takes the Cue and the (optional) line
   to speak in the same call — see "timing model" below for why.
-- `context/CUES.md` is a hand-maintained reference catalog (scene → Cue name,
-  plus raw PSD layer paths for parts not currently baked into any Cue) for
-  choosing/authoring Cues. It is **not** loaded at runtime.
+- Each Cue may carry an optional `description` (what scene/feeling it's for)
+  and `internal` (excludes it from the AI-facing catalog below — used for the
+  IdlingCue building-block Cues, `cues/idling_*.json`). Neither field affects
+  `set_cue`/`composeDirectives()` at all; they exist solely for the `persona`
+  prompt's generated catalog (see below).
+- `docs/CUES.md` is a hand-maintained reference catalog (raw PSD layer paths
+  for parts not currently baked into any Cue, an "eyes/mouth/brows/..." parts
+  table) for *authoring* new Cues. Deliberately in `docs/`, not `context/`:
+  `context/*.md` is swept wholesale into the AI's session by the `persona`
+  prompt and the SessionStart hook, and this file's raw layer-path listings
+  are meaningless token spend for that audience — it's for whoever (human or
+  agent) is writing a *new* Cue file, not for the roleplay agent calling
+  `set_cue`. It is **not** loaded at runtime or injected into any prompt.
 
 ### IdlingCue: self-initiated Cue+line sequences during Idling
 
@@ -134,6 +144,19 @@ holdMs?}]}`) — the *same* type `set_cue`'s idle.actions used before this was
 unified with the old renderer-local "gesture" system (see the `renderer.ts`
 bullet above). `source` (`'idling-cue'` / `'idle-chatter'`) tags which pool
 triggered a given step, for `cue.agent` / speech `agent` bookkeeping.
+
+**`holdMs` only times silent steps.** A step with `text` advances when that
+line *actually* finishes playing (real TTS audio duration if synthesized,
+else `estimateSpeechDurationMs`'s text-length guess — see `SpeechItem.onComplete`
+in `state.ts`), not after a separately-authored `holdMs`. This closes the one
+remaining gap where a multi-step sequence could switch Cue while the previous
+line's audio was still playing: `enqueueSpeech()` is the single place a
+speech duration is ever resolved (`durationMs` argument if given, else LEN(text)
+via `estimateSpeechDurationMs`, refined again by `startSpeech()` once real
+audio length is known), and `playIdlingCueStep()`'s `onComplete` callback is
+what actually advances the sequence — never a second, independently-guessed
+timer. `holdMs` still fully controls steps with no `text` (there's nothing to
+wait for otherwise).
 
 ### Rejected designs (do not reintroduce)
 
@@ -179,14 +202,25 @@ context injected into the agent, defined in Markdown:
 - `persona/ui-chan.md` — base persona + tool-usage rules (always pass `reading`,
   keep `set_cue`'s `text` to 1–2 sentences, the affinity system, the persona boundary).
 - `context/*.md` — loaded in filename order: `SOUL.md` (values/inner life),
-  `VOCABULARY.md` (vocabulary, catchphrases, NG words), `CUES.md` (Cue catalog,
-  reference only — not loaded at runtime by the server itself), `AFFINITY.md`.
+  `VOCABULARY.md` (vocabulary, catchphrases, NG words), `AFFINITY.md`. Anything
+  placed here is swept wholesale into the AI's context — keep it to things the
+  roleplay agent should actually know, not authoring reference material (see
+  `docs/CUES.md` above for why that lives outside `context/`).
+- The `persona` MCP prompt handler also appends a generated Cue catalog
+  (`buildCueCatalog()` in `mcp-server.ts`): every non-`internal` Cue's name +
+  `description`, read fresh from `cues/*.json` each time the prompt runs. This
+  is how the agent learns what Cues exist and what they're for — not a
+  hand-maintained doc, so it can't go stale the way one would.
 
 When installed as a plugin, the `hooks/session-start.js` SessionStart hook
-auto-injects these each session. `agents/` (ui-chan, ui-mode) and `skills/`
-(ui-beam, ui-chan, ui-mode) are the plugin's subagents and slash commands.
-To retarget a different character, rewrite `persona/` + `context/` and the PSD
-layer mappings in `ui-chan.config.json` + `cues/`.
+auto-injects `persona/` + `context/*.md` each session (it does **not** run
+`buildCueCatalog()` — that only happens via the MCP `persona` prompt itself,
+so a plugin-only session gets the persona/context text but not the live Cue
+catalog unless something also calls `/mcp__ui-chan__persona`). `agents/`
+(ui-chan, ui-mode) and `skills/` (ui-beam, ui-chan, ui-mode) are the plugin's
+subagents and slash commands. To retarget a different character, rewrite
+`persona/` + `context/` and the PSD layer mappings in `ui-chan.config.json` +
+`cues/`.
 
 ## Editing notes
 

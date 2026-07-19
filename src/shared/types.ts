@@ -25,6 +25,20 @@ export interface CueVoice {
 export interface Cue extends LayerDirectives {
   blink?: boolean;
   voice?: CueVoice;
+  /** Short human/AI-facing note on when to use this Cue. The one deliberate
+   *  exception to "no catalog metadata": never read by set_cue/composeDirectives,
+   *  only surfaced by the `persona` MCP prompt (see mcp-server.ts), which
+   *  regenerates a live Cue catalog from whatever's actually in cues/ each
+   *  time it's read — so it can never drift the way a hand-maintained
+   *  reference doc can. */
+  description?: string;
+  /** True = excluded from that generated AI-facing catalog. Still fully
+   *  callable via set_cue (not an execution guard) — just signals "this is
+   *  an internal building block for the IdlingCue system, not meant to be
+   *  picked directly". An explicit flag on purpose, not a filename
+   *  convention (e.g. an "idling_" prefix), which would be an implicit,
+   *  easy-to-break signal. */
+  internal?: boolean;
 }
 
 /** Not a config field — a fixed naming convention. The Cue named "default"
@@ -185,6 +199,13 @@ export interface SpeechItem {
    *  Cue given in the same set_cue call that produced this line, so a later
    *  set_cue can't retroactively change an in-flight line's voice. */
   cue: string;
+  /** Internal bookkeeping only — not part of the wire format (JSON.stringify
+   *  drops function values, so it never reaches get_state's output). Lets an
+   *  IdlingCue step advance exactly when THIS line actually finishes playing
+   *  (real TTS audio duration if synthesized, otherwise the text-length
+   *  estimate) instead of guessing a separate holdMs that can drift out of
+   *  sync with the real speech. */
+  onComplete?: () => void;
 }
 
 export interface LipSyncConfig {
@@ -209,7 +230,6 @@ export interface MascotStateSnapshot {
   currentSpeech: SpeechItem | null;
   speechQueue: SpeechItem[];
   connectedAgents: { name: string; connectedAt: string }[];
-  availableCues: string[];
   tts?: {
     enabled: boolean;
     hasCredentials?: boolean;

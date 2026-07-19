@@ -11,6 +11,7 @@ import type {
   RenderCommand,
   SetCueResult,
   SpeechItem,
+  SpeechTimingConfig,
   TtsAudio,
   VoiceAdlib,
 } from '../shared/types';
@@ -35,6 +36,15 @@ function pickAdlib(args: SetCueArgs): VoiceAdlib | undefined {
   return { pitch, speed, volume, intonation };
 }
 
+/** LEN(text): the one place a display duration gets guessed from text length
+ *  alone. Used only when the caller didn't pin an explicit duration —
+ *  `startSpeech()` still refines this further once real TTS audio length is
+ *  known, so this is a first estimate, not the final word. */
+function estimateSpeechDurationMs(text: string, speech?: SpeechTimingConfig): number {
+  const estimated = (speech?.baseMs ?? 1500) + text.length * (speech?.msPerChar ?? 120);
+  return Math.min(Math.max(estimated, speech?.minMs ?? 2500), speech?.maxMs ?? 20000);
+}
+
 /** Every idle timer in this class follows the same "hold an id, clear-then-null
  *  it" shape (mirrors renderer.ts's clearTimeoutSafe for the browser side). */
 function clearTimeoutSafe(id: NodeJS.Timeout | null): null {
@@ -43,7 +53,7 @@ function clearTimeoutSafe(id: NodeJS.Timeout | null): null {
 }
 
 /** Random idle gap in ms, picked uniformly in [minSec, maxSec] (minSec floored to 1s). */
-function randomDelayMs(minSec: number | undefined, maxSec: number | undefined): number {
+function randomDelayMs(minSec?: number, maxSec?: number): number {
   const min = Math.max(minSec ?? 0, 1);
   const max = Math.max(maxSec ?? min, min);
   return (min + Math.random() * (max - min)) * 1000;
@@ -93,10 +103,6 @@ export class UiChanState {
       this.setCueState(DEFAULT_CUE_NAME, this.cueState.agent);
     }
     this.applyVisual();
-  }
-
-  listCues(): string[] {
-    return Object.keys(this.cues);
   }
 
   private isSpeaking(): boolean {
@@ -165,18 +171,14 @@ export class UiChanState {
       cueName = DEFAULT_CUE_NAME;
     }
     this.lastCueWarning = note ?? null;
-    this.setCueState(cueName, agent);
-    this.applyVisual();
+    this.applyCueLook(cueName, agent);
 
     if (args.text) {
-      const speechResult = this.enqueueSpeech(
-        args.text,
-        args.duration_ms,
-        agent,
-        args.reading,
-        pickAdlib(args),
-        cueName,
-      );
+      const speechResult = this.enqueueSpeech(args.text, cueName, agent, {
+        durationMs: args.duration_ms,
+        reading: args.reading,
+        voice: pickAdlib(args),
+      });
       this.scheduleIdleRevert();
       if (!speechResult.ok) {
         // The Cue switch above already happened (and stays), even though the
@@ -195,23 +197,38 @@ export class UiChanState {
     this.cueState = { cue, agent };
   }
 
-  /** Queue a line without touching the idle timers (used by chatter/IdlingCues). */
+  /** Switch to a Cue and render it — the visual half of "apply a Cue",
+   *  shared by set_cue and every IdlingCue/chatter step. */
+  private applyCueLook(cueName: string, agent: string | null): void {
+    this.setCueState(cueName, agent);
+    this.applyVisual();
+  }
+
+  /** Queue a line without touching the idle timers (used by chatter/IdlingCues).
+   *  Duration resolution happens in exactly one place: an explicit `durationMs`
+   *  wins, otherwise `estimateSpeechDurationMs` (LEN(text)) — later refined
+   *  again in `startSpeech()` once real TTS audio length is known. Every
+   *  caller that needs to know when this line is actually done (not just
+   *  "queued") passes `onComplete`, invoked once, whether the line played or
+   *  the queue was full. */
   private enqueueSpeech(
     text: string,
-    durationMs: number | undefined,
-    agent: string,
-    reading: string | undefined,
-    voice: VoiceAdlib | undefined,
     cue: string,
+    agent: string,
+    opts?: {
+      durationMs?: number;
+      reading?: string;
+      voice?: VoiceAdlib;
+      onComplete?: () => void;
+    },
   ): EnqueueResult {
+    const { durationMs, reading, voice, onComplete } = opts ?? {};
     if (this.speechQueue.length >= MAX_QUEUE) {
+      onComplete?.(); // don't strand a caller waiting on a line that never got queued
       return { ok: false, error: `speech queue is full (${MAX_QUEUE})` };
     }
-    const speech = this.config.speech;
-    const estimated = (speech?.baseMs ?? 1500) + text.length * (speech?.msPerChar ?? 120);
-    const duration =
-      durationMs ?? Math.min(Math.max(estimated, speech?.minMs ?? 2500), speech?.maxMs ?? 20000);
-    this.speechQueue.push({ text, durationMs: duration, agent, reading, voice, cue });
+    const duration = durationMs ?? estimateSpeechDurationMs(text, this.config.speech);
+    this.speechQueue.push({ text, durationMs: duration, agent, reading, voice, cue, onComplete });
     const immediate = this.currentSpeech === null;
     this.pumpSpeech();
     return {
@@ -251,6 +268,7 @@ export class UiChanState {
       this.emit({ type: 'speech', text: null });
       // restore the Cue's mouth after lip sync
       this.applyVisual();
+      item.onComplete?.();
       this.pumpSpeech();
       this.scheduleIdleRevert();
     }, durationMs);
@@ -262,9 +280,8 @@ export class UiChanState {
     this.cancelIdlingCue();
     this.speechQueue = [];
     this.currentSpeech = null;
-    this.setCueState(DEFAULT_CUE_NAME, null);
+    this.applyCueLook(DEFAULT_CUE_NAME, null);
     this.emit({ type: 'speech', text: null });
-    this.applyVisual();
     // clear() is itself activity: without this, chatter/IdlingCue timers left
     // over from before the clear could still fire on their old schedule.
     this.scheduleChatter();
@@ -348,6 +365,12 @@ export class UiChanState {
     this.playIdlingCueStep(cue.steps, 0, source);
   }
 
+  /** Advance one step of an IdlingCue. A step with `text` waits for that
+   *  exact line to actually finish (real TTS duration if synthesized,
+   *  otherwise LEN(text)) before moving on — `holdMs` is not used for a
+   *  speaking step, so there is no separately-guessed number that can drift
+   *  out of sync with what's really being said. A silent step (no `text`)
+   *  has nothing to wait for, so `holdMs` (default 2000) is what times it. */
   private playIdlingCueStep(steps: IdlingCueStep[], i: number, source: string): void {
     // cancelled by real activity while waiting between steps
     if (!this.idlingCueActive) return;
@@ -360,24 +383,24 @@ export class UiChanState {
       return;
     }
     const step = steps[i];
-    if (step.cue && this.cues[step.cue]) {
-      this.setCueState(step.cue, source);
-      this.applyVisual();
-    }
+    const cueName = step.cue && this.cues[step.cue] ? step.cue : this.cueState.cue;
+    const advance = () => this.playIdlingCueStep(steps, i + 1, source);
+
+    this.applyCueLook(cueName, source);
     if (step.text) {
-      this.enqueueSpeech(step.text, undefined, source, step.reading, undefined, this.cueState.cue);
+      this.enqueueSpeech(step.text, cueName, source, {
+        reading: step.reading,
+        onComplete: advance,
+      });
+    } else {
+      this.idlingCueHoldTimer = clearTimeoutSafe(this.idlingCueHoldTimer);
+      this.idlingCueHoldTimer = setTimeout(advance, step.holdMs ?? 2000);
     }
-    this.idlingCueHoldTimer = clearTimeoutSafe(this.idlingCueHoldTimer);
-    this.idlingCueHoldTimer = setTimeout(() => {
-      this.idlingCueHoldTimer = null;
-      this.playIdlingCueStep(steps, i + 1, source);
-    }, step.holdMs ?? 2000);
   }
 
   /** Ease back to the default Cue, dropping any hold. */
   private revertToDefault(): void {
-    this.setCueState(DEFAULT_CUE_NAME, null);
-    this.applyVisual();
+    this.applyCueLook(DEFAULT_CUE_NAME, null);
   }
 
   /** (Re)start the idle-chatter countdown. Any activity postpones it, so the

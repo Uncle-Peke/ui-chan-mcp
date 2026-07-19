@@ -2,10 +2,20 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ui-chan-mcp.local/schema/cue.schema.json",
   "title": "Cue",
-  "description": "1つの完成した見た目＋声を表す最小単位。1ファイル=1Cue、継承なし、完全に自己完結。視覚は生のPSDレイヤーパスのみ（名前付き抽象フィールドを作らない）。強さ違いは intensity ではなく別ファイルの別Cueとして表現する。say/set_expressionの分離に起因していたタイミング問題を避けるため、テキスト（セリフ）はこのファイルには含めない — テキストは set_cue 呼び出し時の引数（このスキーマの対象外）。",
+  "description": "1つの完成した見た目＋声を表す最小単位。1ファイル=1Cue、継承なし、完全に自己完結。視覚は生のPSDレイヤーパスのみ（名前付き抽象フィールドを作らない）。強さ違いは intensity ではなく別ファイルの別Cueとして表現する。say/set_expressionの分離に起因していたタイミング問題を避けるため、テキスト（セリフ）はこのファイルには含めない — テキストは set_cue 呼び出し時の引数（このスキーマの対象外）。任意の description フィールドのみ例外的にカタログ用メタデータとして許可する（AIエージェントがこのCueをいつ使うべきか把握するため。persona プロンプトが起動時に全Cueから動的に一覧を生成して渡す）。",
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "description": {
+      "type": "string",
+      "description": "このCueがどんな場面・気持ちを表すかの短い説明（人間・AI両方向けの参照情報）。set_cueの実行には一切使われず、MCPの persona プロンプトが起動時にcues/を読み込んでAIに一覧として渡す際にのみ使われる。カタログ用メタデータであり、見た目・声そのものには影響しない。",
+      "minLength": 1
+    },
+    "internal": {
+      "type": "boolean",
+      "description": "trueなら、このCueはAI向けのCue一覧（persona プロンプトが生成するset_cue用カタログ）から除外される。set_cueで直接指定すれば動作はする（実行を禁止するフラグではない）が、単体で場面に当てる想定ではなく、IdlingCue（ui-chan.config.jsonのidle.idlingCues/idle.chatter）が複数ステップの一部として内部的に参照するためだけのCueであることを示す。ファイル名のprefix等の暗黙の命名規則ではなく、この明示的なフラグで判定する。省略時はfalse扱い。",
+      "default": false
+    },
     "select": {
       "type": "array",
       "description": "'*'ラジオレイヤーを選択するパスの配列。同じ階層(親フォルダ)のラジオを指定順に上書きできる。後に来る指定が勝つ。base（全Cue共通の初期状態、config側で定義）の後、このCueのselectが適用される。",
