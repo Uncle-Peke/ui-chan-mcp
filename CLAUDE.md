@@ -19,7 +19,14 @@ The mascot art (PSD) is **not** in the repo (licensed). Without a `.psd` in
 npm install
 npm run build      # tsc (src → dist) + esbuild-bundle the renderer + copy index.html
 npm run app        # build, then launch the Electron display app
+npm run stop       # kill a running ui-chan Electron app
+npm run restart    # stop + relaunch the app
 npm run mcp        # run the MCP server standalone (node dist/mcp-server.js)
+npm run debug      # interactive debug console (direct WebSocket, no MCP)
+npm run debug:launch    # launch the app and drop into the debug console
+npm run debug:restart   # stop a running app, then launch the app and drop into the debug console
+npm run debug:state     # one-shot get_state over direct WebSocket
+npm run debug:list      # list cues + configured IdlingCues/chatter
 npm run lint       # biome check .   (lint:fix / format to autofix)
 npm run dump-psd -- assets/ui_sozai.psd   # dump PSD layer tree (for adapting config to a new PSD)
 ```
@@ -27,9 +34,15 @@ npm run dump-psd -- assets/ui_sozai.psd   # dump PSD layer tree (for adapting co
 There is **no test runner**. End-to-end checks are manual scripts:
 
 ```bash
-node tools/ws-test.mjs set_cue '{"cue":"happy","text":"テスト","reading":"てすと"}'   # hit the app's WebSocket directly
-node tools/mcp-test.mjs                            # drive the MCP server over stdio (E2E)
+node tools/debug.mjs                                 # interactive REPL for Cue/IdlingCue verification
+node tools/debug.mjs set_cue happy こんにちは こんにちは    # one-shot direct WebSocket call
+node tools/debug.mjs idle                            # force-run a random IdlingCue
+node tools/debug.mjs --launch                        # auto-launch the app, then enter REPL
+node tools/ws-test.mjs set_cue '{"cue":"happy","text":"テスト","reading":"てすと"}'   # minimal one-shot WebSocket test
+node tools/mcp-test.mjs                              # drive the MCP server over stdio (E2E)
 ```
+
+`tools/debug.mjs` bypasses the MCP server entirely and talks to the app's WebSocket. It is useful for manually checking Cues, forcing IdlingCues/chatter, and inspecting state without an MCP-capable agent. The commands it exposes (REPL or one-shot) are: `set_cue`, `set_cue_json`, `state`, `clear`, `set_affinity`, `restart`, `idle [name]`, `chatter`, `list`, `preview <cue>`, `refresh`, and `watch`. It reads TTS credentials from `.env` in the project root (copy `.env.example`) and forwards them to the app on connect.
 
 Always `npm run build` before running — both entry points execute compiled
 `dist/`, not the TypeScript sources.
@@ -127,23 +140,21 @@ wire type — there is no `find` directive on the wire anymore.
 Per VISION.md's ubiquitous language, **Idling** is the base "nothing being
 performed" state, and an **IdlingCue** is a short Cue-based performance
 occasionally played during Idling — a subtype of Cue, not a separate
-mechanism. `state.ts` implements this as one mechanism (`performIdlingCue()` /
-`playIdlingCueStep()`) shared by two independently-scheduled pools in
-`ui-chan.config.json`'s `idle` section:
+mechanism. `state.ts` implements this as one pool (`idle.idlingCues` in
+`ui-chan.config.json`) with weighted random selection and affinity gating:
 
-- `idle.idlingCues` — fires often (default every 12–30s). Pool mixes silent
-  ambient motion (`あくび`/`きょろきょろ`/`ぼんやり`/`うたた寝`/`くすくす`/`ため息`,
-  each step wearing a `cues/idling_*.json` Cue, no `text`) with short speaking
-  bits (`傘さし`, `のび`, …, each step a real Cue + line).
-- `idle.chatter` — fires rarely (default every 180–360s). Same shape
-  (`items: IdlingCue[]`), just its own slower cadence; every line now also
-  specifies a `cue` (earlier versions left the Cue untouched during chatter).
+- Each item is an `IdlingCue`: `{name?, steps: [{cue?, text?, reading?, holdMs?}], weight?, minAffinity?, maxAffinity?}`.
+- `weight` controls rarity (higher = picked more often). Use it to make ambient
+  motion common and longer chatter lines rare without needing a second timer.
+- `minAffinity` gates an item so it only plays when affinity is high enough.
+- `maxAffinity` gates an item so it only plays when affinity is low enough —
+  useful for cold or sulky reactions that should stop appearing once the mascot
+  warms up to the user.
+- `idle.idlingCues` fires on a single schedule (default every 12–30s); the
+  old separate `idle.chatter` pool has been merged into this one pool.
 
-Both pools are `IdlingCue[]` (`{name?, steps: [{cue?, text?, reading?,
-holdMs?}]}`) — the *same* type `set_cue`'s idle.actions used before this was
-unified with the old renderer-local "gesture" system (see the `renderer.ts`
-bullet above). `source` (`'idling-cue'` / `'idle-chatter'`) tags which pool
-triggered a given step, for `cue.agent` / speech `agent` bookkeeping.
+`source` is `'idling-cue'` for auto-scheduled steps and `'debug'` for steps
+forced via the debug console, for `cue.agent` / speech `agent` bookkeeping.
 
 **`holdMs` only times silent steps.** A step with `text` advances when that
 line *actually* finishes playing (real TTS audio duration if synthesized,

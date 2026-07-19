@@ -156,11 +156,10 @@ Cue選定・PSDレイヤー名カタログなど、**新規Cue制作のための
 - `assetsDir` — PSD を探すディレクトリ（最初に見つかった `.psd` を使用）
 - `window` — ウィンドウサイズ・画面端からのマージン
 - `cuesDir` — Cueのディレクトリ（デフォルト `cues`）
-- `idle.chatter` / `idle.idlingCues` — アイドル中に自発的に再生される**IdlingCue**（Cue＋任意のセリフの
-  ステップ列）。`items[].steps[]`は`{ cue?, text?, reading?, holdMs? }`で、`cue`を省略すると直前のCueを
-  維持する。`chatter`と`idlingCues`は同じ仕組みで、周期（`minSec`/`maxSec`）が違うだけ：`chatter`は
-  滅多に喋らない独り言用（デフォルト180〜360秒に1回）、`idlingCues`はあくび・きょろきょろ等の無言の
-  仕草も含めた頻繁な生存感用（デフォルト12〜30秒に1回）
+- `idle.idlingCues` — アイドル中に自発的に再生される**IdlingCue**（Cue＋任意のセリフのステップ列）のプール。
+  `items[].steps[]`は`{ cue?, text?, reading?, holdMs? }`で、`cue`を省略すると直前のCueを維持する。
+  各 IdlingCue は `weight`（出やすさ、デフォルト 1）、`minAffinity`（必要な好感度）、`maxAffinity`（上限好感度）を持てる。
+  無言の仕草（あくび、きょろきょろなど）は `weight` を高く、レアな独り言や高好感度専用セリフは `weight` を低く／`minAffinity` を高く、低好感度専用の冷たい反応は `maxAffinity` を低く設定する。
 - `lipSync` — リップシンク設定。`mouths` は母音（a/e/i/o/u/n）→ 口レイヤー名、`charsPerSec` は口を
   動かす速度、`audioPollMs`（デフォルト33）は音声駆動リップシンクが再生位置をチェックする間隔。
   読みのかなを母音に変換して口形を切り替える。漢字など読めない文字はパクパク
@@ -256,9 +255,20 @@ API リファレンスは REST API 有効化後に http://localhost:32766/docs/t
 ## 開発ツール
 
 ```bash
-npm run dump-psd -- assets/ui_sozai.psd   # PSDレイヤー構造のダンプ
+npm run app                             # Electron アプリを起動
+npm run stop                            # 起動中のアプリを終了
+npm run restart                         # 終了 → 再起動
+npm run dump-psd -- assets/ui_sozai.psd # PSDレイヤー構造のダンプ
+npm run debug                           # 対話型デバッグコンソール（MCP 不要、WebSocket直叩き）
+npm run debug:launch                    # アプリを自動起動してデバッグコンソール
+npm run debug:restart                   # 終了 → デバッグコンソール付きで再起動
+npm run debug:state                     # 現在の状態を取得
+npm run debug:list                      # 利用可能 Cue + IdlingCue + chatter 一覧
 node tools/ws-test.mjs set_cue '{"cue":"happy","text":"テスト","reading":"てすと"}' # WebSocket直叩きテスト
 node tools/mcp-test.mjs                       # MCP stdio 経由のE2Eテスト
 ```
+
+デバッグツールは `.env.example` をコピーして `.env` を作成すれば、TTS 認証情報を自動で読み込みます。
+TTS の動作確認は VoiSona Talk アプリが起動している必要があります（`npm run mcp` 経由で起動した場合は自動起動します）。
 
 アプリの終了は Dock アイコンから、または `pkill -f "ui-chan-mcp/node_modules/electron"`。

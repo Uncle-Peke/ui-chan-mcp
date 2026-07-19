@@ -106,14 +106,10 @@ export interface AffinityConfig {
 export interface IdleConfig {
   /** Seconds of inactivity (no speech, no tool calls) before reverting to the default Cue. 0 or omitted = disabled */
   revertAfterSec?: number;
-  /** Occasional self-initiated chatter while idle (the mascot talks to you
-   *  unprompted). Its own (much slower) cadence, but otherwise just IdlingCues —
-   *  same pool/step shape, played through the same mechanism. */
-  chatter?: IdleChatterConfig;
-  /** Occasional IdlingCues — short Cue+line sequences played during Idling
-   *  (VISION.md: "Idling中に時折差し込まれる小演出用のCue"). Covers both silent
-   *  ambient motion (yawn, look-around, ...) and speaking bits (the umbrella
-   *  gag, ...) — one mechanism, not split by whether a step happens to talk. */
+  /** Occasional IdlingCues — short Cue+line sequences played during Idling.
+   *  Covers both silent ambient motion (yawn, look-around, ...) and speaking bits
+   *  (the umbrella gag, chatter, ...). Each item has a weight (rarity) and an
+   *  optional minAffinity threshold so some lines only appear when affinity is high. */
   idlingCues?: IdlingCuesConfig;
 }
 
@@ -136,6 +132,12 @@ export interface IdlingCue {
   name?: string;
   /** Ordered steps, played one after another. */
   steps: IdlingCueStep[];
+  /** Relative selection weight. Default 1. Higher = picked more often. */
+  weight?: number;
+  /** Only play this IdlingCue when affinity >= this value. */
+  minAffinity?: number;
+  /** Only play this IdlingCue when affinity <= this value. */
+  maxAffinity?: number;
 }
 
 export interface IdlingCueStep {
@@ -146,16 +148,6 @@ export interface IdlingCueStep {
   reading?: string;
   /** How long this step lasts before advancing to the next, in ms (default 2000). */
   holdMs?: number;
-}
-
-export interface IdleChatterConfig {
-  enabled: boolean;
-  /** Random idle gap before playing one, in seconds: picked uniformly in [minSec, maxSec]. Resets on any activity. */
-  minSec: number;
-  maxSec: number;
-  /** Pool of IdlingCues to pick from — same shape as idle.idlingCues.items,
-   *  just on chatter's own slower cadence. Typically single-step. */
-  items: IdlingCue[];
 }
 
 export interface TtsConfig {
@@ -230,6 +222,7 @@ export interface MascotStateSnapshot {
   currentSpeech: SpeechItem | null;
   speechQueue: SpeechItem[];
   connectedAgents: { name: string; connectedAt: string }[];
+  availableCues: string[];
   tts?: {
     enabled: boolean;
     hasCredentials?: boolean;
@@ -253,14 +246,24 @@ export interface AffinitySnapshot {
 // source shared with the MCP tool's inputSchema) rather than here.
 
 // WebSocket bridge protocol (MCP stdio bridge <-> Electron app)
+/** Debug-only commands over the raw WebSocket. These are intentionally not
+ *  exposed as MCP tools — they exist for manual Cue/IdlingCue verification. */
+export type DebugAction =
+  | { type: 'trigger_idle'; name?: string }
+  | { type: 'trigger_chatter' }
+  | { type: 'list_idle' }
+  | { type: 'preview_cue'; cue: string }
+  | { type: 'set_affinity'; value: number; reason?: string };
+
 export interface WsRequest {
   id: number;
-  type: 'hello' | 'tool' | 'screenshot';
+  type: 'hello' | 'tool' | 'screenshot' | 'debug';
   agent?: string;
   /** TTS credentials forwarded from the agent side (mcp.json env); kept in memory only */
   tts?: { username: string; password: string };
   tool?: 'set_cue' | 'get_state' | 'clear' | 'adjust_affinity';
   args?: Record<string, unknown>;
+  debug?: DebugAction;
 }
 
 export interface WsResponse {

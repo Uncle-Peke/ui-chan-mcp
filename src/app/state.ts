@@ -59,6 +59,19 @@ function randomDelayMs(minSec?: number, maxSec?: number): number {
   return (min + Math.random() * (max - min)) * 1000;
 }
 
+/** Pick one item by weight. If all weights are 0/undefined, falls back to uniform. */
+function weightedPick<T extends { weight?: number }>(items: T[]): T | undefined {
+  const weights = items.map((item) => Math.max(item.weight ?? 1, 0));
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  if (total <= 0) return items[Math.floor(Math.random() * items.length)];
+  let roll = Math.random() * total;
+  for (let i = 0; i < items.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return items[i];
+  }
+  return items[items.length - 1];
+}
+
 export class UiChanState {
   private cues: Record<string, Cue>;
   private cueState: CueState;
@@ -66,7 +79,6 @@ export class UiChanState {
   private currentSpeech: SpeechItem | null = null;
   private speechTimer: NodeJS.Timeout | null = null;
   private idleTimer: NodeJS.Timeout | null = null;
-  private chatterTimer: NodeJS.Timeout | null = null;
   private idlingCueTimer: NodeJS.Timeout | null = null;
   private idlingCueHoldTimer: NodeJS.Timeout | null = null;
   private idlingCueActive = false;
@@ -86,7 +98,6 @@ export class UiChanState {
     this.cues = cues;
     this.cueState = { cue: DEFAULT_CUE_NAME, agent: null };
     this.affinity = this.clampAffinity(config.affinity?.default ?? 30);
-    this.scheduleChatter();
     this.scheduleIdlingCue();
   }
 
@@ -103,6 +114,10 @@ export class UiChanState {
       this.setCueState(DEFAULT_CUE_NAME, this.cueState.agent);
     }
     this.applyVisual();
+  }
+
+  listCues(): string[] {
+    return Object.keys(this.cues);
   }
 
   private isSpeaking(): boolean {
@@ -148,6 +163,23 @@ export class UiChanState {
     }
     const before = this.affinity;
     this.affinity = this.clampAffinity(this.affinity + delta);
+    return {
+      ok: true,
+      affinity: this.affinity,
+      band: this.affinityBand(),
+      delta: this.affinity - before,
+      beamReady: this.affinitySnapshot().beamReady,
+      reason: reason ?? null,
+    };
+  }
+
+  /** Debug: set affinity to an absolute value (clamped to config bounds). */
+  setAffinity(value: number, reason?: string): AffinityResult {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      return { ok: false, error: 'value must be a number' };
+    }
+    const before = this.affinity;
+    this.affinity = this.clampAffinity(value);
     return {
       ok: true,
       affinity: this.affinity,
@@ -204,7 +236,7 @@ export class UiChanState {
     this.applyVisual();
   }
 
-  /** Queue a line without touching the idle timers (used by chatter/IdlingCues).
+  /** Queue a line without touching the idle timers (used by IdlingCues).
    *  Duration resolution happens in exactly one place: an explicit `durationMs`
    *  wins, otherwise `estimateSpeechDurationMs` (LEN(text)) — later refined
    *  again in `startSpeech()` once real TTS audio length is known. Every
@@ -282,9 +314,8 @@ export class UiChanState {
     this.currentSpeech = null;
     this.applyCueLook(DEFAULT_CUE_NAME, null);
     this.emit({ type: 'speech', text: null });
-    // clear() is itself activity: without this, chatter/IdlingCue timers left
-    // over from before the clear could still fire on their old schedule.
-    this.scheduleChatter();
+    // clear() is itself activity: without this, the IdlingCue timer left
+    // over from before the clear could still fire on its old schedule.
     this.scheduleIdlingCue();
     return { ok: true };
   }
@@ -296,7 +327,6 @@ export class UiChanState {
    *  unless overrideHoldMs is given (set_cue's duration_ms with no text),
    *  in which case it eases back to default after that many ms. */
   private holdVisual(overrideHoldMs?: number): void {
-    this.scheduleChatter();
     this.scheduleIdlingCue();
     this.idleTimer = clearTimeoutSafe(this.idleTimer);
     if (overrideHoldMs && overrideHoldMs > 0) {
@@ -310,7 +340,6 @@ export class UiChanState {
 
   /** (Re)start the idle countdown. Fires only when nothing is being said; any activity postpones it. */
   private scheduleIdleRevert(): void {
-    this.scheduleChatter();
     this.scheduleIdlingCue();
     this.idleTimer = clearTimeoutSafe(this.idleTimer);
     // A held IdlingCue governs its own lifetime — don't yank it back early.
@@ -334,6 +363,15 @@ export class UiChanState {
   /** (Re)start the IdlingCue countdown. Occasionally plays a short Cue
    *  sequence (silent ambient motion or a speaking bit — same mechanism
    *  either way) so the desk has some life beyond chatter. */
+  private eligibleIdlingCues(): IdlingCue[] {
+    const items = this.config.idle?.idlingCues?.items ?? [];
+    return items.filter(
+      (item) =>
+        (item.minAffinity === undefined ? true : this.affinity >= item.minAffinity) &&
+        (item.maxAffinity === undefined ? true : this.affinity <= item.maxAffinity),
+    );
+  }
+
   private scheduleIdlingCue(): void {
     this.idlingCueTimer = clearTimeoutSafe(this.idlingCueTimer);
     const idlingCues = this.config.idle?.idlingCues;
@@ -346,18 +384,21 @@ export class UiChanState {
           this.scheduleIdlingCue();
           return;
         }
-        const item = idlingCues.items[Math.floor(Math.random() * idlingCues.items.length)];
-        this.performIdlingCue(item, 'idling-cue');
+        const eligible = this.eligibleIdlingCues();
+        if (eligible.length === 0) {
+          this.scheduleIdlingCue();
+          return;
+        }
+        const item = weightedPick(eligible);
+        if (item) this.performIdlingCue(item, 'idling-cue');
       },
       randomDelayMs(idlingCues.minSec, idlingCues.maxSec),
     );
   }
 
   /** Play an IdlingCue: a sequence of Cue(+line) steps that move together,
-   *  then ease back to default. Any real activity cancels it. Shared by both
-   *  the IdlingCue pool and chatter (chatter is just IdlingCues on a slower,
-   *  separately-configured cadence) — `source` tags who's playing it, for
-   *  `cue.agent` / speech `agent` bookkeeping. */
+   *  then ease back to default. Any real activity cancels it. `source` tags
+   *  who's playing it, for `cue.agent` / speech `agent` bookkeeping. */
   private performIdlingCue(cue: IdlingCue, source: string): void {
     if (!cue.steps?.length) return;
     this.idleTimer = clearTimeoutSafe(this.idleTimer);
@@ -378,7 +419,6 @@ export class UiChanState {
       this.idlingCueActive = false;
       // don't cut off a line that's still being read
       if (!this.isSpeaking()) this.revertToDefault();
-      this.scheduleChatter();
       this.scheduleIdlingCue();
       return;
     }
@@ -403,29 +443,6 @@ export class UiChanState {
     this.applyCueLook(DEFAULT_CUE_NAME, null);
   }
 
-  /** (Re)start the idle-chatter countdown. Any activity postpones it, so the
-   *  mascot only speaks up after a genuine lull (never over ongoing work).
-   *  Chatter entries are IdlingCues too (usually a single {cue, text} step) —
-   *  just drawn from their own pool on their own (much slower) cadence. */
-  private scheduleChatter(): void {
-    this.chatterTimer = clearTimeoutSafe(this.chatterTimer);
-    const chatter = this.config.idle?.chatter;
-    if (!chatter?.enabled || !chatter.items?.length) return;
-    this.chatterTimer = setTimeout(
-      () => {
-        this.chatterTimer = null;
-        // still (or again) busy — don't talk over speech or an IdlingCue; wait for the next lull
-        if (this.isBusy()) {
-          this.scheduleChatter();
-          return;
-        }
-        const item = chatter.items[Math.floor(Math.random() * chatter.items.length)];
-        this.performIdlingCue(item, 'idle-chatter');
-      },
-      randomDelayMs(chatter.minSec, chatter.maxSec),
-    );
-  }
-
   /** default Cue's directives, then the currently-selected Cue's directives
    *  layered on top (later entries win on shared radio groups) — a Cue is the
    *  only thing ever composited on top of the shared base. blink falls back
@@ -448,6 +465,73 @@ export class UiChanState {
   applyVisual(): void {
     const { directives, blink } = this.composeDirectives(this.cueState.cue);
     this.emit({ type: 'apply', directives, blink });
+  }
+
+  /** Debug: force-run one IdlingCue immediately (or the named one).
+   *  Honors minAffinity/weight filters unless a specific name is requested. */
+  triggerIdleAction(name?: string): { ok: true; name?: string } | { ok: false; error: string } {
+    const idlingCues = this.config.idle?.idlingCues;
+    if (!idlingCues?.enabled || !idlingCues.items?.length) {
+      return { ok: false, error: 'idlingCues are disabled or empty' };
+    }
+    let item: IdlingCue | undefined;
+    if (name) {
+      item = idlingCues.items.find((a) => a.name === name);
+      if (!item) {
+        const names = idlingCues.items.map((a) => a.name).filter(Boolean);
+        return { ok: false, error: `unknown idlingCue "${name}". known: ${names.join(', ')}` };
+      }
+    }
+    item ??= weightedPick(this.eligibleIdlingCues());
+    if (!item?.steps?.length) {
+      return { ok: false, error: 'selected idlingCue has no steps' };
+    }
+    this.cancelIdlingCue();
+    this.performIdlingCue(item, 'debug');
+    this.scheduleIdlingCue();
+    return { ok: true, name: item.name };
+  }
+
+  /** Debug: list configured IdlingCues. */
+  listIdle(): {
+    idlingCues: {
+      name?: string;
+      stepCount: number;
+      weight?: number;
+      minAffinity?: number;
+      maxAffinity?: number;
+    }[];
+  } {
+    return {
+      idlingCues:
+        this.config.idle?.idlingCues?.items.map((a) => ({
+          name: a.name,
+          stepCount: a.steps?.length ?? 0,
+          weight: a.weight,
+          minAffinity: a.minAffinity,
+          maxAffinity: a.maxAffinity,
+        })) ?? [],
+    };
+  }
+
+  /** Debug: preview the directives a Cue would produce without wearing it. */
+  previewCue(cueName: string): {
+    cue: string;
+    exists: boolean;
+    fallback: string | null;
+    directives: LayerDirectives;
+    blink: boolean;
+  } {
+    const exists = Boolean(this.cues[cueName]);
+    const targetCue = exists ? cueName : DEFAULT_CUE_NAME;
+    const { directives, blink } = this.composeDirectives(targetCue);
+    return {
+      cue: cueName,
+      exists,
+      fallback: exists ? null : `unknown cue "${cueName}" — previewing default`,
+      directives,
+      blink,
+    };
   }
 
   snapshot(): {

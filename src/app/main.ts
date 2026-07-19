@@ -72,6 +72,7 @@ function buildSnapshot(): MascotStateSnapshot {
     psdFile: psdFile ? path.basename(psdFile) : null,
     ...rest,
     connectedAgents: [...agents.values()],
+    availableCues: state.listCues(),
     tts: tts ? tts.status() : { enabled: false },
     warnings: [...rendererWarnings, ...cueErrors, ...(cueWarning ? [cueWarning] : [])],
     affinity: state.affinitySnapshot(),
@@ -94,6 +95,42 @@ const toolHandlers: Record<ToolName, (args: Record<string, unknown>, agent: stri
     ),
 };
 
+function handleDebug(_ws: WebSocket, req: WsRequest): WsResponse {
+  const action = req.debug;
+  if (!action) {
+    return { id: req.id, ok: false, error: 'missing debug action' };
+  }
+  try {
+    switch (action.type) {
+      case 'trigger_idle': {
+        const result = state.triggerIdleAction(action.name);
+        if (!result.ok) {
+          return { id: req.id, ok: false, error: result.error };
+        }
+        return { id: req.id, ok: true, result };
+      }
+      case 'list_idle': {
+        return { id: req.id, ok: true, result: state.listIdle() };
+      }
+      case 'preview_cue': {
+        return { id: req.id, ok: true, result: state.previewCue(action.cue) };
+      }
+      case 'set_affinity': {
+        const result = state.setAffinity(action.value, action.reason);
+        if (!result.ok) {
+          return { id: req.id, ok: false, error: result.error };
+        }
+        return { id: req.id, ok: true, result };
+      }
+      default: {
+        return { id: req.id, ok: false, error: `unknown debug action` };
+      }
+    }
+  } catch (e) {
+    return { id: req.id, ok: false, error: String(e) };
+  }
+}
+
 function handleRequest(ws: WebSocket, req: WsRequest): WsResponse {
   const agent = agents.get(ws)?.name ?? req.agent ?? 'unknown';
   try {
@@ -109,6 +146,9 @@ function handleRequest(ws: WebSocket, req: WsRequest): WsResponse {
         const handler = req.tool ? toolHandlers[req.tool] : undefined;
         if (!handler) return { id: req.id, ok: false, error: `unknown tool: ${req.tool}` };
         return { id: req.id, ok: true, result: handler(req.args ?? {}, agent) };
+      }
+      case 'debug': {
+        return handleDebug(ws, req);
       }
       default:
         return { id: req.id, ok: false, error: `unknown request type` };

@@ -8,32 +8,24 @@
   },
   "port": 8123,
   "idle": {
-    "$comment": "chatter/idlingCuesはどちらもIdlingCue（Cue+セリフのステップ列）を再生する同じ仕組みで、周期(minSec/maxSec)だけが別。chatterは滅多に喋らない独り言用、idlingCuesは無言の小さな仕草も含めた頻繁な生存感用。各ステップのholdMsは無言ステップ（textなし）専用のタイマー。textがあるステップは実際にそのセリフを喋り終えるまで待ってから次に進むため、holdMsを書いても無視される",
+    "$comment": "IdlingCue（Cue+セリフのステップ列）のプール。weightで出やすさ（レア度）を、minAffinityで必要な好感度を指定できる。各ステップのholdMsは無言ステップ（textなし）専用のタイマー。textがあるステップは実際にそのセリフを喋り終えるまで待ってから次に進むため、holdMsを書いても無視される",
     "revertAfterSec": 5,
-    "chatter": {
-      "enabled": true,
-      "minSec": 180,
-      "maxSec": 360,
-      "items": [
-        { "steps": [{ "cue": "toujou", "text": "ねぇ、まだ起きてる〜？", "reading": "ねぇ、まだおきてる〜？" }] },
-        { "steps": [{ "cue": "nemui", "text": "ひま〜。なんか話そうよ。", "reading": "ひま〜。なんかはなそうよ。" }] },
-        { "steps": [{ "cue": "shinpai", "text": "きみさ、ちゃんと休憩してる？", "reading": "きみさ、ちゃんときゅうけいしてる？" }] },
-        { "steps": [{ "cue": "sleepy", "text": "……ふぁ〜あ。ねむ。", "reading": "……ふぁ〜あ。ねむ。" }] },
-        { "steps": [{ "cue": "ame", "text": "雨、降らないかなぁ。", "reading": "あめ、ふらないかなぁ。" }] },
-        { "steps": [{ "cue": "troubled", "text": "わたしのこと、忘れてない？", "reading": "わたしのこと、わすれてない？" }] },
-        { "steps": [{ "cue": "mutto", "text": "え〜、まだ終わらないの？めんどくさ。", "reading": "え〜、まだおわらないの？めんどくさ。" }] },
-        { "steps": [{ "cue": "smile", "text": "ここにいるよ。ゆっくりでいいからね。", "reading": "ここにいるよ。ゆっくりでいいからね。" }] },
-        { "steps": [{ "cue": "deredere", "text": "きみが集中してるの、見てるだけで満足〜。", "reading": "きみがしゅうちゅうしてるの、みてるだけでまんぞく〜。" }] },
-        { "steps": [{ "cue": "shinpai", "text": "肩、こってない？のびでもしなよ。", "reading": "かた、こってない？のびでもしなよ。" }] }
-      ]
-    },
     "idlingCues": {
       "enabled": true,
       "minSec": 12,
       "maxSec": 30,
       "items": [
         {
+          "name": "塩対応",
+          "weight": 5,
+          "maxAffinity": 30,
+          "steps": [
+            { "cue": "jito", "text": "……なに？", "reading": "……なに？" }
+          ]
+        },
+        {
           "name": "傘さし",
+          "weight": 10,
           "steps": [
             { "cue": "kangae", "text": "あれ、雨かな…？", "reading": "あれ、あめかな…？" },
             { "cue": "ame", "text": "降ってきちゃった。", "reading": "ふってきちゃった。" },
@@ -42,6 +34,7 @@
         },
         {
           "name": "のび",
+          "weight": 10,
           "steps": [
             { "cue": "sleepy", "text": "ふぁ……", "reading": "ふぁ……" },
             { "cue": "happy_banzai", "text": "んー、のびのび〜！", "reading": "んー、のびのび〜！" },
@@ -50,6 +43,7 @@
         },
         {
           "name": "考えごと",
+          "weight": 10,
           "steps": [
             { "cue": "kangae", "text": "次、なにしよっかな。", "reading": "つぎ、なにしよっかな。" },
             { "cue": "normal_think", "holdMs": 2000 },
@@ -58,6 +52,7 @@
         },
         {
           "name": "ドヤ独り言",
+          "weight": 10,
           "steps": [
             { "cue": "smug_hands_on_hips", "text": "ま、あたしがついてれば安心でしょ。", "reading": "ま、あたしがついてればあんしんでしょ。" },
             { "cue": "smug_arms_crossed", "holdMs": 2000 }
@@ -65,6 +60,7 @@
         },
         {
           "name": "呼びかけ",
+          "weight": 10,
           "steps": [
             { "cue": "toujou", "text": "ねぇ、ちゃんといる〜？", "reading": "ねぇ、ちゃんといる〜？" },
             { "cue": "normal", "holdMs": 1500 }
@@ -72,6 +68,7 @@
         },
         {
           "name": "退屈",
+          "weight": 10,
           "steps": [
             { "cue": "normal_arms_crossed", "text": "ひま〜。", "reading": "ひま〜。" },
             { "cue": "sleepy", "text": "……ねむくなってきた。", "reading": "……ねむくなってきた。" }
@@ -79,6 +76,7 @@
         },
         {
           "name": "あくび",
+          "weight": 10,
           "steps": [
             { "cue": "idling_yawn_1", "holdMs": 260 },
             { "cue": "idling_yawn_2", "holdMs": 1500 },
@@ -87,6 +85,7 @@
         },
         {
           "name": "きょろきょろ",
+          "weight": 10,
           "steps": [
             { "cue": "idling_lookaround_1", "holdMs": 700 },
             { "cue": "idling_lookaround_2", "holdMs": 650 },
@@ -95,10 +94,12 @@
         },
         {
           "name": "ぼんやり",
+          "weight": 10,
           "steps": [{ "cue": "idling_ponder", "holdMs": 1900 }]
         },
         {
           "name": "うたた寝",
+          "weight": 10,
           "steps": [
             { "cue": "idling_doze_1", "holdMs": 900 },
             { "cue": "idling_doze_2", "holdMs": 700 },
@@ -107,6 +108,7 @@
         },
         {
           "name": "くすくす",
+          "weight": 10,
           "steps": [
             { "cue": "idling_giggle_1", "holdMs": 650 },
             { "cue": "idling_giggle_2", "holdMs": 650 }
@@ -114,10 +116,64 @@
         },
         {
           "name": "ため息",
+          "weight": 10,
           "steps": [
             { "cue": "idling_sigh_1", "holdMs": 500 },
             { "cue": "idling_sigh_2", "holdMs": 1200 }
           ]
+        },
+        {
+          "name": "夜更かし確認",
+          "weight": 2,
+          "steps": [{ "cue": "toujou", "text": "ねぇ、まだ起きてる〜？", "reading": "ねぇ、まだおきてる〜？" }]
+        },
+        {
+          "name": "暇",
+          "weight": 2,
+          "steps": [{ "cue": "mutto", "text": "ひま〜〜。なんか話そうよ。", "reading": "ひま〜〜。なんかはなそうよ。" }]
+        },
+        {
+          "name": "休憩促し",
+          "weight": 2,
+          "steps": [{ "cue": "shinpai", "text": "きみさ、ちゃんと休憩してる？", "reading": "きみさ、ちゃんときゅうけいしてる？" }]
+        },
+        {
+          "name": "眠気",
+          "weight": 2,
+          "steps": [{ "cue": "sleepy", "text": "……ふぁ〜あ。ねむ。", "reading": "……ふぁ〜あ。ねむ。" }]
+        },
+        {
+          "name": "雨待ち",
+          "weight": 2,
+          "steps": [{ "cue": "ame", "text": "雨、降らないかなぁ。", "reading": "あめ、ふらないかなぁ。" }]
+        },
+        {
+          "name": "忘れられ不安",
+          "weight": 2,
+          "minAffinity": 35,
+          "steps": [{ "cue": "troubled", "text": "わたしのこと、忘れてない？", "reading": "わたしのこと、わすれてない？" }]
+        },
+        {
+          "name": "面倒臭がり",
+          "weight": 2,
+          "steps": [{ "cue": "mutto", "text": "え〜、まだ終わらないの？めんどくさ。", "reading": "え〜、まだおわらないの？めんどくさ。" }]
+        },
+        {
+          "name": "肩揉み",
+          "weight": 2,
+          "steps": [{ "cue": "shinpai", "text": "肩、こってない？のびでもしなよ。", "reading": "かた、こってない？のびでもしなよ。" }]
+        },
+        {
+          "name": "ここにいるよ",
+          "weight": 1,
+          "minAffinity": 50,
+          "steps": [{ "cue": "smile", "text": "ここにいるよ。ゆっくりでいいからね。", "reading": "ここにいるよ。ゆっくりでいいからね。" }]
+        },
+        {
+          "name": "デレ",
+          "weight": 1,
+          "minAffinity": 70,
+          "steps": [{ "cue": "deredere", "text": "きみが集中してるの、見てるだけで満足〜。", "reading": "きみがしゅうちゅうしてるの、みてるだけでまんぞく〜。" }]
         }
       ]
     }

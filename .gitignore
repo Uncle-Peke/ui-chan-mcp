@@ -3,6 +3,7 @@ dist/
 ui-chan-shot.png
 .DS_Store
 .idea/
+.env
 
 # 著作権保護された立ち絵素材はリポジトリに含めない（置き場所を問わず PSD 全般）
 *.psd
