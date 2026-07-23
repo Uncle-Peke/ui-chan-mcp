@@ -131,16 +131,22 @@ ipcMain.handle('editor:delete-cue', (_ev, name: string): EditorWriteResult => {
   }
 });
 
-// IdlingCue names whose steps reference this cue — a delete-safety warning so
-// removing a cue used by an IdlingCue sequence doesn't silently break it.
+// CueSequence names (IdlingCues + FidgetCues) whose steps reference this
+// cue — a delete-safety warning so removing a cue used by a sequence doesn't
+// silently break it.
 ipcMain.handle('editor:cue-refs', (_ev, name: string): string[] => {
-  const items = config.idle?.idlingCues?.items ?? [];
+  const pools: { label: string; items?: { name?: string; steps?: { cue?: string }[] }[] }[] = [
+    { label: 'idling', items: config.idle?.idlingCues?.items },
+    { label: 'poke', items: config.interactions?.poke },
+  ];
   const refs: string[] = [];
-  items.forEach((item, i) => {
-    if ((item.steps ?? []).some((s) => s.cue === name)) {
-      refs.push(item.name ?? `#${i}`);
-    }
-  });
+  for (const { label, items } of pools) {
+    (items ?? []).forEach((item, i) => {
+      if ((item.steps ?? []).some((s) => s.cue === name)) {
+        refs.push(`${label}:${item.name ?? `#${i}`}`);
+      }
+    });
+  }
   return refs;
 });
 

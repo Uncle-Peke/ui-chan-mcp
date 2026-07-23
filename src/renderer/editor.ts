@@ -340,7 +340,7 @@ async function del(): Promise<void> {
   if (!currentName) return;
   const refs = await window.uiEditor.cueRefs(currentName);
   const warn = refs.length
-    ? `\n\n⚠ このCueは次のIdlingCueから参照されています: ${refs.join(', ')}\n削除するとそれらが壊れます。`
+    ? `\n\n⚠ このCueは次のシーケンス(IdlingCue/FidgetCue)から参照されています: ${refs.join(', ')}\n削除するとそれらが壊れます。`
     : '';
   if (!confirm(`${currentName} を削除しますか？${warn}`)) return;
   const res = await window.uiEditor.deleteCue(currentName);

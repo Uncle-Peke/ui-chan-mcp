@@ -114,7 +114,7 @@ function handleDebug(_ws: WebSocket, req: WsRequest): WsResponse {
         return { id: req.id, ok: true, result };
       }
       case 'interact': {
-        state.onInteraction(action.kind ?? 'hover');
+        state.onInteraction(action.kind ?? 'poke');
         return { id: req.id, ok: true, result: { ok: true } };
       }
       default: {

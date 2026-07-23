@@ -61,16 +61,15 @@ export interface MascotConfig {
   interactions?: InteractionsConfig;
 }
 
-/** Direct physical interaction with the mascot — the fidget. Reactions PREEMPT
+/** Direct physical interaction with the mascot — the fidget. FidgetCues PREEMPT
  *  whatever's playing (a poked ういちゃん cuts off mid-line to react), and are
- *  affinity-gated like IdlingCue, so touching her reads the relationship's
- *  temperature. See VISION.md. */
+ *  affinity-gated, so touching her reads the relationship's temperature.
+ *  See VISION.md. */
 export interface InteractionsConfig {
-  /** Reaction pool for hover (pointer over her actual pixels). Same shape as
-   *  IdlingCue (steps + weight + affinity gates); a Cue may speak or be silent. */
-  hover?: IdlingCue[];
-  /** Minimum gap between interaction reactions, ms. Default 2500. Stops rapid
-   *  hover in/out from spamming interruptions. */
+  /** FidgetCue pool for a poke (click on her actual pixels). */
+  poke?: FidgetCue[];
+  /** Minimum gap between reactions, ms. Default 600. Stops mashing from
+   *  spamming interruptions. */
   cooldownMs?: number;
 }
 
@@ -155,21 +154,22 @@ export interface IdlingCuesConfig {
   items: IdlingCue[];
 }
 
-/** An IdlingCue is a whole little sequence — Cue and (optionally) speech
- *  that move together over several steps, not a single frozen look. A
- *  subtype of Cue in the ubiquitous-language sense: each step wears a real
- *  Cue, it's just strung together as a short performance instead of one
- *  static look. */
-export interface IdlingCue {
-  /** Optional label, for logs. */
+/** A CueSequence is a whole little performance — Cue and (optionally) speech
+ *  moving together over several steps, not a single frozen look — plus the
+ *  gates that decide when it may play. It's the shared shape underneath the two
+ *  ways ういちゃん performs a sequence rather than a static Cue: as an IdlingCue
+ *  (self-initiated during Idling) or as a FidgetCue (fired by a poke).
+ *  Same data, same playback; only the trigger and priority differ. */
+export interface CueSequence {
+  /** Optional label, for logs / debug triggering (`idle <name>`). */
   name?: string;
   /** Ordered steps, played one after another. */
-  steps: IdlingCueStep[];
+  steps: CueStep[];
   /** Relative selection weight. Default 1. Higher = picked more often. */
   weight?: number;
-  /** Only play this IdlingCue when affinity >= this value. */
+  /** Only play when affinity >= this value. */
   minAffinity?: number;
-  /** Only play this IdlingCue when affinity <= this value. */
+  /** Only play when affinity <= this value. */
   maxAffinity?: number;
   /** Local time-of-day gate `[fromHour, toHour]` (0–23, inclusive). Only play
    *  when the current hour is in the window. Wraps past midnight when from > to
@@ -179,13 +179,18 @@ export interface IdlingCue {
   hours?: [number, number];
 }
 
-export interface IdlingCueStep {
+/** A CueSequence played self-initiated during Idling (yawn, chatter, greetings). */
+export type IdlingCue = CueSequence;
+/** A CueSequence fired by a direct physical interaction (a poke) — the fidget. */
+export type FidgetCue = CueSequence;
+
+export interface CueStep {
   /** Cue to switch to for this step (must exist in the loaded Cue set). Omitted = keep whatever Cue the previous step left. */
   cue?: string;
   /** Optional line to speak on this step. reading is the hiragana for lip-sync. */
   text?: string;
   reading?: string;
-  /** How long this step lasts before advancing to the next, in ms (default 2000). */
+  /** How long this step lasts before advancing to the next, in ms (default 2000). Ignored for a step with `text` (waits for the line to finish). */
   holdMs?: number;
 }
 

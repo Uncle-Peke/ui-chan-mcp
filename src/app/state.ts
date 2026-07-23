@@ -3,9 +3,9 @@ import type {
   AffinityResult,
   ClearResult,
   Cue,
+  CueSequence,
   CueState,
-  IdlingCue,
-  IdlingCueStep,
+  CueStep,
   LayerDirectives,
   MascotConfig,
   RenderCommand,
@@ -109,8 +109,8 @@ export class UiChanState {
   private speechTimer: NodeJS.Timeout | null = null;
   private idleTimer: NodeJS.Timeout | null = null;
   private idlingCueTimer: NodeJS.Timeout | null = null;
-  private idlingCueHoldTimer: NodeJS.Timeout | null = null;
-  private idlingCueActive = false;
+  private sequenceHoldTimer: NodeJS.Timeout | null = null;
+  private sequenceActive = false;
   private affinity: number;
   private lastCueWarning: string | null = null;
 
@@ -154,7 +154,7 @@ export class UiChanState {
   }
 
   private isBusy(): boolean {
-    return this.isSpeaking() || this.idlingCueActive;
+    return this.isSpeaking() || this.sequenceActive;
   }
 
   /** The priority to beat in order to take over right now. While a performance
@@ -162,9 +162,7 @@ export class UiChanState {
    *  that performance's priority; otherwise nothing is playing, so it's `idle`
    *  and anyone can start. No manual reset needed — it lapses when playback ends. */
   private effectivePriority(): number {
-    return this.currentSpeech !== null || this.idlingCueActive
-      ? this.activePriority
-      : PRIORITY.idle;
+    return this.currentSpeech !== null || this.sequenceActive ? this.activePriority : PRIORITY.idle;
   }
 
   private clampAffinity(v: number): number {
@@ -285,7 +283,7 @@ export class UiChanState {
       return { ok: true, cue: args.cue, note: 'suppressed: a higher-priority reaction is playing' };
     }
     this.activePriority = pri;
-    this.cancelIdlingCue();
+    this.cancelSequence();
 
     let cueName = args.cue;
     let note: string | undefined;
@@ -321,13 +319,13 @@ export class UiChanState {
   }
 
   /** Switch to a Cue and render it — the visual half of "apply a Cue",
-   *  shared by set_cue and every IdlingCue/chatter step. */
+   *  shared by set_cue and every CueSequence step. */
   private applyCueLook(cueName: string, agent: string | null): void {
     this.setCueState(cueName, agent);
     this.applyVisual();
   }
 
-  /** Queue a line without touching the idle timers (used by IdlingCues).
+  /** Queue a line without touching the idle timers (used by CueSequence steps).
    *  Duration resolution happens in exactly one place: an explicit `durationMs`
    *  wins, otherwise `estimateSpeechDurationMs` (LEN(text)) — later refined
    *  again in `startSpeech()` once real TTS audio length is known. Every
@@ -400,7 +398,7 @@ export class UiChanState {
   clear(): ClearResult {
     this.speechTimer = clearTimeoutSafe(this.speechTimer);
     this.idleTimer = clearTimeoutSafe(this.idleTimer);
-    this.cancelIdlingCue();
+    this.cancelSequence();
     this.speechQueue = [];
     this.currentSpeech = null;
     this.applyCueLook(DEFAULT_CUE_NAME, null);
@@ -412,7 +410,7 @@ export class UiChanState {
   }
 
   /** Assert a freshly-set Cue and let it STICK: cancel any pending revert so
-   *  it can't be yanked back, and postpone chatter/IdlingCues. Unlike
+   *  it can't be yanked back, and postpone IdlingCues. Unlike
    *  scheduleIdleRevert it does NOT arm a new revert by default — a silent
    *  set_cue holds until the next spoken line ends (or idle takes over) —
    *  unless overrideHoldMs is given (set_cue's duration_ms with no text),
@@ -433,8 +431,8 @@ export class UiChanState {
   private scheduleIdleRevert(): void {
     this.scheduleIdlingCue();
     this.idleTimer = clearTimeoutSafe(this.idleTimer);
-    // A held IdlingCue governs its own lifetime — don't yank it back early.
-    if (this.idlingCueActive) return;
+    // A playing sequence governs its own lifetime — don't yank it back early.
+    if (this.sequenceActive) return;
     const sec = this.config.idle?.revertAfterSec ?? 0;
     if (sec <= 0) return;
     this.idleTimer = setTimeout(() => {
@@ -445,19 +443,16 @@ export class UiChanState {
     }, sec * 1000);
   }
 
-  /** Cancel any held IdlingCue (called when real activity happens). */
-  private cancelIdlingCue(): void {
-    this.idlingCueHoldTimer = clearTimeoutSafe(this.idlingCueHoldTimer);
-    this.idlingCueActive = false;
+  /** Cancel any playing CueSequence (called when real activity happens). */
+  private cancelSequence(): void {
+    this.sequenceHoldTimer = clearTimeoutSafe(this.sequenceHoldTimer);
+    this.sequenceActive = false;
   }
 
-  /** (Re)start the IdlingCue countdown. Occasionally plays a short Cue
-   *  sequence (silent ambient motion or a speaking bit — same mechanism
-   *  either way) so the desk has some life beyond chatter. */
-  /** Filter a Cue-sequence pool (IdlingCue or interaction reactions) by the
-   *  current affinity and time-of-day gates. Shared by idle scheduling and the
-   *  fidget so both compose with affinity the same way. */
-  private eligible(items: IdlingCue[]): IdlingCue[] {
+  /** Filter a CueSequence pool (IdlingCues or FidgetCues) by the current
+   *  affinity and time-of-day gates. Shared by idle scheduling and the fidget
+   *  so both compose with affinity the same way. */
+  private eligible(items: CueSequence[]): CueSequence[] {
     const hour = new Date().getHours();
     return items.filter(
       (item) =>
@@ -467,35 +462,38 @@ export class UiChanState {
     );
   }
 
-  private eligibleIdlingCues(): IdlingCue[] {
+  private eligibleIdlingCues(): CueSequence[] {
     return this.eligible(this.config.idle?.idlingCues?.items ?? []);
   }
 
-  /** A direct physical interaction (the fidget). Reactions PREEMPT whatever's
+  /** A direct physical interaction (the fidget). FidgetCues PREEMPT whatever's
    *  playing — a poked ういちゃん cuts off her current line to react right now,
    *  which is what makes touch feel alive — then ease back to default. Gated by
-   *  a cooldown so rapid hover in/out doesn't spam interruptions, and the pool
-   *  is affinity-colored (cold brushes you off, warm gets flustered). */
+   *  a cooldown so mashing doesn't spam interruptions, and the pool is
+   *  affinity-colored (cold brushes you off, warm gets flustered). */
   onInteraction(kind: string): void {
     if (kind !== 'hover' && kind !== 'poke') return;
     // Yields only to debug; preempts MCP and idling.
     if (PRIORITY.fidget < this.effectivePriority()) return;
     const cfg = this.config.interactions;
     const now = Date.now();
-    if (now - this.lastInteractionAt < (cfg?.cooldownMs ?? 2500)) return;
-    const item = weightedPick(this.eligible(cfg?.hover ?? []));
+    if (now - this.lastInteractionAt < (cfg?.cooldownMs ?? 600)) return;
+    const item = weightedPick(this.eligible(cfg?.poke ?? []));
     if (!item?.steps?.length) return;
     this.lastInteractionAt = now;
-    // Preempt: tear down current speech + queue + any IdlingCue, kill the
+    // Preempt: tear down current speech + queue + any running sequence, kill the
     // in-flight audio/bubble, then play the reaction from a clean slate.
     this.speechTimer = clearTimeoutSafe(this.speechTimer);
     this.speechQueue = [];
     this.currentSpeech = null;
     this.emit({ type: 'speech', text: null });
-    this.cancelIdlingCue();
-    this.performIdlingCue(item, 'interaction');
+    this.cancelSequence();
+    this.performSequence(item, 'interaction');
   }
 
+  /** (Re)start the Idling countdown. On a lull it occasionally plays one
+   *  eligible IdlingCue (silent ambient motion or a speaking bit — same
+   *  mechanism) so the desk has some life. Reschedules itself each time. */
   private scheduleIdlingCue(): void {
     this.idlingCueTimer = clearTimeoutSafe(this.idlingCueTimer);
     const idlingCues = this.config.idle?.idlingCues;
@@ -514,16 +512,17 @@ export class UiChanState {
           return;
         }
         const item = weightedPick(eligible);
-        if (item) this.performIdlingCue(item, 'idling-cue');
+        if (item) this.performSequence(item, 'idling-cue');
       },
       randomDelayMs(idlingCues.minSec, idlingCues.maxSec),
     );
   }
 
-  /** Play an IdlingCue: a sequence of Cue(+line) steps that move together,
-   *  then ease back to default. Any real activity cancels it. `source` tags
-   *  who's playing it, for `cue.agent` / speech `agent` bookkeeping. */
-  private performIdlingCue(cue: IdlingCue, source: string): void {
+  /** Play a CueSequence: Cue(+line) steps that move together, then ease back to
+   *  default. Used for both IdlingCues and FidgetCues — `source`
+   *  ('idling-cue' | 'interaction' | 'debug') sets the priority and tags
+   *  `cue.agent` / speech `agent`. Any higher-priority activity cancels it. */
+  private performSequence(cue: CueSequence, source: string): void {
     if (!cue.steps?.length) return;
     this.activePriority =
       source === 'interaction'
@@ -532,21 +531,21 @@ export class UiChanState {
           ? PRIORITY.debug
           : PRIORITY.idle;
     this.idleTimer = clearTimeoutSafe(this.idleTimer);
-    this.idlingCueActive = true;
-    this.playIdlingCueStep(cue.steps, 0, source);
+    this.sequenceActive = true;
+    this.playSequenceStep(cue.steps, 0, source);
   }
 
-  /** Advance one step of an IdlingCue. A step with `text` waits for that
+  /** Advance one step of a CueSequence. A step with `text` waits for that
    *  exact line to actually finish (real TTS duration if synthesized,
    *  otherwise LEN(text)) before moving on — `holdMs` is not used for a
    *  speaking step, so there is no separately-guessed number that can drift
    *  out of sync with what's really being said. A silent step (no `text`)
    *  has nothing to wait for, so `holdMs` (default 2000) is what times it. */
-  private playIdlingCueStep(steps: IdlingCueStep[], i: number, source: string): void {
+  private playSequenceStep(steps: CueStep[], i: number, source: string): void {
     // cancelled by real activity while waiting between steps
-    if (!this.idlingCueActive) return;
+    if (!this.sequenceActive) return;
     if (i >= steps.length) {
-      this.idlingCueActive = false;
+      this.sequenceActive = false;
       // don't cut off a line that's still being read
       if (!this.isSpeaking()) this.revertToDefault();
       this.scheduleIdlingCue();
@@ -554,7 +553,7 @@ export class UiChanState {
     }
     const step = steps[i];
     const cueName = step.cue && this.cues[step.cue] ? step.cue : this.cueState.cue;
-    const advance = () => this.playIdlingCueStep(steps, i + 1, source);
+    const advance = () => this.playSequenceStep(steps, i + 1, source);
 
     this.applyCueLook(cueName, source);
     if (step.text) {
@@ -563,8 +562,8 @@ export class UiChanState {
         onComplete: advance,
       });
     } else {
-      this.idlingCueHoldTimer = clearTimeoutSafe(this.idlingCueHoldTimer);
-      this.idlingCueHoldTimer = setTimeout(advance, step.holdMs ?? 2000);
+      this.sequenceHoldTimer = clearTimeoutSafe(this.sequenceHoldTimer);
+      this.sequenceHoldTimer = setTimeout(advance, step.holdMs ?? 2000);
     }
   }
 
@@ -604,7 +603,7 @@ export class UiChanState {
     if (!idlingCues?.enabled || !idlingCues.items?.length) {
       return { ok: false, error: 'idlingCues are disabled or empty' };
     }
-    let item: IdlingCue | undefined;
+    let item: CueSequence | undefined;
     if (name) {
       item = idlingCues.items.find((a) => a.name === name);
       if (!item) {
@@ -616,8 +615,8 @@ export class UiChanState {
     if (!item?.steps?.length) {
       return { ok: false, error: 'selected idlingCue has no steps' };
     }
-    this.cancelIdlingCue();
-    this.performIdlingCue(item, 'debug');
+    this.cancelSequence();
+    this.performSequence(item, 'debug');
     this.scheduleIdlingCue();
     return { ok: true, name: item.name };
   }
