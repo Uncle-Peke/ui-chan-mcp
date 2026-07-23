@@ -15,7 +15,7 @@ import type {
   TtsAudio,
   VoiceAdlib,
 } from '../shared/types';
-import { DEFAULT_CUE_NAME } from '../shared/types';
+import { DEFAULT_AFFINITY_STEPS, DEFAULT_CUE_NAME } from '../shared/types';
 
 const MAX_QUEUE = 20;
 
@@ -168,10 +168,57 @@ export class UiChanState {
     };
   }
 
-  adjustAffinity(delta: number): AffinityResult {
-    if (typeof delta !== 'number' || Number.isNaN(delta)) {
-      return { ok: false, error: 'delta must be a number' };
+  /**
+   * Affinity change engine.
+   *
+   * GOAL (the feel we're modelling): うい is a tsundere on a slow burn. Getting
+   * her to like you should be *earned* — the reward is the climb — while cooling
+   * off should be quick and cheap. Concretely:
+   *   1. Down is easier than up.                       (quick to lose)
+   *   2. Up must not spike; rising is gradual.         (the reward is the grind)
+   *   3. Climbing *high* is especially hard.           (dere/ういビーム = a real prize)
+   *   4. Falling back to 0 (her guarded neutral) is easy — she resets to cool.
+   *   5. No single call can move her far.              (agent can't cheat to the top)
+   *
+   * DESIGN CHOICE: the agent must NOT hand us a raw number (it would just slam
+   * +100). It states only a DIRECTION (up/down) and a coarse MAGNITUDE
+   * (low/middle/high → base `b`, from config.affinity.steps). We compute the
+   * actual step from an asymmetric curve of the current value `a` (max `M`):
+   *
+   *     up:   Δ = +b · (1 − a/M)      lower `a` ⇒ larger gain; as a→M the gain
+   *                                   → 0, so the top is asymptotic and hard to
+   *                                   reach. Max possible gain is `b` (at a=0),
+   *                                   which caps a single call → satisfies (2)(3)(5).
+   *
+   *     down: Δ = −b · (1 + a/M)      higher `a` ⇒ bigger drop (a fall from grace
+   *                                   hurts more the warmer she was); as a→0 the
+   *                                   drop → −b and clamps at the floor, so she
+   *                                   slides back to 0 readily → satisfies (1)(4).
+   *
+   * The two curves mirror each other around `b`: at any a>0, |down| > |up|, so
+   * down always outpaces up (1). `b` (config) is the single knob for overall
+   * pace — raise it to make the whole courtship faster. clampAffinity() rounds
+   * and bounds to [min,max]; near the top an `up` may round to 0 (intended — she
+   * won't budge further without more, bigger moments).
+   *
+   * NOTE: keep the math here, not in the AI-facing tool description / AFFINITY.md
+   * — the agent only needs "pick direction + magnitude", not the formula.
+   */
+  adjustAffinity(direction: string, magnitude: string): AffinityResult {
+    if (direction !== 'up' && direction !== 'down') {
+      return { ok: false, error: 'direction must be "up" or "down"' };
     }
+    const steps: Record<string, number> = {
+      ...DEFAULT_AFFINITY_STEPS,
+      ...(this.config.affinity?.steps ?? {}),
+    };
+    const base = steps[magnitude];
+    if (typeof base !== 'number') {
+      return { ok: false, error: `magnitude must be one of ${Object.keys(steps).join('/')}` };
+    }
+    const max = this.config.affinity?.max ?? 100;
+    const frac = max > 0 ? this.affinity / max : 0;
+    const delta = direction === 'up' ? base * (1 - frac) : -base * (1 + frac);
     const before = this.affinity;
     this.affinity = this.clampAffinity(this.affinity + delta);
     return {

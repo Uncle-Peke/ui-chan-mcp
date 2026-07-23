@@ -101,7 +101,23 @@ export interface AffinityConfig {
   beamThreshold: number;
   /** Band boundaries (inclusive lower bound). Highest matching band wins. */
   bands: { atLeast: number; name: string; note?: string }[];
+  /** Base magnitude `b` the agent's low/middle/high choice maps to. The agent
+   *  only picks direction + magnitude; the *actual* change is computed by the
+   *  engine's asymmetric curve (see state.ts adjustAffinity), never chosen by
+   *  the agent. Omitted keys fall back to the built-in 3/6/12 defaults. Raise
+   *  these to make the whole courtship move faster. */
+  steps?: Record<string, number>;
 }
+
+export type AffinityDirection = 'up' | 'down';
+export const AFFINITY_MAGNITUDES = ['low', 'middle', 'high'] as const;
+export type AffinityMagnitude = (typeof AFFINITY_MAGNITUDES)[number];
+/** Built-in base magnitudes if config.affinity.steps is absent. */
+export const DEFAULT_AFFINITY_STEPS: Record<AffinityMagnitude, number> = {
+  low: 3,
+  middle: 6,
+  high: 12,
+};
 
 export interface IdleConfig {
   /** Seconds of inactivity (no speech, no tool calls) before reverting to the default Cue. 0 or omitted = disabled */

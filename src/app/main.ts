@@ -83,7 +83,7 @@ const toolHandlers: Record<ToolName, (args: Record<string, unknown>, agent: stri
   set_cue: (args, agent) => state.setCue(setCueArgsSchema.parse(args), agent),
   get_state: () => buildSnapshot(),
   clear: () => state.clear(),
-  adjust_affinity: (args) => state.adjustAffinity(Number(args.delta)),
+  adjust_affinity: (args) => state.adjustAffinity(String(args.direction), String(args.magnitude)),
 };
 
 function handleDebug(_ws: WebSocket, req: WsRequest): WsResponse {

@@ -250,13 +250,20 @@ server.registerTool(
   'adjust_affinity',
   {
     description:
-      "Nudge うい's affinity toward you up or down by a relative amount (session-only, resets when the app restarts). " +
-      'Raise it (+) when the user is warm, praises her, or shows her something she likes (cute VTubers/JKs, rain); ' +
-      'lower it (−) for 旦那面/彼氏面, 塩鮭案件, or insults. Typical steps ±2〜8; big moments up to ±15. ' +
-      'Affinity gates behavior: low = つれない/塩対応寄り, high = デレ, and ういビーム only fires above the beam threshold. ' +
-      'Returns the new value, band, and beamReady. Check get_state for current affinity before deciding.',
+      "Nudge うい's affinity toward you (session-only, resets when the app restarts). You choose only a " +
+      'DIRECTION and a coarse MAGNITUDE; the engine decides the actual amount via an asymmetric curve — ' +
+      'raising is slow and diminishing (climbing high is hard-earned, a single call never overshoots), ' +
+      'lowering is easier and eases back to the 0 floor (she cools off fast). So you can NOT jump her to the top. ' +
+      "Raise ('up') when the user is warm, praises her, remembers her, or shows her something she likes " +
+      "(cute VTubers/JKs, rain); lower ('down') for 旦那面/彼氏面, 塩鮭案件, セクハラ, or insults. " +
+      'magnitude: low = 軽い好意/軽い失礼, middle = はっきりした好意/失礼, high = 大きな出来事 (誕生日覚えてた / ドン引き案件). ' +
+      'Affinity gates behavior: low = つれない/塩対応寄り, high = デレ, ういビーム only above the beam threshold. ' +
+      'Returns the new value, band, applied delta, and beamReady. Check get_state first.',
     inputSchema: {
-      delta: z.number().describe('Relative change, e.g. +5 or -3'),
+      direction: z.enum(['up', 'down']).describe('Which way to move affinity'),
+      magnitude: z
+        .enum(['low', 'middle', 'high'])
+        .describe('How big the event was; the engine scales the actual change from this'),
     },
   },
   wrapTool('adjust_affinity'),

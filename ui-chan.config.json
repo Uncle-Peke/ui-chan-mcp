@@ -170,11 +170,12 @@
     }
   },
   "affinity": {
-    "$comment": "うい の好感度。セッション内のみ（永続化しない）＝毎起動 default から。MCPツール adjust_affinity で稼働中に変動。bands は atLeast の最大一致でバンド決定。ういビームは beamThreshold 以上で発射",
+    "$comment": "うい の好感度。セッション内のみ（永続化しない）＝毎起動 default から。MCPツール adjust_affinity で稼働中に変動。エージェントは方向(up/down)＋強さ(low/middle/high)だけ指定し、実際の増減量は非対称カーブでエンジンが算出（上げ=+b(1-a/max) 効きが鈍い、下げ=-b(1+a/max) 冷めやすく0に戻りやすい。state.ts adjustAffinity 参照）。steps はその基本量 b。bands は atLeast の最大一致でバンド決定。ういビームは beamThreshold 以上で発射",
     "default": 35,
     "min": 0,
     "max": 100,
     "beamThreshold": 65,
+    "steps": { "low": 3, "middle": 6, "high": 12 },
     "bands": [
       { "atLeast": 0, "name": "cold", "note": "つれない・塩対応寄り" },
       { "atLeast": 35, "name": "normal", "note": "普通" },
