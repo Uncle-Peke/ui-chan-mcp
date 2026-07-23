@@ -72,6 +72,17 @@ function weightedPick<T extends { weight?: number }>(items: T[]): T | undefined 
   return items[items.length - 1];
 }
 
+/** Keep only the last select per radio group (everything but the final path
+ *  segment), matching the renderer's last-wins-per-folder behavior. */
+function dedupeSelectsByGroup(selects: string[]): string[] {
+  const lastIndexByGroup = new Map<string, number>();
+  selects.forEach((path, i) => {
+    const group = path.slice(0, path.lastIndexOf('/'));
+    lastIndexByGroup.set(group, i);
+  });
+  return selects.filter((_, i) => [...lastIndexByGroup.values()].includes(i));
+}
+
 export class UiChanState {
   private cues: Record<string, Cue>;
   private cueState: CueState;
@@ -157,7 +168,7 @@ export class UiChanState {
     };
   }
 
-  adjustAffinity(delta: number, reason?: string): AffinityResult {
+  adjustAffinity(delta: number): AffinityResult {
     if (typeof delta !== 'number' || Number.isNaN(delta)) {
       return { ok: false, error: 'delta must be a number' };
     }
@@ -169,12 +180,11 @@ export class UiChanState {
       band: this.affinityBand(),
       delta: this.affinity - before,
       beamReady: this.affinitySnapshot().beamReady,
-      reason: reason ?? null,
     };
   }
 
   /** Debug: set affinity to an absolute value (clamped to config bounds). */
-  setAffinity(value: number, reason?: string): AffinityResult {
+  setAffinity(value: number): AffinityResult {
     if (typeof value !== 'number' || Number.isNaN(value)) {
       return { ok: false, error: 'value must be a number' };
     }
@@ -186,7 +196,6 @@ export class UiChanState {
       band: this.affinityBand(),
       delta: this.affinity - before,
       beamReady: this.affinitySnapshot().beamReady,
-      reason: reason ?? null,
     };
   }
 
@@ -514,7 +523,10 @@ export class UiChanState {
     };
   }
 
-  /** Debug: preview the directives a Cue would produce without wearing it. */
+  /** Debug: preview the directives a Cue would produce without wearing it.
+   *  `select` is deduped to only the winning entry per radio group (the same
+   *  last-wins rule the renderer applies) so the output shows what actually
+   *  ends up on screen instead of the raw base+Cue concatenation. */
   previewCue(cueName: string): {
     cue: string;
     exists: boolean;
@@ -529,7 +541,7 @@ export class UiChanState {
       cue: cueName,
       exists,
       fallback: exists ? null : `unknown cue "${cueName}" — previewing default`,
-      directives,
+      directives: { ...directives, select: dedupeSelectsByGroup(directives.select ?? []) },
       blink,
     };
   }

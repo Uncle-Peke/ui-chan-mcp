@@ -35,14 +35,14 @@ There is **no test runner**. End-to-end checks are manual scripts:
 
 ```bash
 node tools/debug.mjs                                 # interactive REPL for Cue/IdlingCue verification
-node tools/debug.mjs set_cue happy こんにちは こんにちは    # one-shot direct WebSocket call
+node tools/debug.mjs cue happy こんにちは こんにちは         # one-shot direct WebSocket call
 node tools/debug.mjs idle                            # force-run a random IdlingCue
 node tools/debug.mjs --launch                        # auto-launch the app, then enter REPL
 node tools/ws-test.mjs set_cue '{"cue":"happy","text":"テスト","reading":"てすと"}'   # minimal one-shot WebSocket test
 node tools/mcp-test.mjs                              # drive the MCP server over stdio (E2E)
 ```
 
-`tools/debug.mjs` bypasses the MCP server entirely and talks to the app's WebSocket. It is useful for manually checking Cues, forcing IdlingCues/chatter, and inspecting state without an MCP-capable agent. The commands it exposes (REPL or one-shot) are: `set_cue`, `set_cue_json`, `state`, `clear`, `set_affinity`, `restart`, `idle [name]`, `chatter`, `list`, `preview <cue>`, `refresh`, and `watch`. It reads TTS credentials from `.env` in the project root (copy `.env.example`) and forwards them to the app on connect.
+`tools/debug.mjs` bypasses the MCP server entirely and talks to the app's WebSocket. It is useful for manually checking Cues, forcing IdlingCues/chatter, and inspecting state without an MCP-capable agent. The commands it exposes (REPL or one-shot) are: `cue`, `state`, `clear`, `affinity`, `restart`, `idle [name]`, `chatter`, `list`, `preview <cue>`, `refresh`, and `watch`. It reads TTS credentials from `.env` in the project root (copy `.env.example`) and forwards them to the app on connect.
 
 Always `npm run build` before running — both entry points execute compiled
 `dist/`, not the TypeScript sources.

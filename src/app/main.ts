@@ -88,11 +88,7 @@ const toolHandlers: Record<ToolName, (args: Record<string, unknown>, agent: stri
   set_cue: (args, agent) => state.setCue(setCueArgsSchema.parse(args), agent),
   get_state: () => buildSnapshot(),
   clear: () => state.clear(),
-  adjust_affinity: (args) =>
-    state.adjustAffinity(
-      Number(args.delta),
-      typeof args.reason === 'string' ? args.reason : undefined,
-    ),
+  adjust_affinity: (args) => state.adjustAffinity(Number(args.delta)),
 };
 
 function handleDebug(_ws: WebSocket, req: WsRequest): WsResponse {
@@ -116,7 +112,7 @@ function handleDebug(_ws: WebSocket, req: WsRequest): WsResponse {
         return { id: req.id, ok: true, result: state.previewCue(action.cue) };
       }
       case 'set_affinity': {
-        const result = state.setAffinity(action.value, action.reason);
+        const result = state.setAffinity(action.value);
         if (!result.ok) {
           return { id: req.id, ok: false, error: result.error };
         }

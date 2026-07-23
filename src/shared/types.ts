@@ -253,7 +253,7 @@ export type DebugAction =
   | { type: 'trigger_chatter' }
   | { type: 'list_idle' }
   | { type: 'preview_cue'; cue: string }
-  | { type: 'set_affinity'; value: number; reason?: string };
+  | { type: 'set_affinity'; value: number };
 
 export interface WsRequest {
   id: number;
@@ -300,7 +300,6 @@ export type AffinityResult = ToolResult<{
   band: string;
   delta?: number;
   beamReady: boolean;
-  reason: string | null;
 }>;
 
 export type ClearResult = { ok: true } | { ok: false; error: string };

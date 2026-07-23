@@ -4,17 +4,16 @@
 //
 // Usage:
 //   node tools/debug.mjs                    # interactive REPL
-//   node tools/debug.mjs set_cue happy      # one-shot command
+//   node tools/debug.mjs cue happy           # one-shot command
 //   node tools/debug.mjs --launch idle      # launch app if needed, then run idle
 //
 // TTS credentials are read from the environment (UI_CHAN_TTS_USERNAME/PASSWORD)
 // or from a .env file in the project root, and forwarded to the app on connect.
 //
 // REPL commands:
-//   set_cue <cue> [text] [reading]
-//   set_cue_json <cue> '<json>'
+//   cue <cue> [text] [reading]
 //   state, clear
-//   set_affinity <value> [reason]
+//   affinity <value>
 //   restart          # stop and relaunch the display app
 //   idle [name]      # trigger an IdlingCue (or random)
 //   list             # list available cues + IdlingCues
@@ -186,11 +185,10 @@ async function callDebug(action) {
 const completionCache = {
   commands: [
     'help',
-    'set_cue',
-    'set_cue_json',
+    'cue',
     'state',
     'clear',
-    'set_affinity',
+    'affinity',
     'restart',
     'idle',
     'list',
@@ -222,11 +220,10 @@ function printJson(value) {
 
 const helpText = `
 Commands:
-  set_cue <cue> [text] [reading]        set a Cue and optionally speak a line
-  set_cue_json <cue> '<json>'           pass raw JSON for options
+  cue <cue> [text] [reading]            set a Cue and optionally speak a line
   state                                 show current state
   clear                                 clear speech/queue and revert to default
-  set_affinity <value> [reason]         set affinity to an absolute value
+  affinity <value>                      set affinity to an absolute value
   restart                               stop and relaunch the display app
   idle [name]                           trigger an IdlingCue (random if no name)
   list                                  list available cues and IdlingCues
@@ -240,9 +237,9 @@ Commands:
 const commands = {
   help: async () => console.log(helpText.trim()),
 
-  set_cue: async (tokens) => {
+  cue: async (tokens) => {
     const cue = tokens[1];
-    if (!cue) throw new Error('usage: set_cue <cue> [text] [reading]');
+    if (!cue) throw new Error('usage: cue <cue> [text] [reading]');
     const args = { cue };
     if (tokens[2]) args.text = tokens[2];
     if (tokens[3]) args.reading = tokens[3];
@@ -250,24 +247,14 @@ const commands = {
     printJson(result);
   },
 
-  set_cue_json: async (tokens) => {
-    const cue = tokens[1];
-    const json = tokens.slice(2).join(' ');
-    if (!cue || !json) throw new Error("usage: set_cue_json <cue> '<json>'");
-    const parsed = JSON.parse(json);
-    const result = await callTool('set_cue', { cue, ...parsed });
-    printJson(result);
-  },
-
   state: async () => printJson(await callTool('get_state')),
 
   clear: async () => printJson(await callTool('clear')),
 
-  set_affinity: async (tokens) => {
+  affinity: async (tokens) => {
     const value = Number(tokens[1]);
-    if (Number.isNaN(value)) throw new Error('usage: set_affinity <value> [reason]');
-    const reason = tokens.slice(2).join(' ') || undefined;
-    printJson(await callDebug({ type: 'set_affinity', value, reason }));
+    if (Number.isNaN(value)) throw new Error('usage: affinity <value>');
+    printJson(await callDebug({ type: 'set_affinity', value }));
   },
 
   restart: async () => {
@@ -372,7 +359,7 @@ function completer(line) {
   const cmd = tokens[0];
   const prefix = endsWithSpace ? '' : tokens[tokens.length - 1];
   let candidates = [];
-  if (cmd === 'set_cue' || cmd === 'preview') {
+  if (cmd === 'cue' || cmd === 'preview') {
     candidates = completionCache.cues;
   } else if (cmd === 'idle') {
     candidates = completionCache.idlingCues;

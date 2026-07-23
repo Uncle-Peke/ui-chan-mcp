@@ -257,7 +257,6 @@ server.registerTool(
       'Returns the new value, band, and beamReady. Check get_state for current affinity before deciding.',
     inputSchema: {
       delta: z.number().describe('Relative change, e.g. +5 or -3'),
-      reason: z.string().optional().describe('Short why, for the log (e.g. "褒められた")'),
     },
   },
   wrapTool('adjust_affinity'),

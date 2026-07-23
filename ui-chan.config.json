@@ -33,15 +33,6 @@
           ]
         },
         {
-          "name": "stretch",
-          "weight": 10,
-          "steps": [
-            { "cue": "sleepy", "text": "ふぁ……", "reading": "ふぁ……" },
-            { "cue": "happy_banzai", "text": "んー、のびのび〜！", "reading": "んー、のびのび〜！" },
-            { "cue": "smile", "holdMs": 1500 }
-          ]
-        },
-        {
           "name": "thinking",
           "weight": 10,
           "steps": [
