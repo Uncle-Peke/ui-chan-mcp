@@ -16,6 +16,7 @@
 //   affinity <value>
 //   restart          # stop and relaunch the display app
 //   idle [name]      # trigger an IdlingCue (or random)
+//   poke [hover]     # fire a fidget interaction (poke; or hover)
 //   list             # list available cues + IdlingCues
 //   preview <cue>    # show composed directives without wearing it
 //   watch            # poll state every 500ms (Ctrl+C to stop)
@@ -191,6 +192,7 @@ const completionCache = {
     'affinity',
     'restart',
     'idle',
+    'poke',
     'list',
     'preview',
     'watch',
@@ -226,6 +228,7 @@ Commands:
   affinity <value>                      set affinity to an absolute value
   restart                               stop and relaunch the display app
   idle [name]                           trigger an IdlingCue (random if no name)
+  poke [hover]                          fire a fidget interaction (poke; 'hover' to test hover)
   list                                  list available cues and IdlingCues
   preview <cue>                         show directives a Cue would produce
   watch                                 poll state every 500ms (Ctrl+C to stop)
@@ -276,6 +279,12 @@ const commands = {
     const name = tokens[1];
     const result = await callDebug({ type: 'trigger_idle', ...(name ? { name } : {}) });
     printJson(result);
+  },
+
+  poke: async (tokens) => {
+    // Simulate a fidget interaction (poke by default; pass 'hover' to test that).
+    const kind = tokens[1] ?? 'poke';
+    printJson(await callDebug({ type: 'interact', kind }));
   },
 
   list: async () => {

@@ -43,7 +43,7 @@ node tools/ws-test.mjs set_cue '{"cue":"happy","text":"テスト","reading":"て
 node tools/mcp-test.mjs                              # drive the MCP server over stdio (E2E)
 ```
 
-`tools/debug.mjs` bypasses the MCP server entirely and talks to the app's WebSocket. It is useful for manually checking Cues, forcing IdlingCues/chatter, and inspecting state without an MCP-capable agent. The commands it exposes (REPL or one-shot) are: `cue`, `state`, `clear`, `affinity`, `restart`, `idle [name]`, `chatter`, `list`, `preview <cue>`, `refresh`, and `watch`. It reads TTS credentials from `.env` in the project root (copy `.env.example`) and forwards them to the app on connect.
+`tools/debug.mjs` bypasses the MCP server entirely and talks to the app's WebSocket. It is useful for manually checking Cues, forcing IdlingCues/chatter, and inspecting state without an MCP-capable agent. The commands it exposes (REPL or one-shot) are: `cue`, `state`, `clear`, `affinity`, `restart`, `idle [name]`, `poke [hover]` (fire a fidget interaction), `list`, `preview <cue>`, `refresh`, and `watch`. It reads TTS credentials from `.env` in the project root (copy `.env.example`) and forwards them to the app on connect.
 
 Always `npm run build` before running — both entry points execute compiled
 `dist/`, not the TypeScript sources.
