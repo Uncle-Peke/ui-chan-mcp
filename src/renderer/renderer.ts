@@ -43,6 +43,36 @@ function reportWarnings(): void {
   window.uiChan.reportWarnings(stage.getWarnings());
 }
 
+// ---- Cue-transition crossfade (tween) ----
+// Because a look is discrete sprite swaps (a mouth あ→ん can't be interpolated),
+// we tween at the raster level: freeze the pre-change frame onto an overlay
+// canvas stacked over the main one, repaint the new look underneath, then fade
+// the frozen old frame out. Any cue pair dissolves smoothly; blink/lip-sync
+// (which repaint the main canvas) show through the fading overlay fine.
+// Duration comes from config.ambient.cueFadeMs (0 = hard cut).
+const overlay = document.createElement('canvas');
+overlay.style.cssText =
+  'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0';
+const overlayCtx = overlay.getContext('2d');
+canvas.parentElement?.insertBefore(overlay, canvas.nextSibling);
+let fadeToken = 0;
+function crossfade(): void {
+  const fadeMs = ambientConfig?.cueFadeMs ?? 170;
+  if (!overlayCtx || fadeMs <= 0 || canvas.width === 0 || canvas.height === 0) return;
+  overlay.width = canvas.width;
+  overlay.height = canvas.height;
+  overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+  overlayCtx.drawImage(canvas, 0, 0); // snapshot the current (old) look
+  overlay.style.transition = 'none';
+  overlay.style.opacity = '1';
+  const token = ++fadeToken;
+  window.requestAnimationFrame(() => {
+    if (token !== fadeToken) return;
+    overlay.style.transition = `opacity ${fadeMs}ms ease-out`;
+    overlay.style.opacity = '0';
+  });
+}
+
 let blinkEnabled = false;
 let blinkTimer: number | null = null;
 let blinking = false;
@@ -255,6 +285,7 @@ async function init(): Promise<void> {
   window.uiChan.onCommand((cmd) => {
     if (cmd.type === 'apply') {
       if (!stage.loaded) return;
+      crossfade(); // freeze the current look, then dissolve to the new one
       blinkEnabled = cmd.blink;
       stage.applyDirectives(cmd.directives);
       reportWarnings();

@@ -212,10 +212,11 @@
     "audioMinMs": 1500
   },
   "ambient": {
-    "$comment": "レンダラーのBlink（Cue外で独立ループする唯一の演出）のタイミング",
+    "$comment": "レンダラーのBlink（Cue外で独立ループする唯一の演出）のタイミングと、Cue切替のクロスフェード時間。cueFadeMs=0でハードカット",
     "blinkMinIntervalMs": 3500,
     "blinkMaxIntervalMs": 7000,
-    "blinkDurationMs": 130
+    "blinkDurationMs": 130,
+    "cueFadeMs": 170
   },
   "cuesDir": "cues",
   "personaFile": "persona/ui-chan.md"

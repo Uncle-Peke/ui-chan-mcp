@@ -90,6 +90,9 @@ export interface AmbientConfig {
   blinkMaxIntervalMs?: number;
   /** How long the eyes stay closed for one blink, ms. Default 130. */
   blinkDurationMs?: number;
+  /** Cue-transition crossfade: how long the previous look dissolves into the
+   *  new one on set_cue, ms. Default 170. Set 0 to disable (hard cut). */
+  cueFadeMs?: number;
 }
 
 export interface AffinityConfig {
