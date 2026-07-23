@@ -256,6 +256,21 @@ function newCue(): void {
   setStatus('新規Cue');
 }
 
+/** Turn the current look/voice/fields into an unsaved copy under a new name —
+ *  a fast starting point for a variant (e.g. happy → happy_copy → happy_strong).
+ *  Keeps everything on screen as-is; only detaches it from the source file so a
+ *  save writes a new cue instead of overwriting the original. */
+function duplicate(): void {
+  const src = currentName;
+  currentName = null;
+  const nameInput = $('cue-name') as HTMLInputElement;
+  nameInput.value = src ? `${src}_copy` : '';
+  ($('delete') as HTMLButtonElement).disabled = true;
+  nameInput.focus();
+  nameInput.select();
+  setStatus(src ? `"${src}" を複製。名前を付けて保存` : '複製: 名前を付けて保存');
+}
+
 // ---- cue list ----
 
 function renderCueList(): void {
@@ -435,6 +450,7 @@ async function init(): Promise<void> {
   newCue();
 
   $('new').addEventListener('click', newCue);
+  $('duplicate').addEventListener('click', duplicate);
   $('save').addEventListener('click', save);
   $('delete').addEventListener('click', del);
   $('test-speak').addEventListener('click', testSpeak);
