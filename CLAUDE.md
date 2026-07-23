@@ -22,6 +22,7 @@ npm run app        # build, then launch the Electron display app
 npm run stop       # kill a running ui-chan Electron app
 npm run restart    # stop + relaunch the app
 npm run mcp        # run the MCP server standalone (node dist/mcp-server.js)
+npm run editor     # launch the visual Cue editor (雨衣ちゃんのデバッグルーム)
 npm run debug      # interactive debug console (direct WebSocket, no MCP)
 npm run debug:launch    # launch the app and drop into the debug console
 npm run debug:restart   # stop a running app, then launch the app and drop into the debug console
@@ -81,6 +82,25 @@ Agent ──stdio──▶ dist/mcp-server.js ──WS(127.0.0.1:8123)──▶ 
   now ordinary Cue files under `cues/idling_*.json`, hot-reloadable like any
   other Cue. Bundled separately by esbuild (browser IIFE) — it is not part of
   the tsc build graph.
+- `src/renderer/psd-stage.ts` — the reusable PSD compositing core (`PsdStage`):
+  parse PSD → layer tree, apply `select`/`show`/`hide`, paint to a canvas, plus
+  `diffFrom(baseline)` (the inverse — a live look minus a baseline, as minimal
+  Cue directives). Extracted from `renderer.ts` so the mascot renderer **and**
+  the Cue editor share one implementation of the PSDTool layer semantics; it
+  knows nothing of blink/lip-sync/bubble/IPC (those stay in `renderer.ts`). Also
+  esbuild-bundled, not in the tsc graph.
+- **Cue editor** (`npm run editor`, "雨衣ちゃんのデバッグルーム") — a *separate*
+  Electron entry (`src/app/editor-main.ts` + `editor-preload.ts` +
+  `src/renderer/editor.ts`/`editor.html`, own esbuild bundle), opaque/framed,
+  independent of the mascot app. Visually authors single Cues (表情): toggle the
+  raw PSD layer tree (PSDTool-style radios/checkboxes) over the `default` base
+  in a self-rendered preview, tune `voice` on sliders with a TTS 試し喋り button
+  (lip-sync included), and save the delta as a `cues/<name>.json` — CRUD, with
+  ajv validation on write and an IdlingCue-reference warning on delete. Saving
+  is picked up live by a running mascot via `watchCues`. Writes only the
+  **diff vs `default`** (`PsdStage.diffFrom`); `default` itself is the fixed
+  base and is never editable here. IdlingCue/sequence ("動き") editing is
+  deliberately out of scope (phase 2).
 - `src/app/tts.ts` — VoiSona Talk REST client. `src/app/cues.ts` — loads,
   ajv-validates against `cue.schema.json`, and hot-watches `cues/*.json`.
   `src/shared/types.ts` — the RenderCommand / SpeechItem / Cue / config
@@ -97,6 +117,14 @@ layer names exactly; unknown paths are ignored and surfaced in `get_state`'s
 crashing). The renderer also keeps an internal `findSelect(folder, name)` for
 lip sync's mouth-radio lookup, but that is not part of the `LayerDirectives`
 wire type — there is no `find` directive on the wire anymore.
+
+One PSD-name directive is honored in code: a radio named `…(【folder】は非表示)`
+(e.g. `*腕組み(奥の腕は非表示)`, whose crossed-arms art already draws both arms)
+means selecting it must **also** hide that other folder. `PsdStage.selectPath`
+parses the name and selects `!【folder】/*(非表示)` (its show-nothing radio),
+so both the mascot and the editor honor the dependency; hand-authored cues that
+use `腕組み` still list both selects explicitly (the auto-hide is idempotent with
+that). This is the only cross-folder name dependency in the PSD.
 
 ### Cue: the single unit of visual + voice operation
 

@@ -11,6 +11,7 @@ import type {
   WsRequest,
   WsResponse,
 } from '../shared/types';
+import { findPsd as findPsdIn } from './assets';
 import { extractCueVoice, loadCues, watchCues } from './cues';
 import { UiChanState } from './state';
 import { VoiSonaTalkClient } from './tts';
@@ -39,13 +40,7 @@ const agents = new Map<WebSocket, { name: string; connectedAt: string }>();
 const pendingCommands: RenderCommand[] = [];
 
 function findPsd(): string | null {
-  const dir = path.join(projectRoot, config.assetsDir);
-  if (!fs.existsSync(dir)) return null;
-  const psd = fs
-    .readdirSync(dir)
-    .filter((f) => f.toLowerCase().endsWith('.psd'))
-    .sort();
-  return psd.length > 0 ? path.join(dir, psd[0]) : null;
+  return findPsdIn(path.join(projectRoot, config.assetsDir));
 }
 
 function sendToRenderer(cmd: RenderCommand): void {

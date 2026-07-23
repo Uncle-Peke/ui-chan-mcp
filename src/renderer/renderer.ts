@@ -1,11 +1,5 @@
-import { type Layer, type Psd, readPsd } from 'ag-psd';
-import type {
-  AmbientConfig,
-  LayerDirectives,
-  LipSyncConfig,
-  RenderCommand,
-  TtsAudio,
-} from '../shared/types';
+import type { AmbientConfig, LipSyncConfig, RenderCommand, TtsAudio } from '../shared/types';
+import { PsdStage } from './psd-stage';
 
 interface UiChanApi {
   getInit(): Promise<{
@@ -30,26 +24,28 @@ declare global {
   }
 }
 
-interface LNode {
-  name: string;
-  layer: Layer;
-  children: LNode[];
-  parent: LNode | null;
-  visible: boolean;
-}
-
 const EYE_CLOSE_PATH = '!目/*閉じ';
 // The mouth folder used by lip sync's findSelect() lookups. Not configurable
 // via a "slots" catalog anymore (that catalog was set_face-only and is gone);
 // this is the one fixed PSD convention the renderer still needs to know.
 const LIP_MOUTH_FOLDER = '!口';
 
-let psd: Psd | null = null;
-let root: LNode[] = [];
+const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+const bubble = document.getElementById('bubble')!;
+const placeholder = document.getElementById('placeholder')!;
+
+// The shared PSD compositing core. Blink / lip-sync / bubble stay in this file.
+const stage = new PsdStage(canvas);
+function draw(): void {
+  stage.draw();
+}
+function reportWarnings(): void {
+  window.uiChan.reportWarnings(stage.getWarnings());
+}
+
 let blinkEnabled = false;
 let blinkTimer: number | null = null;
 let blinking = false;
-const warnings = new Set<string>();
 // Blink timing, populated from config in init(); undefined until then falls
 // back to the same constants this file used before they became configurable.
 let ambientConfig: AmbientConfig | null = null;
@@ -71,212 +67,18 @@ function clearIntervalSafe(id: number | null): null {
   return null;
 }
 
-const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d')!;
-const bubble = document.getElementById('bubble')!;
-const placeholder = document.getElementById('placeholder')!;
-
-function buildTree(children: Layer[] | undefined, parent: LNode | null): LNode[] {
-  if (!children) return [];
-  return children.map((layer) => {
-    const node: LNode = {
-      name: layer.name ?? '',
-      layer,
-      children: [],
-      parent,
-      visible: !layer.hidden,
-    };
-    node.children = buildTree(layer.children, node);
-    return node;
-  });
-}
-
-function findChild(nodes: LNode[], name: string): LNode | undefined {
-  return nodes.find((n) => n.name === name);
-}
-
-function walkPath(path: string): LNode[] | null {
-  const segments = path.split('/');
-  let level = root;
-  const chain: LNode[] = [];
-  for (const seg of segments) {
-    const node = findChild(level, seg);
-    if (!node) return null;
-    chain.push(node);
-    level = node.children;
-  }
-  return chain;
-}
-
-function selectPath(path: string): void {
-  const chain = walkPath(path);
-  if (!chain) {
-    warnings.add(`layer not found: ${path}`);
-    return;
-  }
-  for (const node of chain) {
-    node.visible = true;
-    if (node.name.startsWith('*')) {
-      const siblings = node.parent ? node.parent.children : root;
-      for (const sib of siblings) {
-        if (sib !== node && sib.name.startsWith('*')) sib.visible = false;
-      }
-    }
-  }
-}
-
-function setVisible(path: string, visible: boolean): void {
-  const chain = walkPath(path);
-  if (!chain) {
-    warnings.add(`layer not found: ${path}`);
-    return;
-  }
-  if (visible) {
-    for (const node of chain) node.visible = true;
-  } else {
-    chain[chain.length - 1].visible = false;
-  }
-}
-
-function stripPrefix(name: string): string {
-  return name.replace(/^[*!]/, '');
-}
-
-// Match only radio layers that are direct children of the folder. We do NOT
-// descend into nested radio groups (e.g. *基本目セット): those inner axes are
-// independent, so descending here would make the same name reachable from two
-// folders and re-introduce ambiguity.
-function findRadioByName(nodes: LNode[], name: string): LNode | null {
-  for (const node of nodes) {
-    if (node.name.startsWith('*') && stripPrefix(node.name) === name) return node;
-  }
-  return null;
-}
-
-function nodePath(node: LNode): string {
-  const parts: string[] = [];
-  for (let n: LNode | null = node; n; n = n.parent) parts.unshift(n.name);
-  return parts.join('/');
-}
-
-// Kept for lip sync's mouth-radio lookup only (findSelect(folder, name) ->
-// select the radio layer named `name` under `folder`). This used to also be
-// reachable via LayerDirectives.find for set_face's slot-overwrite mechanism;
-// that wire field is gone now that set_face is abolished, but the underlying
-// name-based lookup is still exactly what lip sync needs.
-function findSelect(folder: string, name: string): void {
-  const chain = walkPath(folder);
-  if (!chain) {
-    warnings.add(`layer not found: ${folder}`);
-    return;
-  }
-  const target = findRadioByName(chain[chain.length - 1].children, name);
-  if (!target) {
-    warnings.add(`no radio layer "${name}" under ${folder}`);
-    return;
-  }
-  selectPath(nodePath(target));
-}
-
-function applyDirectives(d: LayerDirectives): void {
-  for (const p of d.select ?? []) selectPath(p);
-  for (const p of d.hide ?? []) setVisible(p, false);
-  for (const p of d.show ?? []) setVisible(p, true);
-  window.uiChan.reportWarnings([...warnings]);
-}
-
-const BLEND_MAP: Record<string, GlobalCompositeOperation> = {
-  multiply: 'multiply',
-  screen: 'screen',
-  overlay: 'overlay',
-  darken: 'darken',
-  lighten: 'lighten',
-  'color dodge': 'color-dodge',
-  'color burn': 'color-burn',
-  'linear dodge': 'lighter',
-  'soft light': 'soft-light',
-  'hard light': 'hard-light',
-  difference: 'difference',
-  exclusion: 'exclusion',
-  hue: 'hue',
-  saturation: 'saturation',
-  color: 'color',
-  luminosity: 'luminosity',
-};
-
-function drawNodes(nodes: LNode[], alpha: number): void {
-  for (const node of nodes) {
-    if (!node.visible) continue;
-    const layerAlpha = alpha * (node.layer.opacity ?? 1);
-    if (node.children.length > 0) {
-      drawNodes(node.children, layerAlpha);
-      continue;
-    }
-    const image = node.layer.canvas;
-    if (!image) continue;
-    ctx.globalAlpha = layerAlpha;
-    ctx.globalCompositeOperation = BLEND_MAP[node.layer.blendMode ?? 'normal'] ?? 'source-over';
-    ctx.drawImage(image, node.layer.left ?? 0, node.layer.top ?? 0);
-  }
-}
-
-function draw(): void {
-  if (!psd) return;
-  const dpr = window.devicePixelRatio || 1;
-  const wrap = canvas.parentElement!;
-  const cw = wrap.clientWidth;
-  const ch = wrap.clientHeight;
-  if (canvas.width !== cw * dpr || canvas.height !== ch * dpr) {
-    canvas.width = cw * dpr;
-    canvas.height = ch * dpr;
-  }
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const scale = Math.min((cw * dpr) / psd.width, (ch * dpr) / psd.height);
-  const offsetX = (cw * dpr - psd.width * scale) / 2;
-  const offsetY = ch * dpr - psd.height * scale;
-  ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  drawNodes(root, 1);
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
-}
-
-// ---- temporary-overlay visibility snapshot/restore ----
-// Blink follows this shape: snapshot the current visibility of every node,
-// draw something temporary (closed eyes) on top, then restore the snapshot.
-// (Ambient idle motion used to be a second, renderer-local user of this same
-// pattern — it's since been folded into the IdlingCue mechanism in state.ts,
-// which recomposes from Cues instead of snapshotting/restoring visibility.)
-function snapshotVisibility(nodes: LNode[]): Map<LNode, boolean> {
-  const map = new Map<LNode, boolean>();
-  const walk = (list: LNode[]): void => {
-    for (const node of list) {
-      map.set(node, node.visible);
-      walk(node.children);
-    }
-  };
-  walk(nodes);
-  return map;
-}
-
-function restoreVisibility(saved: Map<LNode, boolean>): void {
-  for (const [node, visible] of saved) node.visible = visible;
-}
-
 function scheduleBlink(): void {
   blinkTimer = clearTimeoutSafe(blinkTimer);
   blinkTimer = window.setTimeout(
     () => {
       blinkTimer = null;
-      if (blinkEnabled && psd && !blinking && walkPath(EYE_CLOSE_PATH)) {
+      if (blinkEnabled && stage.loaded && !blinking && stage.walkPath(EYE_CLOSE_PATH)) {
         blinking = true;
-        const saved = snapshotVisibility(root);
-        selectPath(EYE_CLOSE_PATH);
+        const saved = stage.snapshotVisibility();
+        stage.selectPath(EYE_CLOSE_PATH);
         draw();
         window.setTimeout(() => {
-          restoreVisibility(saved);
+          stage.restoreVisibility(saved);
           blinking = false;
           draw();
           scheduleBlink();
@@ -356,7 +158,7 @@ function setLipMouth(vowel: string): void {
   const name = lipConfig.mouths[vowel] ?? lipConfig.mouths.n;
   if (!name || name === lipCurrentMouth) return;
   lipCurrentMouth = name;
-  findSelect(LIP_MOUTH_FOLDER, name);
+  stage.findSelect(LIP_MOUTH_FOLDER, name);
   draw();
 }
 
@@ -369,7 +171,7 @@ function stopLipSync(): void {
 
 function startLipSync(text: string, reading?: string | null): void {
   stopLipSync();
-  if (!lipConfig || !psd) return;
+  if (!lipConfig || !stage.loaded) return;
   lipFrames = toLipFrames(reading && reading.trim().length > 0 ? reading : text);
   if (lipFrames.length === 0) return;
   const interval = 1000 / (lipConfig.charsPerSec ?? 9);
@@ -452,9 +254,10 @@ async function init(): Promise<void> {
 
   window.uiChan.onCommand((cmd) => {
     if (cmd.type === 'apply') {
-      if (!psd) return;
+      if (!stage.loaded) return;
       blinkEnabled = cmd.blink;
-      applyDirectives(cmd.directives);
+      stage.applyDirectives(cmd.directives);
+      reportWarnings();
       lipCurrentMouth = null; // let the next lip tick re-assert its mouth
       draw();
     } else if (cmd.type === 'speech') {
@@ -487,10 +290,7 @@ async function init(): Promise<void> {
     window.uiChan.ready();
     return;
   }
-  psd = readPsd(buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer), {
-    skipThumbnail: true,
-  });
-  root = buildTree(psd.children, null);
+  stage.loadPsd(buffer);
   lipConfig = initData.config.lipSync ?? null;
   ambientConfig = initData.config.ambient ?? null;
   draw();

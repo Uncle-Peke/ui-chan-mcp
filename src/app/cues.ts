@@ -61,6 +61,14 @@ export function loadCues(dir: string, schemaPath: string): CueSet {
   return set;
 }
 
+/** Validate one Cue object against cue.schema.json (used by the editor before
+ *  writing a file). Returns null on success or a joined error string. */
+export function validateCueObject(obj: unknown, schemaPath: string): string | null {
+  const validate = getValidator(schemaPath);
+  if (validate(obj)) return null;
+  return (validate.errors ?? []).map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ');
+}
+
 export function watchCues(dir: string, onChange: () => void): void {
   if (!fs.existsSync(dir)) return;
   let timer: NodeJS.Timeout | null = null;

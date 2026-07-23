@@ -303,3 +303,23 @@ export type AffinityResult = ToolResult<{
 }>;
 
 export type ClearResult = { ok: true } | { ok: false; error: string };
+
+// ---- Cue editor (npm run editor) IPC payloads ----
+// The editor is a separate Electron window; these cross the editor-preload
+// contextBridge. Kept here so the preload, editor-main, and editor renderer
+// share one contract.
+
+/** One row in the editor's cue list (the `default` base is excluded). */
+export interface EditorCueListItem {
+  name: string;
+  internal: boolean;
+  description?: string;
+}
+
+/** VoiSona style names + default weights for the editor's voice sliders. */
+export interface EditorStyles {
+  style_names: string[];
+  default_style_weights: number[];
+}
+
+export type EditorWriteResult = { ok: true } | { ok: false; error: string };

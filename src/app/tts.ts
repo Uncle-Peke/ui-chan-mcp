@@ -1,4 +1,4 @@
-import type { TtsAudio, TtsConfig, VoiceAdlib } from '../shared/types';
+import type { CueVoice, TtsAudio, TtsConfig, VoiceAdlib } from '../shared/types';
 
 const RETRY_COOLDOWN_MS = 60_000;
 const SYNTH_TIMEOUT_MS = 20_000;
@@ -148,11 +148,29 @@ export class VoiSonaTalkClient {
     return this.voiceCache;
   }
 
-  /** Convert a Cue's { name: weight } style_weights into the positional
-   *  array VoiSona expects (ordered by voice.style_names). Pure name lookup —
-   *  no blending, no defaults mixed in. */
-  private styleWeights(cue: string, voice: VoiceInfo): number[] | undefined {
-    const target = this.cfg.cueVoice?.[cue]?.style_weights;
+  /** The voice's style names + default weights, for the editor's slider UI.
+   *  Returns null if the engine is unreachable or has no styles. */
+  async listStyles(): Promise<{ style_names: string[]; default_style_weights: number[] } | null> {
+    if (!this.hasCredentials()) return null;
+    try {
+      const voice = await this.resolveVoice();
+      if (!voice || voice.style_names.length === 0) return null;
+      return {
+        style_names: voice.style_names,
+        default_style_weights: voice.default_style_weights,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Convert a { name: weight } style_weights map into the positional array
+   *  VoiSona expects (ordered by voice.style_names). Pure name lookup — no
+   *  blending, no defaults mixed in. */
+  private styleWeights(
+    target: Record<string, number> | undefined,
+    voice: VoiceInfo,
+  ): number[] | undefined {
     if (!target || voice.style_names.length === 0) return undefined;
     const vec = voice.style_names.map((name) => {
       const hit = Object.entries(target).find(([k]) => k.toLowerCase() === name.toLowerCase());
@@ -161,15 +179,25 @@ export class VoiSonaTalkClient {
     return vec.some((w) => w !== 0) ? vec : undefined;
   }
 
-  /** Synthesize one line of speech in the given Cue's baked voice color
-   *  (style_weights/alp/huskiness), layered with this line's ad-lib
-   *  pitch/speed/volume/intonation from set_cue's optional arguments. */
-  async synthesize(text: string, cue: string, adlib?: VoiceAdlib): Promise<TtsAudio | null> {
+  /** Synthesize one line of speech in the given Cue's baked voice color,
+   *  layered with this line's ad-lib pitch/speed/volume/intonation. Thin
+   *  wrapper that resolves the Cue name to its saved voice color, then defers
+   *  to synthesizeWithVoice. */
+  synthesize(text: string, cue: string, adlib?: VoiceAdlib): Promise<TtsAudio | null> {
+    return this.synthesizeWithVoice(text, this.cfg.cueVoice?.[cue], adlib);
+  }
+
+  /** Synthesize with an explicit voice color instead of a saved Cue name — used
+   *  by the editor's "試し喋り" to preview an in-progress, not-yet-saved voice. */
+  async synthesizeWithVoice(
+    text: string,
+    cueVoice: CueVoice | undefined,
+    adlib?: VoiceAdlib,
+  ): Promise<TtsAudio | null> {
     if (!this.cfg.enabled || !this.hasCredentials() || Date.now() < this.disabledUntil) return null;
     try {
       const voice = await this.resolveVoice();
-      const weights = voice ? this.styleWeights(cue, voice) : undefined;
-      const cueVoice = this.cfg.cueVoice?.[cue];
+      const weights = voice ? this.styleWeights(cueVoice?.style_weights, voice) : undefined;
       const globalParameters = {
         ...(weights ? { style_weights: weights } : {}),
         ...(cueVoice?.alp !== undefined ? { alp: cueVoice.alp } : {}),
