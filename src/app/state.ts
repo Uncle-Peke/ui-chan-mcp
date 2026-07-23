@@ -59,6 +59,14 @@ function randomDelayMs(minSec?: number, maxSec?: number): number {
   return (min + Math.random() * (max - min)) * 1000;
 }
 
+/** Is `hour` inside the inclusive [from, to] window? A window with from > to
+ *  wraps past midnight (e.g. [22, 4] covers 22,23,0,1,2,3,4). Undefined = always. */
+function hourInWindow(hour: number, window?: [number, number]): boolean {
+  if (!window) return true;
+  const [from, to] = window;
+  return from <= to ? hour >= from && hour <= to : hour >= from || hour <= to;
+}
+
 /** Pick one item by weight. If all weights are 0/undefined, falls back to uniform. */
 function weightedPick<T extends { weight?: number }>(items: T[]): T | undefined {
   const weights = items.map((item) => Math.max(item.weight ?? 1, 0));
@@ -421,10 +429,12 @@ export class UiChanState {
    *  either way) so the desk has some life beyond chatter. */
   private eligibleIdlingCues(): IdlingCue[] {
     const items = this.config.idle?.idlingCues?.items ?? [];
+    const hour = new Date().getHours();
     return items.filter(
       (item) =>
         (item.minAffinity === undefined ? true : this.affinity >= item.minAffinity) &&
-        (item.maxAffinity === undefined ? true : this.affinity <= item.maxAffinity),
+        (item.maxAffinity === undefined ? true : this.affinity <= item.maxAffinity) &&
+        hourInWindow(hour, item.hours),
     );
   }
 

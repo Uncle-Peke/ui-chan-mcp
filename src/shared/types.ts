@@ -157,6 +157,12 @@ export interface IdlingCue {
   minAffinity?: number;
   /** Only play this IdlingCue when affinity <= this value. */
   maxAffinity?: number;
+  /** Local time-of-day gate `[fromHour, toHour]` (0–23, inclusive). Only play
+   *  when the current hour is in the window. Wraps past midnight when from > to
+   *  (e.g. [22, 4] = 22:00–04:59). Omitted = any time. Lets ういの自発発話
+   *  react to the real clock (おはよう / おやすみ / もう寝たら？) with no agent
+   *  or memory involved — pure body autonomy. See VISION.md. */
+  hours?: [number, number];
 }
 
 export interface IdlingCueStep {

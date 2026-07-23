@@ -165,6 +165,38 @@
           "weight": 1,
           "minAffinity": 70,
           "steps": [{ "cue": "deredere", "text": "きみが集中してるの、見てるだけで満足〜。", "reading": "きみがしゅうちゅうしてるの、みてるだけでまんぞく〜。" }]
+        },
+        {
+          "name": "morning",
+          "weight": 8,
+          "hours": [5, 10],
+          "steps": [{ "cue": "smile", "text": "おはよ。今日もやる？", "reading": "おはよ。きょうもやる？" }]
+        },
+        {
+          "name": "evening",
+          "weight": 6,
+          "hours": [18, 22],
+          "steps": [{ "cue": "normal", "text": "もう夜だ。おつかれさま。", "reading": "もうよるだ。おつかれさま。" }]
+        },
+        {
+          "name": "night_sleepy",
+          "weight": 8,
+          "hours": [23, 3],
+          "steps": [{ "cue": "sleepy", "text": "ふぁ……もうこんな時間。", "reading": "ふぁ……もうこんなじかん。" }]
+        },
+        {
+          "name": "sleep_nudge_warm",
+          "weight": 6,
+          "hours": [1, 5],
+          "minAffinity": 50,
+          "steps": [{ "cue": "shinpai", "text": "もう遅いよ。ちゃんと寝なね？", "reading": "もうおそいよ。ちゃんとねなね？" }]
+        },
+        {
+          "name": "sleep_cold",
+          "weight": 6,
+          "hours": [1, 5],
+          "maxAffinity": 34,
+          "steps": [{ "cue": "jito", "text": "……まだ起きてんの。", "reading": "……まだおきてんの。" }]
         }
       ]
     }
