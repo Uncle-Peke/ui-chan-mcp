@@ -250,6 +250,19 @@
     "blinkDurationMs": 130,
     "cueFadeMs": 170
   },
+  "interactions": {
+    "$comment": "触れる反応（フィジット）。キャラの実ピクセルをクリック（ポーク）すると発火し、再生中のCue/発話を中断して最優先（debug操作を除く）で反応し、終わるとdefaultに戻る。cooldownMsで連打を抑制（短めにするとパカパカ反応してフィジットとして楽しい）。hoverプールはidlingCuesと同じ形＋好感度ゲートで、好感度に応じて塩対応〜照れが出る",
+    "cooldownMs": 600,
+    "hover": [
+      { "name": "poke_cold", "weight": 6, "maxAffinity": 34, "steps": [{ "cue": "jito", "holdMs": 1200 }] },
+      { "name": "poke_cold_line", "weight": 3, "maxAffinity": 34, "steps": [{ "cue": "mutto", "text": "……何？触んないで。", "reading": "……なに？さわんないで。" }] },
+      { "name": "poke_normal", "weight": 6, "minAffinity": 35, "maxAffinity": 69, "steps": [{ "cue": "kyoton", "holdMs": 1200 }] },
+      { "name": "poke_surprise", "weight": 3, "minAffinity": 35, "maxAffinity": 69, "steps": [{ "cue": "odoroki", "text": "わっ、びっくりした。", "reading": "わっ、びっくりした。" }] },
+      { "name": "poke_shy", "weight": 6, "minAffinity": 50, "steps": [{ "cue": "tere", "holdMs": 1400 }] },
+      { "name": "poke_ticklish", "weight": 3, "minAffinity": 50, "steps": [{ "cue": "fun_tere", "text": "も〜、くすぐったいってば。", "reading": "も〜、くすぐったいってば。" }] },
+      { "name": "poke_dere", "weight": 2, "minAffinity": 70, "steps": [{ "cue": "deredere", "text": "えへへ、なに〜？", "reading": "えへへ、なに〜？" }] }
+    ]
+  },
   "cuesDir": "cues",
   "personaFile": "persona/ui-chan.md"
 }

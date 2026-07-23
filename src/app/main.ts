@@ -113,6 +113,10 @@ function handleDebug(_ws: WebSocket, req: WsRequest): WsResponse {
         }
         return { id: req.id, ok: true, result };
       }
+      case 'interact': {
+        state.onInteraction(action.kind ?? 'hover');
+        return { id: req.id, ok: true, result: { ok: true } };
+      }
       default: {
         return { id: req.id, ok: false, error: `unknown debug action` };
       }
@@ -253,6 +257,34 @@ if (!gotLock) {
     state.applyVisual();
     for (const cmd of pendingCommands.splice(0)) {
       win?.webContents.send('ui-chan:command', cmd);
+    }
+  });
+
+  ipcMain.on('ui-chan:interaction', (_ev, kind: string) => {
+    state.onInteraction(kind);
+  });
+
+  // Manual window drag (we dropped -webkit-app-region:drag so JS can own the
+  // fidget input). While the button is held over her body, the window follows
+  // the cursor at a fixed grab offset.
+  let dragTimer: NodeJS.Timeout | null = null;
+  ipcMain.on('ui-chan:drag-start', () => {
+    if (!win) return;
+    const start = screen.getCursorScreenPoint();
+    const [wx, wy] = win.getPosition();
+    const offX = start.x - wx;
+    const offY = start.y - wy;
+    if (dragTimer) clearInterval(dragTimer);
+    dragTimer = setInterval(() => {
+      if (!win) return;
+      const p = screen.getCursorScreenPoint();
+      win.setPosition(p.x - offX, p.y - offY);
+    }, 16);
+  });
+  ipcMain.on('ui-chan:drag-end', () => {
+    if (dragTimer) {
+      clearInterval(dragTimer);
+      dragTimer = null;
     }
   });
 

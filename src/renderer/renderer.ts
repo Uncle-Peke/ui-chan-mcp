@@ -16,6 +16,9 @@ interface UiChanApi {
   ready(): void;
   reportWarnings(warnings: string[]): void;
   onCommand(cb: (cmd: RenderCommand) => void): void;
+  interaction(kind: string): void;
+  dragStart(): void;
+  dragEnd(): void;
 }
 
 declare global {
@@ -122,6 +125,47 @@ function scheduleBlink(): void {
       ambientConfig?.blinkMaxIntervalMs ?? 7000,
     ),
   );
+}
+
+// ---- fidget + manual window drag ----
+// With -webkit-app-region:drag gone, JS owns all pointer input over her body:
+//  - click without dragging → a "poke" interaction (the fidget)
+//  - press + drag on her     → reposition the window (main follows the cursor)
+// Alpha hit-testing means only her actual pixels count, not transparent margins
+// or the bubble. Poke is the trigger (not hover): hover-firing made a poke right
+// after feel dead, because the reaction's cooldown had already been spent.
+const HIT_ALPHA = 24;
+const DRAG_THRESHOLD = 6;
+let downScreen: { x: number; y: number } | null = null;
+let dragging = false;
+
+function onCharacter(e: MouseEvent): boolean {
+  return stage.loaded && stage.alphaAt(e.clientX, e.clientY) >= HIT_ALPHA;
+}
+
+function startPointerHandling(): void {
+  window.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || !onCharacter(e)) return;
+    downScreen = { x: e.screenX, y: e.screenY };
+    dragging = false;
+    window.uiChan.dragStart();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!downScreen) return; // only track movement while pressing (drag vs click)
+    if (
+      Math.abs(e.screenX - downScreen.x) > DRAG_THRESHOLD ||
+      Math.abs(e.screenY - downScreen.y) > DRAG_THRESHOLD
+    ) {
+      dragging = true;
+    }
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (!downScreen) return;
+    window.uiChan.dragEnd();
+    if (!dragging && onCharacter(e)) window.uiChan.interaction('poke');
+    downScreen = null;
+    dragging = false;
+  });
 }
 
 // ---- lip sync ----
@@ -326,6 +370,7 @@ async function init(): Promise<void> {
   ambientConfig = initData.config.ambient ?? null;
   draw();
   scheduleBlink();
+  startPointerHandling();
   window.addEventListener('resize', draw);
   window.uiChan.ready();
 }

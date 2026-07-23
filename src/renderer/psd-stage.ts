@@ -286,6 +286,30 @@ export class PsdStage {
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  /** Alpha (0–255) of the composited image at a client (viewport) point, for
+   *  hit-testing "is the pointer actually over her body" vs the transparent
+   *  margins. Maps client → canvas pixel coords via the element's box. */
+  alphaAt(clientX: number, clientY: number): number {
+    const rect = this.canvas.getBoundingClientRect();
+    if (
+      rect.width === 0 ||
+      rect.height === 0 ||
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    ) {
+      return 0;
+    }
+    const px = Math.floor(((clientX - rect.left) / rect.width) * this.canvas.width);
+    const py = Math.floor(((clientY - rect.top) / rect.height) * this.canvas.height);
+    try {
+      return this.ctx.getImageData(px, py, 1, 1).data[3];
+    } catch {
+      return 0;
+    }
+  }
+
   // ---- temporary-overlay visibility snapshot/restore (used by blink) ----
   // Snapshot the current visibility of every node, draw something temporary
   // (closed eyes) on top, then restore the snapshot.

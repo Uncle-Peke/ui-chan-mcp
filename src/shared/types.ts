@@ -58,6 +58,20 @@ export interface MascotConfig {
   affinity?: AffinityConfig;
   speech?: SpeechTimingConfig;
   ambient?: AmbientConfig;
+  interactions?: InteractionsConfig;
+}
+
+/** Direct physical interaction with the mascot — the fidget. Reactions PREEMPT
+ *  whatever's playing (a poked ういちゃん cuts off mid-line to react), and are
+ *  affinity-gated like IdlingCue, so touching her reads the relationship's
+ *  temperature. See VISION.md. */
+export interface InteractionsConfig {
+  /** Reaction pool for hover (pointer over her actual pixels). Same shape as
+   *  IdlingCue (steps + weight + affinity gates); a Cue may speak or be silent. */
+  hover?: IdlingCue[];
+  /** Minimum gap between interaction reactions, ms. Default 2500. Stops rapid
+   *  hover in/out from spamming interruptions. */
+  cooldownMs?: number;
 }
 
 /** Timing for the speech bubble/queue when `set_cue`'s `duration_ms` is
@@ -278,7 +292,8 @@ export type DebugAction =
   | { type: 'trigger_chatter' }
   | { type: 'list_idle' }
   | { type: 'preview_cue'; cue: string }
-  | { type: 'set_affinity'; value: number };
+  | { type: 'set_affinity'; value: number }
+  | { type: 'interact'; kind?: string };
 
 export interface WsRequest {
   id: number;

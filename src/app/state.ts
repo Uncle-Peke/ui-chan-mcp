@@ -19,6 +19,12 @@ import { DEFAULT_AFFINITY_STEPS, DEFAULT_CUE_NAME } from '../shared/types';
 
 const MAX_QUEUE = 20;
 
+// Who wins when two things want the mascot at once. A running performance can
+// only be preempted by something of equal-or-higher priority: debug (the dev
+// forcing things) > fidget (physical touch, must feel instant) > MCP (the
+// agent) > idling (self-initiated filler, yields to everyone).
+const PRIORITY = { idle: 0, mcp: 1, fidget: 2, debug: 3 } as const;
+
 type EnqueueResult =
   | { ok: true; displayed: boolean; queue_length: number }
   | { ok: false; error: string };
@@ -96,6 +102,10 @@ export class UiChanState {
   private cueState: CueState;
   private speechQueue: SpeechItem[] = [];
   private currentSpeech: SpeechItem | null = null;
+  // Priority of the performance currently driving the mascot; only meaningful
+  // while one is actually playing (see effectivePriority()).
+  private activePriority: number = PRIORITY.idle;
+  private lastInteractionAt = 0;
   private speechTimer: NodeJS.Timeout | null = null;
   private idleTimer: NodeJS.Timeout | null = null;
   private idlingCueTimer: NodeJS.Timeout | null = null;
@@ -145,6 +155,16 @@ export class UiChanState {
 
   private isBusy(): boolean {
     return this.isSpeaking() || this.idlingCueActive;
+  }
+
+  /** The priority to beat in order to take over right now. While a performance
+   *  is actually playing (speaking or running an IdlingCue/fidget sequence) it's
+   *  that performance's priority; otherwise nothing is playing, so it's `idle`
+   *  and anyone can start. No manual reset needed — it lapses when playback ends. */
+  private effectivePriority(): number {
+    return this.currentSpeech !== null || this.idlingCueActive
+      ? this.activePriority
+      : PRIORITY.idle;
   }
 
   private clampAffinity(v: number): number {
@@ -258,6 +278,13 @@ export class UiChanState {
    *  together in one call, so there is no window where the face and the
    *  voice disagree about which Cue is "current". */
   setCue(args: SetCueArgs, agent: string): SetCueResult {
+    // The debug console (agent "debug") is the dev forcing things and outranks
+    // everything; a normal agent's set_cue yields to a playing fidget reaction.
+    const pri = agent === 'debug' ? PRIORITY.debug : PRIORITY.mcp;
+    if (pri < this.effectivePriority()) {
+      return { ok: true, cue: args.cue, note: 'suppressed: a higher-priority reaction is playing' };
+    }
+    this.activePriority = pri;
     this.cancelIdlingCue();
 
     let cueName = args.cue;
@@ -427,8 +454,10 @@ export class UiChanState {
   /** (Re)start the IdlingCue countdown. Occasionally plays a short Cue
    *  sequence (silent ambient motion or a speaking bit — same mechanism
    *  either way) so the desk has some life beyond chatter. */
-  private eligibleIdlingCues(): IdlingCue[] {
-    const items = this.config.idle?.idlingCues?.items ?? [];
+  /** Filter a Cue-sequence pool (IdlingCue or interaction reactions) by the
+   *  current affinity and time-of-day gates. Shared by idle scheduling and the
+   *  fidget so both compose with affinity the same way. */
+  private eligible(items: IdlingCue[]): IdlingCue[] {
     const hour = new Date().getHours();
     return items.filter(
       (item) =>
@@ -436,6 +465,35 @@ export class UiChanState {
         (item.maxAffinity === undefined ? true : this.affinity <= item.maxAffinity) &&
         hourInWindow(hour, item.hours),
     );
+  }
+
+  private eligibleIdlingCues(): IdlingCue[] {
+    return this.eligible(this.config.idle?.idlingCues?.items ?? []);
+  }
+
+  /** A direct physical interaction (the fidget). Reactions PREEMPT whatever's
+   *  playing — a poked ういちゃん cuts off her current line to react right now,
+   *  which is what makes touch feel alive — then ease back to default. Gated by
+   *  a cooldown so rapid hover in/out doesn't spam interruptions, and the pool
+   *  is affinity-colored (cold brushes you off, warm gets flustered). */
+  onInteraction(kind: string): void {
+    if (kind !== 'hover' && kind !== 'poke') return;
+    // Yields only to debug; preempts MCP and idling.
+    if (PRIORITY.fidget < this.effectivePriority()) return;
+    const cfg = this.config.interactions;
+    const now = Date.now();
+    if (now - this.lastInteractionAt < (cfg?.cooldownMs ?? 2500)) return;
+    const item = weightedPick(this.eligible(cfg?.hover ?? []));
+    if (!item?.steps?.length) return;
+    this.lastInteractionAt = now;
+    // Preempt: tear down current speech + queue + any IdlingCue, kill the
+    // in-flight audio/bubble, then play the reaction from a clean slate.
+    this.speechTimer = clearTimeoutSafe(this.speechTimer);
+    this.speechQueue = [];
+    this.currentSpeech = null;
+    this.emit({ type: 'speech', text: null });
+    this.cancelIdlingCue();
+    this.performIdlingCue(item, 'interaction');
   }
 
   private scheduleIdlingCue(): void {
@@ -467,6 +525,12 @@ export class UiChanState {
    *  who's playing it, for `cue.agent` / speech `agent` bookkeeping. */
   private performIdlingCue(cue: IdlingCue, source: string): void {
     if (!cue.steps?.length) return;
+    this.activePriority =
+      source === 'interaction'
+        ? PRIORITY.fidget
+        : source === 'debug'
+          ? PRIORITY.debug
+          : PRIORITY.idle;
     this.idleTimer = clearTimeoutSafe(this.idleTimer);
     this.idlingCueActive = true;
     this.playIdlingCueStep(cue.steps, 0, source);

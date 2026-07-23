@@ -7,4 +7,7 @@ contextBridge.exposeInMainWorld('uiChan', {
   reportWarnings: (warnings: string[]) => ipcRenderer.send('ui-chan:warnings', warnings),
   onCommand: (cb: (cmd: unknown) => void) =>
     ipcRenderer.on('ui-chan:command', (_ev, cmd) => cb(cmd)),
+  interaction: (kind: string) => ipcRenderer.send('ui-chan:interaction', kind),
+  dragStart: () => ipcRenderer.send('ui-chan:drag-start'),
+  dragEnd: () => ipcRenderer.send('ui-chan:drag-end'),
 });

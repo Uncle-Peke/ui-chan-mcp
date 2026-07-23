@@ -70,7 +70,9 @@
     #canvas-wrap {
       flex: 1 1 auto;
       position: relative;
-      -webkit-app-region: drag;
+      /* No -webkit-app-region: drag — it swallows the mouse events the fidget
+         needs (and triggers macOS double-click-to-reposition). Window dragging
+         is done manually in renderer.ts (grab her body to move her). */
     }
     #canvas {
       position: absolute;
@@ -89,7 +91,6 @@
       padding: 20px;
       font-size: 13px;
       line-height: 1.8;
-      -webkit-app-region: drag;
     }
     #placeholder h1 {
       font-size: 16px;
