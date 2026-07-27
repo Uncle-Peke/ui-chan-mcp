@@ -1,0 +1,6 @@
+{
+  "label": "容認・受け入れ",
+  "description": "軽い信頼・容認（穏やかに受け入れる。信頼 emo_trust より手前）",
+  "select": ["!目/*にっこり1", "!口/*ほほえみ"],
+  "voice": { "style_weights": { "Normal": 0.6 } }
+}

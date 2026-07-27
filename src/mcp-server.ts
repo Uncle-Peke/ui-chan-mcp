@@ -7,7 +7,8 @@ import WebSocket from 'ws';
 import { z } from 'zod';
 import { loadCues } from './app/cues';
 import { setCueShape } from './shared/set-cue-schema';
-import type { MascotConfig, WsResponse } from './shared/types';
+import type { Cue, MascotConfig, WsResponse } from './shared/types';
+import { DEFAULT_CUE_NAME } from './shared/types';
 
 const projectRoot = path.resolve(__dirname, '..');
 const config: MascotConfig = JSON.parse(
@@ -284,18 +285,49 @@ server.registerTool(
  *  the way docs/CUES.md's old "早見表" table could. Cues flagged
  *  `internal: true` are excluded: they're building blocks for the IdlingCue
  *  system (state.ts), not meant to be picked directly via set_cue. */
+const CUE_GROUP_ORDER = ['emo', 'mix', 'self', 'sys', 'pose'];
+const CUE_GROUP_TITLE: Record<string, string> = {
+  emo: '基本感情 `emo_<系統>_<lo|無印|hi>`（喜/信頼/恐/驚/悲/嫌悪/怒/期待 × 強度）',
+  mix: 'ブレンド `mix_<感情A>_<感情B>`（隣接2感情の混合。名前が構成を表す）',
+  self: '自己意識 `self_<感情>`（照れ/恥/罪悪感/誇り）',
+  sys: 'システム `sys_<機能>`（状態・進行・特殊）',
+  pose: 'ポーズ `pose_<型>`（感情に腕ポーズを重ねた変種）',
+};
+
 function buildCueCatalog(): string {
   const cuesDir = path.join(projectRoot, config.cuesDir ?? 'cues');
   const cueSchemaPath = path.join(projectRoot, 'cue.schema.json');
   const { cues, errors } = loadCues(cuesDir, cueSchemaPath);
-  const lines = Object.entries(cues)
-    .filter(([, cue]) => !cue.internal)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, cue]) => `- \`${name}\`${cue.description ? ` — ${cue.description}` : ''}`);
+  // Group by the structural prefix so the AI reads the catalog as a taxonomy
+  // (pick a layer/系統, then a cue) instead of one flat list. `default` is the
+  // compositing base, not a pickable expression, so it's excluded.
+  const groups = new Map<string, [string, Cue][]>();
+  for (const [name, cue] of Object.entries(cues)) {
+    if (cue.internal || name === DEFAULT_CUE_NAME) continue;
+    const g = name.split('_')[0];
+    const list = groups.get(g) ?? [];
+    list.push([name, cue]);
+    groups.set(g, list);
+  }
+  const keys = [
+    ...CUE_GROUP_ORDER.filter((k) => groups.has(k)),
+    ...[...groups.keys()].filter((k) => !CUE_GROUP_ORDER.includes(k)).sort(),
+  ];
+  const sections = keys.map((k) => {
+    const lines = (groups.get(k) ?? [])
+      .sort(([a], [b]) => a.localeCompare(b)) // sort by name, not the label-suffixed line
+      .map(
+        ([name, cue]) =>
+          `- \`${name}\`${cue.label ? `（${cue.label}）` : ''}${cue.description ? ` — ${cue.description}` : ''}`,
+      );
+    return `### ${CUE_GROUP_TITLE[k] ?? k}\n${lines.join('\n')}`;
+  });
   const warning = errors.length > 0 ? `\n\n(cue読み込みエラー: ${errors.join('; ')})` : '';
   return (
-    '## 利用可能なCue一覧（set_cueのcue引数。起動時点のcues/の内容から自動生成）\n\n' +
-    `${lines.join('\n')}${warning}`
+    '## 利用可能なCue一覧（set_cueのcue引数。cues/から自動生成）\n\n' +
+    'Cue名は構造的：接頭辞が層（emo=基本感情 / mix=ブレンド / self=自己意識 / sys=システム / pose=ポーズ）、' +
+    '強度は `_lo`(弱)/無印/`_hi`(強)。系統から辿って選ぶ。\n\n' +
+    `${sections.join('\n\n')}${warning}`
   );
 }
 
