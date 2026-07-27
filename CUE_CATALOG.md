@@ -190,6 +190,66 @@
 - ブレンド: **服従 / 攻撃 / 楽観**（マスコット的に不要な可能性大 → 欠番のままでよいか判断）
 - **恥 shame**（照れ・強に統合でよいか）
 
+---
+
+# あるべき最終リスト（統合後の目標セット）
+
+方針: **明確な同義だけ統合（→で示す5組）。微妙に違うものは description を鋭くして両立（表現力を残す）。欠番は候補として明記（CEはこの子が遭遇する場面に限定）。**
+物理名 = `cues/<name>.json`。`(merge: X→)` = X を統合して消す。`(差別化)` = 隣接と弁別して残す。`⛔候補` = 欠番（作るか要判断）。`[pose]` = ポーズ変種。
+
+## ① 基本感情
+
+**喜び** `smile`(平穏) / `happy`(喜び) / `happy_strong`(恍惚) / `kyakkya`(はしゃぎ・差別化: happy_strong=感情の高さ, kyakkya=子供っぽい多動)
+**信頼** `uioji`(敬愛・溺愛) ／ 弱・無印 ⛔候補（表情に出にくい＝不要濃厚）
+**恐れ** `yabe`(不安・冷や汗) / `scared`(恐れ) / `scared_strong`(恐怖)
+**驚き** `kyoton`(放心) / `surprised`(驚き)（merge: odoroki→） / `surprised_strong`(驚愕)
+**悲しみ** `sad`(悲しみ) / `sad_strong`(悲嘆) / `naku`(涙・差別化: sad_strong=表情の強さ, naku=泣く動作) ／ 弱(しんみり) ⛔候補
+**嫌悪** ⛔候補: 純粋な嫌悪「うわ無理」（塩対応は侮蔑へ振ったので単体嫌悪が空く）
+**怒り** `mutto`(苛立ち)（merge: fuman→） / `angry`(怒り) / `gekioko`(激怒)
+**期待** `excited`(期待・ワクワク) / `yaruki`(決意・気合い)
+
+## ③ ブレンド（隣接dyad）
+
+**愛** `love`(恋・ときめき) / `deredere`(とろけ・差別化: love=ときめき, deredere=蕩ける強)
+**畏敬** `kantan`(感嘆・おおー)
+**失望** `gennari`(げんなり) ／ `shock`(負の驚き＝驚愕×失望・差別化: surprised_strong=純驚き, shock=ショック)
+**自責** `zetsubou`(絶望・虚無)
+**侮蔑** `jito`(ジト目で見る) / `shiozake`(ふ〜んと受け流す・差別化: jito=睨む, shiozake=受け流す)
+**服従 / 攻撃 / 楽観** ⛔ 欠番のまま（マスコット的に不要と判断）
+
+## ④ 自己意識感情
+
+**照れ** `shy`(恥ずかしい) / `tere`(褒められ照れ・差別化: shy=気恥ずかしさ, tere=嬉しさ混じり) / `tere_max`(真っ赤・強) / `fun_tere`(照れ隠し・ツンデレ変種)
+**罪悪感** `suimasenne`(申し訳・すいませんねぇ)
+**誇り** `smug`(ドヤ顔・独り言) / `doya`(決め台詞「〜だが？」・差別化: smug=顔, doya=セリフ) / `smug_arms_crossed`[pose] / `smug_hands_on_hips`[pose]
+**恥 shame** ⛔ 照れ・強（tere_max）に統合でよい
+
+## ⑤ システム表情
+
+`normal`(素・相槌) / `magao`(無・真顔) / `thinking`(思考)（merge: kangae→） / `setsumei`(説明) / `toujou`(登場) / `yobikake`(語りかけ) / `haishin`(配信) / `sleepy`(眠気)（merge: nemui→） / `dizzy`(混乱)（merge: panic→） / `awawa`(焦り) / `troubled`(困り・気まずい・差別化: suimasenne=申し訳) / `hoke`(脱力) / `fukumiwarai`(含み笑い) / `relief`(安心) / `bakushou`(爆笑) / `success`(作業成功) / `ame`(雨・情景) / `beam`(ういビーム) / `kotowaru`(ビーム拒否)
+**[pose]** `normal_arms_crossed` / `normal_umbrella` / `happy_banzai` / `normal_think`
+**[internal]** `idling_*`（AI非公開・IdlingCue部品）
+
+## 統合サマリ（この目標セットで消えるCue = 5個）
+
+| 消す | 統合先 | 理由 |
+|---|---|---|
+| `odoroki` | `surprised` | 同義（驚き） |
+| `fuman` | `mutto` | 同義（苛立ち・不満） |
+| `kangae` | `thinking` | 同義（考え中） |
+| `nemui` | `sleepy` | 同義（眠い） |
+| `panic` | `dizzy` | 同義（混乱・目が回る） |
+
+→ AI向け 66 → **61**。残りの近接ペア（jito/shiozake, shy/tere, smug/doya, love/deredere, sad_strong/naku, troubled/suimasenne, surprised_strong/shock）は **description を弁別的に書き直して両立**（もっと減らしたければ更に統合可）。
+
+## 欠番候補（作るか要判断・CEはこの子の場面に限定）
+
+- 悲しみ・弱（しんみり・憂い）
+- 嫌悪・単体（「うわ無理」＝純粋な嫌悪）
+- （信頼弱/無印・ブレンド服従/攻撃/楽観・恥 は不要と判断＝作らない）
+
+---
+
 ## 未決事項（次に決める）
 
 1. 被り群を1つずつ「統合／弁別」決定（MEを立てる）。

@@ -1,0 +1,18 @@
+{
+  "label": "気まずい",
+  "description": "困った・気まずい（謝罪ではない気まずさ。申し訳の suimasenne と区別）",
+  "select": [
+    "!眉/*困り",
+    "!目/*基本目セット/*目そらし1",
+    "!口/*えあー"
+  ],
+  "show": [
+    "!汗・涙/汗1"
+  ],
+  "blink": true,
+  "voice": {
+    "style_weights": {
+      "Bashful": 1
+    }
+  }
+}

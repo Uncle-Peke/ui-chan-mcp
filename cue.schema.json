@@ -6,6 +6,11 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "label": {
+      "type": "string",
+      "description": "論理名。ファイル名（=cue名）は emo_anger_hi のように構造的・ソート可能にする一方、これは人間向けの読みやすくユニークな呼び名（例「激おこ」「侮蔑・塩対応」）。set_cueの実行には使われず、カタログ表示やエディタのグルーピング表示のための参照メタデータ。",
+      "minLength": 1
+    },
     "description": {
       "type": "string",
       "description": "このCueがどんな場面・気持ちを表すかの短い説明（人間・AI両方向けの参照情報）。set_cueの実行には一切使われず、MCPの persona プロンプトが起動時にcues/を読み込んでAIに一覧として渡す際にのみ使われる。カタログ用メタデータであり、見た目・声そのものには影響しない。",

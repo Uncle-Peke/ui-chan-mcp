@@ -1,0 +1,13 @@
+{
+  "label": "微笑み・平穏",
+  "description": "微笑み・にっこり",
+  "select": [
+    "!目/*にっこり1",
+    "!口/*ほほえみ"
+  ],
+  "voice": {
+    "style_weights": {
+      "Happy": 1
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "label": "怒り",
+  "description": "怒り",
+  "select": [
+    "!眉/*怒り1",
+    "!口/*む"
+  ],
+  "blink": true,
+  "voice": {
+    "style_weights": {
+      "Angry": 1
+    }
+  }
+}

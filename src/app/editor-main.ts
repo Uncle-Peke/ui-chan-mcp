@@ -80,6 +80,7 @@ ipcMain.handle('editor:list-cues', (): EditorCueListItem[] => {
     .filter(([name]) => name !== DEFAULT_CUE_NAME)
     .map(([name, cue]) => ({
       name,
+      label: cue.label,
       internal: cue.internal ?? false,
       description: cue.description,
     }))

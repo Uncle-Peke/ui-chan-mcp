@@ -236,6 +236,7 @@ function loadCueIntoForm(name: string, cue: Cue): void {
   currentName = name;
   applyLook(cue);
   ($('cue-name') as HTMLInputElement).value = name;
+  ($('label') as HTMLInputElement).value = cue.label ?? '';
   ($('description') as HTMLInputElement).value = cue.description ?? '';
   ($('blink') as HTMLInputElement).checked = cue.blink ?? defaultCue.blink ?? false;
   ($('internal') as HTMLInputElement).checked = cue.internal ?? false;
@@ -248,6 +249,7 @@ function newCue(): void {
   currentName = null;
   applyLook({}); // default look
   ($('cue-name') as HTMLInputElement).value = '';
+  ($('label') as HTMLInputElement).value = '';
   ($('description') as HTMLInputElement).value = '';
   ($('blink') as HTMLInputElement).checked = defaultCue.blink ?? false;
   ($('internal') as HTMLInputElement).checked = false;
@@ -273,15 +275,42 @@ function duplicate(): void {
 
 // ---- cue list ----
 
+// Structural names (emo_/mix_/self_/sys_/pose_) group by their prefix so the
+// list reads as a taxonomy, not a flat dump. Each row shows the logical label
+// with the structural id underneath.
+const GROUP_LABELS: Record<string, string> = {
+  emo: '基本感情 (emo)',
+  mix: 'ブレンド (mix)',
+  self: '自己意識 (self)',
+  sys: 'システム (sys)',
+  pose: 'ポーズ (pose)',
+  idling: '内部/Idling',
+};
+
 function renderCueList(): void {
   const host = $('cue-list');
   host.replaceChildren();
   const showInternal = ($('show-internal') as HTMLInputElement).checked;
+  let lastGroup = '';
   for (const item of cueList) {
     if (item.internal && !showInternal) continue;
+    const group = item.name.split('_')[0];
+    if (group !== lastGroup) {
+      lastGroup = group;
+      const h = document.createElement('div');
+      h.className = 'cue-group';
+      h.textContent = GROUP_LABELS[group] ?? group;
+      host.append(h);
+    }
     const btn = document.createElement('button');
     btn.className = `cue-item${item.internal ? ' internal' : ''}`;
-    btn.textContent = item.name;
+    const label = document.createElement('span');
+    label.className = 'cue-label';
+    label.textContent = item.label ?? item.name;
+    const id = document.createElement('span');
+    id.className = 'cue-id';
+    id.textContent = item.name;
+    btn.append(label, id);
     if (item.description) btn.title = item.description;
     btn.addEventListener('click', async () => {
       const cue = await window.uiEditor.readCue(item.name);
@@ -300,6 +329,8 @@ async function refreshCueList(): Promise<void> {
 
 function buildCueFromForm(): Cue {
   const cue: Cue = {};
+  const label = ($('label') as HTMLInputElement).value.trim();
+  if (label) cue.label = label;
   const description = ($('description') as HTMLInputElement).value.trim();
   if (description) cue.description = description;
   const { select = [], show = [], hide = [] } = stage.diffFrom(baseline);

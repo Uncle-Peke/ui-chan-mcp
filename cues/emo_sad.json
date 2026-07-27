@@ -1,0 +1,15 @@
+{
+  "label": "悲しみ",
+  "description": "悲しい",
+  "select": [
+    "!眉/*困り",
+    "!目/*基本目セット/*目そらし2",
+    "!口/*えー"
+  ],
+  "blink": true,
+  "voice": {
+    "style_weights": {
+      "Sad": 1
+    }
+  }
+}

@@ -20,49 +20,49 @@
           "weight": 5,
           "maxAffinity": 30,
           "steps": [
-            { "cue": "jito", "text": "……なに？", "reading": "……なに？" }
+            { "cue": "mix_disgust_anger", "text": "……なに？", "reading": "……なに？" }
           ]
         },
         {
           "name": "umbrella",
           "weight": 10,
           "steps": [
-            { "cue": "kangae", "text": "あれ、雨かな…？", "reading": "あれ、あめかな…？" },
-            { "cue": "ame", "text": "降ってきちゃった。", "reading": "ふってきちゃった。" },
-            { "cue": "normal_umbrella", "holdMs": 3000 }
+            { "cue": "sys_think", "text": "あれ、雨かな…？", "reading": "あれ、あめかな…？" },
+            { "cue": "sys_rain", "text": "降ってきちゃった。", "reading": "ふってきちゃった。" },
+            { "cue": "pose_umbrella", "holdMs": 3000 }
           ]
         },
         {
           "name": "thinking",
           "weight": 10,
           "steps": [
-            { "cue": "kangae", "text": "次、なにしよっかな。", "reading": "つぎ、なにしよっかな。" },
-            { "cue": "normal_think", "holdMs": 2000 },
-            { "cue": "smile", "holdMs": 1200 }
+            { "cue": "sys_think", "text": "次、なにしよっかな。", "reading": "つぎ、なにしよっかな。" },
+            { "cue": "pose_think", "holdMs": 2000 },
+            { "cue": "emo_joy_lo", "holdMs": 1200 }
           ]
         },
         {
           "name": "doya",
           "weight": 10,
           "steps": [
-            { "cue": "smug_hands_on_hips", "text": "ま、あたしがついてれば安心でしょ。", "reading": "ま、あたしがついてればあんしんでしょ。" },
-            { "cue": "smug_arms_crossed", "holdMs": 2000 }
+            { "cue": "pose_smug_hips", "text": "ま、あたしがついてれば安心でしょ。", "reading": "ま、あたしがついてればあんしんでしょ。" },
+            { "cue": "pose_smug_arms", "holdMs": 2000 }
           ]
         },
         {
           "name": "call",
           "weight": 10,
           "steps": [
-            { "cue": "toujou", "text": "ねぇ、ちゃんといる〜？", "reading": "ねぇ、ちゃんといる〜？" },
-            { "cue": "normal", "holdMs": 1500 }
+            { "cue": "sys_intro", "text": "ねぇ、ちゃんといる〜？", "reading": "ねぇ、ちゃんといる〜？" },
+            { "cue": "sys_neutral", "holdMs": 1500 }
           ]
         },
         {
           "name": "bored",
           "weight": 10,
           "steps": [
-            { "cue": "normal_arms_crossed", "text": "ひま〜。", "reading": "ひま〜。" },
-            { "cue": "sleepy", "text": "……ねむくなってきた。", "reading": "……ねむくなってきた。" }
+            { "cue": "pose_arms_crossed", "text": "ひま〜。", "reading": "ひま〜。" },
+            { "cue": "sys_sleepy", "text": "……ねむくなってきた。", "reading": "……ねむくなってきた。" }
           ]
         },
         {
@@ -116,87 +116,87 @@
         {
           "name": "night_owl",
           "weight": 2,
-          "steps": [{ "cue": "toujou", "text": "ねぇ、まだ起きてる〜？", "reading": "ねぇ、まだおきてる〜？" }]
+          "steps": [{ "cue": "sys_intro", "text": "ねぇ、まだ起きてる〜？", "reading": "ねぇ、まだおきてる〜？" }]
         },
         {
           "name": "bored_chat",
           "weight": 2,
-          "steps": [{ "cue": "mutto", "text": "ひま〜〜。なんか話そうよ。", "reading": "ひま〜〜。なんかはなそうよ。" }]
+          "steps": [{ "cue": "emo_anger_lo", "text": "ひま〜〜。なんか話そうよ。", "reading": "ひま〜〜。なんかはなそうよ。" }]
         },
         {
           "name": "rest_reminder",
           "weight": 2,
-          "steps": [{ "cue": "shinpai", "text": "きみさ、ちゃんと休憩してる？", "reading": "きみさ、ちゃんときゅうけいしてる？" }]
+          "steps": [{ "cue": "sys_care", "text": "きみさ、ちゃんと休憩してる？", "reading": "きみさ、ちゃんときゅうけいしてる？" }]
         },
         {
           "name": "sleepy",
           "weight": 2,
-          "steps": [{ "cue": "sleepy", "text": "……ふぁ〜あ。ねむ。", "reading": "……ふぁ〜あ。ねむ。" }]
+          "steps": [{ "cue": "sys_sleepy", "text": "……ふぁ〜あ。ねむ。", "reading": "……ふぁ〜あ。ねむ。" }]
         },
         {
           "name": "rain_wait",
           "weight": 2,
-          "steps": [{ "cue": "ame", "text": "雨、降らないかなぁ。", "reading": "あめ、ふらないかなぁ。" }]
+          "steps": [{ "cue": "sys_rain", "text": "雨、降らないかなぁ。", "reading": "あめ、ふらないかなぁ。" }]
         },
         {
           "name": "forgotten",
           "weight": 2,
           "minAffinity": 35,
-          "steps": [{ "cue": "troubled", "text": "わたしのこと、忘れてない？", "reading": "わたしのこと、わすれてない？" }]
+          "steps": [{ "cue": "sys_awkward", "text": "わたしのこと、忘れてない？", "reading": "わたしのこと、わすれてない？" }]
         },
         {
           "name": "annoyed",
           "weight": 2,
-          "steps": [{ "cue": "mutto", "text": "え〜、まだ終わらないの？めんどくさ。", "reading": "え〜、まだおわらないの？めんどくさ。" }]
+          "steps": [{ "cue": "emo_anger_lo", "text": "え〜、まだ終わらないの？めんどくさ。", "reading": "え〜、まだおわらないの？めんどくさ。" }]
         },
         {
           "name": "shoulder_rub",
           "weight": 2,
-          "steps": [{ "cue": "shinpai", "text": "肩、こってない？のびでもしなよ。", "reading": "かた、こってない？のびでもしなよ。" }]
+          "steps": [{ "cue": "sys_care", "text": "肩、こってない？のびでもしなよ。", "reading": "かた、こってない？のびでもしなよ。" }]
         },
         {
           "name": "here_for_you",
           "weight": 1,
           "minAffinity": 50,
-          "steps": [{ "cue": "smile", "text": "ここにいるよ。ゆっくりでいいからね。", "reading": "ここにいるよ。ゆっくりでいいからね。" }]
+          "steps": [{ "cue": "emo_joy_lo", "text": "ここにいるよ。ゆっくりでいいからね。", "reading": "ここにいるよ。ゆっくりでいいからね。" }]
         },
         {
           "name": "dere",
           "weight": 1,
           "minAffinity": 70,
-          "steps": [{ "cue": "deredere", "text": "きみが集中してるの、見てるだけで満足〜。", "reading": "きみがしゅうちゅうしてるの、みてるだけでまんぞく〜。" }]
+          "steps": [{ "cue": "mix_joy_trust_hi", "text": "きみが集中してるの、見てるだけで満足〜。", "reading": "きみがしゅうちゅうしてるの、みてるだけでまんぞく〜。" }]
         },
         {
           "name": "morning",
           "weight": 8,
           "hours": [5, 10],
-          "steps": [{ "cue": "smile", "text": "おはよ。今日もやる？", "reading": "おはよ。きょうもやる？" }]
+          "steps": [{ "cue": "emo_joy_lo", "text": "おはよ。今日もやる？", "reading": "おはよ。きょうもやる？" }]
         },
         {
           "name": "evening",
           "weight": 6,
           "hours": [18, 22],
-          "steps": [{ "cue": "normal", "text": "もう夜だ。おつかれさま。", "reading": "もうよるだ。おつかれさま。" }]
+          "steps": [{ "cue": "sys_neutral", "text": "もう夜だ。おつかれさま。", "reading": "もうよるだ。おつかれさま。" }]
         },
         {
           "name": "night_sleepy",
           "weight": 8,
           "hours": [23, 3],
-          "steps": [{ "cue": "sleepy", "text": "ふぁ……もうこんな時間。", "reading": "ふぁ……もうこんなじかん。" }]
+          "steps": [{ "cue": "sys_sleepy", "text": "ふぁ……もうこんな時間。", "reading": "ふぁ……もうこんなじかん。" }]
         },
         {
           "name": "sleep_nudge_warm",
           "weight": 6,
           "hours": [1, 5],
           "minAffinity": 50,
-          "steps": [{ "cue": "shinpai", "text": "もう遅いよ。ちゃんと寝なね？", "reading": "もうおそいよ。ちゃんとねなね？" }]
+          "steps": [{ "cue": "sys_care", "text": "もう遅いよ。ちゃんと寝なね？", "reading": "もうおそいよ。ちゃんとねなね？" }]
         },
         {
           "name": "sleep_cold",
           "weight": 6,
           "hours": [1, 5],
           "maxAffinity": 34,
-          "steps": [{ "cue": "jito", "text": "……まだ起きてんの。", "reading": "……まだおきてんの。" }]
+          "steps": [{ "cue": "mix_disgust_anger", "text": "……まだ起きてんの。", "reading": "……まだおきてんの。" }]
         }
       ]
     }
@@ -254,13 +254,13 @@
     "$comment": "触れる反応（フィジット）。キャラの実ピクセルをクリック（ポーク）すると発火し、再生中のCue/発話を中断して最優先（debug操作を除く）で反応し、終わるとdefaultに戻る。cooldownMsで連打を抑制（短めにするとパカパカ反応してフィジットとして楽しい）。hoverプールはidlingCuesと同じ形＋好感度ゲートで、好感度に応じて塩対応〜照れが出る",
     "cooldownMs": 600,
     "poke": [
-      { "name": "poke_cold", "weight": 6, "maxAffinity": 34, "steps": [{ "cue": "jito", "holdMs": 1200 }] },
-      { "name": "poke_cold_line", "weight": 3, "maxAffinity": 34, "steps": [{ "cue": "mutto", "text": "……何？触んないで。", "reading": "……なに？さわんないで。" }] },
-      { "name": "poke_normal", "weight": 6, "minAffinity": 35, "maxAffinity": 69, "steps": [{ "cue": "kyoton", "holdMs": 1200 }] },
-      { "name": "poke_surprise", "weight": 3, "minAffinity": 35, "maxAffinity": 69, "steps": [{ "cue": "odoroki", "text": "わっ、びっくりした。", "reading": "わっ、びっくりした。" }] },
-      { "name": "poke_shy", "weight": 6, "minAffinity": 50, "steps": [{ "cue": "tere", "holdMs": 1400 }] },
-      { "name": "poke_ticklish", "weight": 3, "minAffinity": 50, "steps": [{ "cue": "fun_tere", "text": "も〜、くすぐったいってば。", "reading": "も〜、くすぐったいってば。" }] },
-      { "name": "poke_dere", "weight": 2, "minAffinity": 70, "steps": [{ "cue": "deredere", "text": "えへへ、なに〜？", "reading": "えへへ、なに〜？" }] }
+      { "name": "poke_cold", "weight": 6, "maxAffinity": 34, "steps": [{ "cue": "mix_disgust_anger", "holdMs": 1200 }] },
+      { "name": "poke_cold_line", "weight": 3, "maxAffinity": 34, "steps": [{ "cue": "emo_anger_lo", "text": "……何？触んないで。", "reading": "……なに？さわんないで。" }] },
+      { "name": "poke_normal", "weight": 6, "minAffinity": 35, "maxAffinity": 69, "steps": [{ "cue": "emo_surprise_lo", "holdMs": 1200 }] },
+      { "name": "poke_surprise", "weight": 3, "minAffinity": 35, "maxAffinity": 69, "steps": [{ "cue": "emo_surprise", "text": "わっ、びっくりした。", "reading": "わっ、びっくりした。" }] },
+      { "name": "poke_shy", "weight": 6, "minAffinity": 50, "steps": [{ "cue": "self_shy", "holdMs": 1400 }] },
+      { "name": "poke_ticklish", "weight": 3, "minAffinity": 50, "steps": [{ "cue": "self_shy", "text": "も〜、くすぐったいってば。", "reading": "も〜、くすぐったいってば。" }] },
+      { "name": "poke_dere", "weight": 2, "minAffinity": 70, "steps": [{ "cue": "mix_joy_trust_hi", "text": "えへへ、なに〜？", "reading": "えへへ、なに〜？" }] }
     ]
   },
   "cuesDir": "cues",

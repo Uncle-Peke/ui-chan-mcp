@@ -25,6 +25,9 @@ export interface CueVoice {
 export interface Cue extends LayerDirectives {
   blink?: boolean;
   voice?: CueVoice;
+  /** Logical name (human-readable, unique) — the file name is the structural,
+   *  sortable id (emo_anger_hi); this is its readable alias (e.g. 「激おこ」). */
+  label?: string;
   /** Short human/AI-facing note on when to use this Cue. The one deliberate
    *  exception to "no catalog metadata": never read by set_cue/composeDirectives,
    *  only surfaced by the `persona` MCP prompt (see mcp-server.ts), which
@@ -357,6 +360,7 @@ export type ClearResult = { ok: true } | { ok: false; error: string };
 /** One row in the editor's cue list (the `default` base is excluded). */
 export interface EditorCueListItem {
   name: string;
+  label?: string;
   internal: boolean;
   description?: string;
 }

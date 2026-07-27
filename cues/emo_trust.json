@@ -1,0 +1,16 @@
+{
+  "label": "信頼",
+  "description": "穏やかな信頼・安心して身を委ねる（目を閉じた柔らかい表情。喜びの smile とは別の委ねる落ち着き）",
+  "select": [
+    "!目/*閉じ",
+    "!口/*ほほえみ",
+    "!頬・顔色/*頬2"
+  ],
+  "blink": false,
+  "voice": {
+    "style_weights": {
+      "Normal": 0.5,
+      "Bashful": 0.3
+    }
+  }
+}
