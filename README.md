@@ -19,7 +19,8 @@ Claude Code や任意の MCP 対応エージェントから、マスコットの
 ## セットアップ
 
 **→ [図解セットアップ手順](https://claude.ai/code/artifact/7baf161a-20a2-435d-ac9a-9da363be8be7)**
-（クローンから画面に出るまで。人が読んでも AI が読んでも分かる粒度で書いてあります）
+（クローンから画面に出るまで。人が読んでも AI が読んでも分かる粒度で書いてあります。
+同じ内容が [docs/setup-page.html](docs/setup-page.html) にも入っています）
 
 急ぐ人向けの要約：
 
@@ -202,6 +203,7 @@ PSD が `assets/` に無い場合はプレースホルダ表示になります�
 | [docs/CUES.md](docs/CUES.md) | PSD レイヤー名カタログ（新規Cue制作用・人間向け） |
 | [docs/PERSONA.md](docs/PERSONA.md) | 人格の定義場所と注入方法 |
 | [docs/TTS.md](docs/TTS.md) | VoiSona Talk 連携の詳細 |
+| [docs/setup-page.html](docs/setup-page.html) | 図解セットアップ手順（公開アーティファクトの実体） |
 | [docs/PLUGIN_UPDATE.md](docs/PLUGIN_UPDATE.md) | プラグインの更新手順 |
 | [CLAUDE.md](CLAUDE.md) | 実装ガイド（AI・コントリビュータ向け） |
 | [VISION.md](VISION.md) | 用語とコンセプト |
