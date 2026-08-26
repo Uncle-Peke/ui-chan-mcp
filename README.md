@@ -13,7 +13,7 @@ Claude Code や任意の MCP 対応エージェントから、マスコットの
 > **立ち絵 PSD はリポジトリに含まれていません**（著作権保護された素材のため）。
 > `assets/` に PSDTool 対応の PSD を置くと動きます。無い場合はプレースホルダで起動します。
 > 同梱の `ui-chan.config.json` と `cues/*.json` は
-> [雨衣（うい）立ち絵素材（坂本アヒル様）](https://www.ui-roid.com/) のレイヤー構成向けです。
+> [雨衣（うい）立ち絵素材（坂本アヒル様）](https://ui-roid.booth.pm/items/8593427) のレイヤー構成向けです。
 > 利用は[雨衣キャラクターガイドライン](https://www.ui-roid.com/guidelines/)の範囲でどうぞ。
 
 ## セットアップ
