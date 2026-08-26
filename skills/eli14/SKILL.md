@@ -95,9 +95,6 @@ Google Fonts を1行で読む：
 
 - `<title>` は短い名詞句（例：`ういの取扱説明`）。説明はタイトルに足さず `description` に書く
 - favicon は毎回 `☔` で固定（ういは雨衣。傘か雨の絵文字にする）
-- フッターは固定。立ち絵素材のクレジットとして
-  [雨衣（うい）立ち絵素材](https://ui-roid.booth.pm/items/8593427)（坂本アヒル様）と
-  [キャラクターガイドライン](https://www.ui-roid.com/guidelines) の2行を必ず入れる
 
 #### 見本
 
