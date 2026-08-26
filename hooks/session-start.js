@@ -61,12 +61,18 @@ const personaFile = config.personaFile ?? 'persona/ui-chan.md';
 
 ensureAppRunning(Number(process.env.UI_CHAN_PORT ?? config.port ?? 8123));
 
+// The persona also travels on the MCP handshake (the server's `instructions`),
+// so in a client that uses those this injection is a second copy of the same
+// ~10k characters. Set UI_CHAN_NO_PERSONA_HOOK=1 to send only the app-launch
+// side of this hook and find out whether the handshake alone is enough.
+const skipPersona = process.env.UI_CHAN_NO_PERSONA_HOOK === '1';
+
 const parts = [];
-const persona = readIfExists(path.join(root, personaFile));
+const persona = skipPersona ? null : readIfExists(path.join(root, personaFile));
 if (persona) parts.push(persona);
 
 const contextDir = path.join(root, 'context');
-if (fs.existsSync(contextDir)) {
+if (!skipPersona && fs.existsSync(contextDir)) {
   for (const file of fs.readdirSync(contextDir).filter((f) => f.endsWith('.md')).sort()) {
     const text = readIfExists(path.join(contextDir, file));
     if (text) parts.push(text);
@@ -77,6 +83,7 @@ if (fs.existsSync(contextDir)) {
 // (so schema validation stays the single implementation) rather than
 // re-parsing cues/*.json by hand here.
 try {
+  if (skipPersona) throw new Error('persona injection disabled');
   const { loadCues } = require(path.join(root, 'dist', 'app', 'cues.js'));
   const cuesDir = path.join(root, config.cuesDir ?? 'cues');
   const cueSchemaPath = path.join(root, 'cue.schema.json');

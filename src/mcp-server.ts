@@ -28,7 +28,62 @@ const wsUrl = `ws://127.0.0.1:${port}`;
 
 const log = (msg: string) => process.stderr.write(`[ui-chan-mcp] ${msg}\n`);
 
-const server = new McpServer({ name: 'ui-chan-mcp', version: '0.1.0' });
+/** persona/ui-chan.md + context/*.md + the generated Cue catalog, as one text.
+ *  Shared by the `persona` prompt and the initialize handshake below. */
+function buildPersonaText(): string {
+  const personaPath = path.join(projectRoot, config.personaFile ?? 'persona/ui-chan.md');
+  const parts: string[] = [];
+  try {
+    parts.push(fs.readFileSync(personaPath, 'utf-8'));
+  } catch {
+    parts.push(
+      `ペルソナファイルが見つかりません: ${personaPath}\nこのパスに人格定義のMarkdownを作成してください。`,
+    );
+  }
+  const contextDir = path.join(projectRoot, 'context');
+  try {
+    for (const file of fs
+      .readdirSync(contextDir)
+      .filter((f) => f.endsWith('.md'))
+      .sort()) {
+      parts.push(fs.readFileSync(path.join(contextDir, file), 'utf-8'));
+    }
+  } catch {
+    /* no context dir */
+  }
+  try {
+    parts.push(buildCueCatalog());
+  } catch (e) {
+    parts.push(`Cue一覧の生成に失敗しました: ${e instanceof Error ? e.message : e}`);
+  }
+  return parts.join('\n\n---\n\n');
+}
+
+/**
+ * The persona also rides along on the MCP handshake as the server's
+ * `instructions`.
+ *
+ * In Claude Code the SessionStart hook already injects persona/ + context/, but
+ * a plugin is a Claude-Code-only thing: any other MCP client (Claude Desktop,
+ * another agent) would otherwise get the *body* — set_cue and friends — with no
+ * character behind it, and drive the mascot in its own voice. `instructions` is
+ * the one channel every MCP client receives without the user doing anything, so
+ * the character travels with the tools. Set UI_CHAN_NO_PERSONA_INSTRUCTIONS=1
+ * to send tools only (Claude Code users who find the double injection wasteful).
+ */
+function personaInstructions(): string | undefined {
+  if (process.env.UI_CHAN_NO_PERSONA_INSTRUCTIONS === '1') return undefined;
+  try {
+    return buildPersonaText();
+  } catch {
+    return undefined;
+  }
+}
+
+const server = new McpServer(
+  { name: 'ui-chan-mcp', version: '0.1.0' },
+  { instructions: personaInstructions() },
+);
 
 // ---- WebSocket bridge to the Electron display app ----
 
@@ -393,41 +448,14 @@ server.registerPrompt(
       "Load the mascot's persona (personality, tone, and tool-usage policy) into the conversation. " +
       'Defined in persona/ui-chan.md — edit that file to change the character.',
   },
-  () => {
-    const personaPath = path.join(projectRoot, config.personaFile ?? 'persona/ui-chan.md');
-    const parts: string[] = [];
-    try {
-      parts.push(fs.readFileSync(personaPath, 'utf-8'));
-    } catch {
-      parts.push(
-        `ペルソナファイルが見つかりません: ${personaPath}\nこのパスに人格定義のMarkdownを作成してください。`,
-      );
-    }
-    const contextDir = path.join(projectRoot, 'context');
-    try {
-      for (const file of fs
-        .readdirSync(contextDir)
-        .filter((f) => f.endsWith('.md'))
-        .sort()) {
-        parts.push(fs.readFileSync(path.join(contextDir, file), 'utf-8'));
-      }
-    } catch {
-      /* no context dir */
-    }
-    try {
-      parts.push(buildCueCatalog());
-    } catch (e) {
-      parts.push(`Cue一覧の生成に失敗しました: ${e instanceof Error ? e.message : e}`);
-    }
-    return {
-      messages: [
-        {
-          role: 'user' as const,
-          content: { type: 'text' as const, text: parts.join('\n\n---\n\n') },
-        },
-      ],
-    };
-  },
+  () => ({
+    messages: [
+      {
+        role: 'user' as const,
+        content: { type: 'text' as const, text: buildPersonaText() },
+      },
+    ],
+  }),
 );
 
 async function main() {
