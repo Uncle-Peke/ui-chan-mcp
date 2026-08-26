@@ -5,10 +5,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import WebSocket from 'ws';
 import { z } from 'zod';
-import { loadCues } from './app/cues';
+import { buildPersonaText as buildPersona } from './app/persona';
 import { setCueShape } from './shared/set-cue-schema';
-import type { Cue, MascotConfig, WsResponse } from './shared/types';
-import { DEFAULT_CUE_NAME } from './shared/types';
+import type { MascotConfig, WsResponse } from './shared/types';
 
 const projectRoot = path.resolve(__dirname, '..');
 
@@ -28,37 +27,6 @@ const wsUrl = `ws://127.0.0.1:${port}`;
 
 const log = (msg: string) => process.stderr.write(`[ui-chan-mcp] ${msg}\n`);
 
-/** persona/ui-chan.md + context/*.md + the generated Cue catalog, as one text.
- *  Shared by the `persona` prompt and the initialize handshake below. */
-function buildPersonaText(): string {
-  const personaPath = path.join(projectRoot, config.personaFile ?? 'persona/ui-chan.md');
-  const parts: string[] = [];
-  try {
-    parts.push(fs.readFileSync(personaPath, 'utf-8'));
-  } catch {
-    parts.push(
-      `ペルソナファイルが見つかりません: ${personaPath}\nこのパスに人格定義のMarkdownを作成してください。`,
-    );
-  }
-  const contextDir = path.join(projectRoot, 'context');
-  try {
-    for (const file of fs
-      .readdirSync(contextDir)
-      .filter((f) => f.endsWith('.md'))
-      .sort()) {
-      parts.push(fs.readFileSync(path.join(contextDir, file), 'utf-8'));
-    }
-  } catch {
-    /* no context dir */
-  }
-  try {
-    parts.push(buildCueCatalog());
-  } catch (e) {
-    parts.push(`Cue一覧の生成に失敗しました: ${e instanceof Error ? e.message : e}`);
-  }
-  return parts.join('\n\n---\n\n');
-}
-
 /**
  * The persona also rides along on the MCP handshake as the server's
  * `instructions`.
@@ -74,7 +42,7 @@ function buildPersonaText(): string {
 function personaInstructions(): string | undefined {
   if (process.env.UI_CHAN_NO_PERSONA_INSTRUCTIONS === '1') return undefined;
   try {
-    return buildPersonaText();
+    return buildPersona(projectRoot, config);
   } catch {
     return undefined;
   }
@@ -388,58 +356,6 @@ server.registerTool(
   wrapTool('clear', () => ({})),
 );
 
-/** The Cue catalog (name + optional description) is generated fresh from
- *  whatever is actually in cues/ every time the persona prompt is read —
- *  never from a hand-maintained doc, so it can't silently drift out of sync
- *  the way docs/CUES.md's old "早見表" table could. Cues flagged
- *  `internal: true` are excluded: they're building blocks for the IdlingCue
- *  system (state.ts), not meant to be picked directly via set_cue. */
-const CUE_GROUP_ORDER = ['emo', 'mix', 'self', 'sys', 'pose'];
-const CUE_GROUP_TITLE: Record<string, string> = {
-  emo: '基本感情 `emo_<系統>_<lo|無印|hi>`（喜/信頼/恐/驚/悲/嫌悪/怒/期待 × 強度）',
-  mix: 'ブレンド `mix_<感情A>_<感情B>`（隣接2感情の混合。名前が構成を表す）',
-  self: '自己意識 `self_<感情>`（照れ/恥/罪悪感/誇り）',
-  sys: 'システム `sys_<機能>`（状態・進行・特殊）',
-  pose: 'ポーズ `pose_<型>`（感情に腕ポーズを重ねた変種）',
-};
-
-function buildCueCatalog(): string {
-  const cuesDir = path.join(projectRoot, config.cuesDir ?? 'cues');
-  const cueSchemaPath = path.join(projectRoot, 'cue.schema.json');
-  const { cues, errors } = loadCues(cuesDir, cueSchemaPath);
-  // Group by the structural prefix so the AI reads the catalog as a taxonomy
-  // (pick a layer/系統, then a cue) instead of one flat list. `default` is the
-  // compositing base, not a pickable expression, so it's excluded.
-  const groups = new Map<string, [string, Cue][]>();
-  for (const [name, cue] of Object.entries(cues)) {
-    if (cue.internal || name === DEFAULT_CUE_NAME) continue;
-    const g = name.split('_')[0];
-    const list = groups.get(g) ?? [];
-    list.push([name, cue]);
-    groups.set(g, list);
-  }
-  const keys = [
-    ...CUE_GROUP_ORDER.filter((k) => groups.has(k)),
-    ...[...groups.keys()].filter((k) => !CUE_GROUP_ORDER.includes(k)).sort(),
-  ];
-  const sections = keys.map((k) => {
-    const lines = (groups.get(k) ?? [])
-      .sort(([a], [b]) => a.localeCompare(b)) // sort by name, not the label-suffixed line
-      .map(
-        ([name, cue]) =>
-          `- \`${name}\`${cue.label ? `（${cue.label}）` : ''}${cue.description ? ` — ${cue.description}` : ''}`,
-      );
-    return `### ${CUE_GROUP_TITLE[k] ?? k}\n${lines.join('\n')}`;
-  });
-  const warning = errors.length > 0 ? `\n\n(cue読み込みエラー: ${errors.join('; ')})` : '';
-  return (
-    '## 利用可能なCue一覧（set_cueのcue引数。cues/から自動生成）\n\n' +
-    'Cue名は構造的：接頭辞が層（emo=基本感情 / mix=ブレンド / self=自己意識 / sys=システム / pose=ポーズ）、' +
-    '強度は `_lo`(弱)/無印/`_hi`(強)。系統から辿って選ぶ。\n\n' +
-    `${sections.join('\n\n')}${warning}`
-  );
-}
-
 server.registerPrompt(
   'persona',
   {
@@ -452,7 +368,7 @@ server.registerPrompt(
     messages: [
       {
         role: 'user' as const,
-        content: { type: 'text' as const, text: buildPersonaText() },
+        content: { type: 'text' as const, text: buildPersona(projectRoot, config) },
       },
     ],
   }),
@@ -461,8 +377,16 @@ server.registerPrompt(
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // Wake everything up as soon as we're connected, rather than waiting for the
+  // first tool call: configuring the MCP server should be the whole setup, so
+  // ういちゃん is on screen (and able to speak) before anyone says anything to
+  // her. Both are fire-and-forget — a mascot that can't start must never stop
+  // the tools from working.
   void ensureVoiSonaRunning();
-  log(`ready (display app expected at ${wsUrl})`);
+  ensureConnected().catch((e) => log(`display app not reachable yet: ${e.message ?? e}`));
+
+  log(`ready (display app at ${wsUrl})`);
 }
 
 main().catch((e) => {

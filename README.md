@@ -32,19 +32,40 @@ cp .env.example .env            # VoiSona Talk の資格情報（音声を使わ
 npm run doctor                  # ビルド・PSD・資格情報・エンジン起動をまとめて確認
 ```
 
-Claude Code につなぐ方法は 2 つ。**プラグインが推奨**です（MCP 登録・人格注入・アプリ起動が全部自動）。
+### つなぐ
+
+**どの繋ぎ方でも、繋いだ時点で完了**です。マスコットのアプリと VoiSona Talk は接続時に自動起動し、
+人格は MCP のハンドシェイクに乗って渡ります。人格ファイルを貼る作業はありません。
+
+**Claude Code（プラグイン・推奨）** — MCP 登録・人格注入・アプリ起動に加えて、
+スラッシュコマンドと作業への自動リアクションが付きます。
 
 ```
 /plugin marketplace add /path/to/ui-chan-mcp
 /plugin install ui-chan@ui-chan
 ```
 
-プラグインを使わない場合は MCP サーバを手で登録します。認証情報は `.env` から読まれるので
-`env` は省略できます。
+**Claude Desktop** — 1コマンドで登録できます（既存の設定は保持し、`.bak` を残します）。
+
+```bash
+npm run install-desktop        # 解除は npm run install-desktop -- --remove
+```
+
+**その他の MCP クライアント / 手動登録** — 認証情報は `.env` から読まれるので `env` は不要です。
 
 ```bash
 claude mcp add ui-chan -- node /path/to/ui-chan-mcp/dist/mcp-server.js
 ```
+
+### クライアントによる違い
+
+| | Claude Code（プラグイン） | Claude Desktop / その他 |
+|---|---|---|
+| ツール（`set_cue` ほか） | ○ | ○ |
+| 人格 | ○（フック＋ハンドシェイク） | ○（ハンドシェイク） |
+| アプリ・音声エンジンの自動起動 | ○ | ○ |
+| `/ui-chan:talk` などのコマンド | ○ | ✕（プラグインは Claude Code 専用） |
+| 作業への自動リアクション（EventCue） | ○ | ✕（フックが無いため） |
 
 ## アーキテクチャ
 
@@ -111,6 +132,7 @@ Cue の一覧は `persona` プロンプト（と SessionStart フック）が `c
 | コマンド | 説明 |
 |---|---|
 | `npm run doctor` | セットアップの事前チェック（ビルド・PSD・資格情報・エンジン） |
+| `npm run install-desktop` | Claude Desktop に MCP サーバを登録（`-- --remove` で解除） |
 | `npm run app` / `stop` / `restart` | Electron アプリの起動／終了／再起動 |
 | `npm run build` | `src/` を `dist/` にビルド（`npm install` 時に自動実行） |
 | `npm run editor` | Cue エディタ「雨衣ちゃんのデバッグルーム」 |

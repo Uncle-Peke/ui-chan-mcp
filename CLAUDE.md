@@ -279,18 +279,30 @@ context injected into the agent, defined in Markdown:
   placed here is swept wholesale into the AI's context — keep it to things the
   roleplay agent should actually know, not authoring reference material (see
   `docs/CUES.md` above for why that lives outside `context/`).
-- The `persona` MCP prompt handler also appends a generated Cue catalog
-  (`buildCueCatalog()` in `mcp-server.ts`): every non-`internal` Cue's name +
-  `description`, read fresh from `cues/*.json` each time the prompt runs. This
-  is how the agent learns what Cues exist and what they're for — not a
-  hand-maintained doc, so it can't go stale the way one would.
+- `src/app/persona.ts` — **the one implementation** of "the character as text":
+  the persona file, every `context/*.md` in filename order, and a Cue catalog
+  generated fresh from `cues/*.json` (every non-`internal` Cue's name, label and
+  `description`). Never a hand-maintained list, so it can't go stale.
 
-When installed as a plugin, the `hooks/session-start.js` SessionStart hook
-auto-injects `persona/` + `context/*.md` each session (it does **not** run
-`buildCueCatalog()` — that only happens via the MCP `persona` prompt itself,
-so a plugin-only session gets the persona/context text but not the live Cue
-catalog unless something also calls `/mcp__ui-chan__persona`). `agents/`
-(talk, mode) and `skills/` (talk, mode, beam, eli14) are the plugin's
+### How it reaches a model (three doors, one text)
+
+| Door | Who gets it | When |
+|---|---|---|
+| MCP handshake `instructions` | **every** MCP client, Claude Desktop included | on connect, automatically |
+| `hooks/session-start.js` | Claude Code (plugin install) | at session start |
+| MCP prompt `persona` (`/mcp__ui-chan__persona`) | every MCP client | manually, to reload after editing |
+
+All three call `buildPersonaText()`. The hook used to build its own copy; that
+duplication is gone, and with it the class of bug where the mascot behaved
+differently depending on which door the persona came through.
+
+The handshake is what makes the plugin optional: plugins are a Claude-Code-only
+concept, so without `instructions` any other client would get the *body* (tools)
+with no character behind it. Escape hatches, for when both doors are open and
+the double injection isn't wanted: `UI_CHAN_NO_PERSONA_INSTRUCTIONS=1` (server
+side) and `UI_CHAN_NO_PERSONA_HOOK=1` (hook side; keeps the app-launch half).
+
+`agents/` (talk, mode) and `skills/` (talk, mode, beam, eli14) are the plugin's
 subagents and slash commands. To retarget a different character, rewrite
 `persona/` + `context/` and the PSD layer mappings in `ui-chan.config.json` +
 `cues/`.
