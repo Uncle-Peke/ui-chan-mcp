@@ -25,15 +25,19 @@ PSD が無い場合はアプリに案内が表示されます。
 ## セットアップ
 
 ```bash
-npm install
-npm run build
+npm install          # 依存の取得とビルド（prepare スクリプトで dist/ まで作られます）
+cp .env.example .env # VoiSona Talk の資格情報を書く（音声を使わないなら不要）
 # 立ち絵PSDを assets/ に配置
+npm run doctor       # ビルド・PSD・資格情報・エンジン起動をまとめて確認
 ```
+
+`npm run doctor` は足りないものだけを教えてくれます（PSD なし・資格情報なしは警告どまりで、
+アプリ自体は起動します）。
 
 ### Claude Code プラグインとして使う（推奨）
 
 このリポジトリ自体が Claude Code プラグイン兼マーケットプレイスです。
-事前に `npm install && npm run build` を済ませたうえで：
+事前に `npm install` を済ませたうえで（ビルドは `prepare` で自動実行されます）：
 
 ```
 /plugin marketplace add /path/to/ui-chan-mcp
@@ -49,7 +53,18 @@ npm run build
 - **`/ui-chan:ui-beam`** — ういビーム（ファンサービス必殺技）
 - **ui-chan エージェント** — 「ういちゃんにリアクションさせる」用のサブエージェント
 
-VoiSona Talk の認証情報はシェル環境変数で渡します（プラグインが環境を継承します）：
+VoiSona Talk の認証情報は、リポジトリ直下の `.env` に書くのが手軽です
+（`.env` は gitignore 済み）：
+
+```bash
+cp .env.example .env
+# .env
+# UI_CHAN_TTS_USERNAME=you@example.com
+# UI_CHAN_TTS_PASSWORD=api-password
+```
+
+シェルの環境変数でも渡せます（プラグインが環境を継承します）。**環境変数のほうが優先**され、
+`.env` はそれを上書きしません：
 
 ```bash
 # ~/.zshrc など
@@ -86,9 +101,13 @@ claude mcp add ui-chan \
   -- node /path/to/ui-chan-mcp/dist/mcp-server.js
 ```
 
-音声を使わないなら `env` ごと省略できます。表示アプリはツール呼び出し時に自動起動されます
-（手動起動は `npm run app`）。MCP サーバ起動時に VoiSona Talk が起動していなければ
-自動で起動します（macOS、`tts.enabled: true` のとき）。
+音声を使わないなら `env` ごと省略できます（`.env` を置いておけばそちらから読まれます）。
+表示アプリはツール呼び出し時に自動起動されます（手動起動は `npm run app`）。
+
+VoiSona Talk が起動していなければ MCP サーバが自動で起動し、**REST API が応答するまで待ちます**
+（macOS、`tts.enabled: true` のとき／最大20秒）。セッション中にエンジンを終了しても、次の
+`set_cue` で起動し直します（30秒に1回まで）。エンジンに繋がらないあいだは音声なしで喋り続け、
+`get_state` の `warnings` にその旨が出ます。
 
 ## MCP ツール
 
@@ -262,6 +281,7 @@ npm run dump-psd -- assets/ui_sozai.psd # PSDレイヤー構造のダンプ
 npm run debug                           # 対話型デバッグコンソール（MCP 不要、WebSocket直叩き）
 npm run debug:launch                    # アプリを自動起動してデバッグコンソール
 npm run debug:restart                   # 終了 → デバッグコンソール付きで再起動
+npm run doctor                          # セットアップの事前チェック
 npm run debug:state                     # 現在の状態を取得
 npm run debug:list                      # 利用可能 Cue + IdlingCue + chatter 一覧
 node tools/ws-test.mjs set_cue '{"cue":"happy","text":"テスト","reading":"てすと"}' # WebSocket直叩きテスト

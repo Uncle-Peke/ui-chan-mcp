@@ -276,6 +276,9 @@ export interface MascotStateSnapshot {
     coolingDown?: boolean;
     lastError?: string | null;
     lastSuccessAt?: string | null;
+    /** The engine's REST port didn't answer at all (as opposed to a synthesis
+     *  error) — usually just VoiSona Talk not being up yet. */
+    engineUnreachable?: boolean;
   };
   warnings: string[];
   affinity: AffinitySnapshot;

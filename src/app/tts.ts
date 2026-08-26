@@ -1,6 +1,10 @@
 import type { CueVoice, TtsAudio, TtsConfig, VoiceAdlib } from '../shared/types';
 
 const RETRY_COOLDOWN_MS = 60_000;
+/** The engine simply not being up yet is a transient, self-healing condition
+ *  (the MCP bridge relaunches VoiSona Talk), so it must not silence the mascot
+ *  for a full minute the way a real synthesis error does. */
+const UNREACHABLE_COOLDOWN_MS = 5_000;
 const SYNTH_TIMEOUT_MS = 20_000;
 const POLL_INTERVAL_MS = 150;
 const VOWELS = new Set(['a', 'i', 'u', 'e', 'o']);
@@ -55,6 +59,16 @@ export function buildTimeline(phonemes: string[], durations: number[]): TtsAudio
   return deduped;
 }
 
+/** Tell "the engine isn't up" apart from a genuine synthesis failure: a dead
+ *  port makes fetch reject (ECONNREFUSED) or time out, never return an HTTP
+ *  status, so only those two shapes count as unreachable. */
+function isUnreachable(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  if (e.name === 'TimeoutError' || e.name === 'AbortError') return true;
+  const cause = (e as { cause?: { code?: string } }).cause?.code ?? '';
+  return ['ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND', 'EHOSTUNREACH'].includes(cause);
+}
+
 /**
  * VoiSona Talk REST API client (docs: http://localhost:32766/docs/talk_api.html).
  * Synthesizes to memory, retrieves the WAV plus phoneme timing, and lets the
@@ -67,6 +81,7 @@ export class VoiSonaTalkClient {
   private runtimePassword: string | null = null;
   private lastError: string | null = null;
   private lastSuccessAt: string | null = null;
+  private engineUnreachable = false;
 
   constructor(private cfg: TtsConfig) {}
 
@@ -76,6 +91,7 @@ export class VoiSonaTalkClient {
     coolingDown: boolean;
     lastError: string | null;
     lastSuccessAt: string | null;
+    engineUnreachable: boolean;
   } {
     return {
       enabled: this.cfg.enabled,
@@ -83,6 +99,7 @@ export class VoiSonaTalkClient {
       coolingDown: Date.now() < this.disabledUntil,
       lastError: this.lastError,
       lastSuccessAt: this.lastSuccessAt,
+      engineUnreachable: this.engineUnreachable,
     };
   }
 
@@ -251,16 +268,21 @@ export class VoiSonaTalkClient {
       const durationMs = Math.round((info.duration ?? durations.reduce((a, b) => a + b, 0)) * 1000);
       this.lastError = null;
       this.lastSuccessAt = new Date().toISOString();
+      this.engineUnreachable = false;
       return {
         wavBase64: wav.toString('base64'),
         durationMs,
         timeline: buildTimeline(info.phonemes ?? [], durations),
       };
     } catch (e) {
-      this.disabledUntil = Date.now() + RETRY_COOLDOWN_MS;
+      this.engineUnreachable = isUnreachable(e);
+      const cooldown = this.engineUnreachable ? UNREACHABLE_COOLDOWN_MS : RETRY_COOLDOWN_MS;
+      this.disabledUntil = Date.now() + cooldown;
       this.lastError = e instanceof Error ? e.message : String(e);
       console.error(
-        `[ui-chan] VoiSona Talk synthesis failed (retrying after ${RETRY_COOLDOWN_MS / 1000}s): ${this.lastError}`,
+        this.engineUnreachable
+          ? `[ui-chan] VoiSona Talk not reachable at ${this.cfg.url} (retrying in ${cooldown / 1000}s): ${this.lastError}`
+          : `[ui-chan] VoiSona Talk synthesis failed (retrying after ${cooldown / 1000}s): ${this.lastError}`,
       );
       return null;
     }
