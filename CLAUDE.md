@@ -197,6 +197,40 @@ what actually advances the sequence — never a second, independently-guessed
 timer. `holdMs` still fully controls steps with no `text` (there's nothing to
 wait for otherwise).
 
+### EventCue: reactions to what happens in the session
+
+Per VISION.md, an **EventCue** is a CueSequence fired by something that happened
+*around* her — a command failed, a subagent came back, Claude Code is waiting on
+the user, the context is about to be compacted. It is the third user of the same
+`CueSequence` shape as IdlingCue and FidgetCue; only the trigger and priority
+differ (`PRIORITY.event` sits above idle filler and below the agent).
+
+The trigger lives outside the app: `hooks/reaction.js` and `hooks/notify.js` map
+a Claude Code hook payload to an **event name** and post
+`{tool: 'event_cue', args: {event}}` over the WebSocket. That is *all* the hooks
+decide. Everything else — which lines exist, weights, affinity/time gates, the
+cooldown, and the chance roll — is `eventCues.events.<name>` in
+`ui-chan.config.json`, resolved by `state.ts`'s `fireEventCue()`.
+
+The split matters: hooks are separate short-lived processes, so any throttle
+they own has to be invented (a temp file) and is invisible to every other
+trigger. Keeping it in the app means one clock shared by hooks, the debug
+console, and anything added later, and it means editing what she says is a JSON
+edit with no hook code involved.
+
+- `cooldownSec` is shared by every event with the same `throttleKey` (default:
+  the event's own name). Ambient commentary (`tool_failure`, `turn_done`,
+  `compact`) shares one `ambient` key so she can't chain lines; `agent_out` and
+  `agent_back` are deliberately separate so a send-off never silences the
+  matching return.
+- `chance` (0–1) is for events that fire every turn — `turn_done` is 0.35, so
+  finishing a turn stays a beat rather than a verbal tic.
+- `permission` / `idle_wait` use `cooldownSec: 0`: being throttled while trying
+  to fetch an absent user is the one case where silence is the wrong answer.
+- Debug: `npm run debug` → `event <name>` (Tab-completes). A forced fire skips
+  cooldown and chance and does **not** stamp the cooldown, so previewing a line
+  can't silence the next real one. Affinity/time gates still apply.
+
 ### Rejected designs (do not reintroduce)
 
 `extends` inheritance between scenes; named wrapper fields (`pose`,

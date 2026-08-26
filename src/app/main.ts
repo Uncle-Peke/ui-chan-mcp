@@ -120,6 +120,7 @@ const toolHandlers: Record<ToolName, (args: Record<string, unknown>, agent: stri
   get_state: () => buildSnapshot(),
   clear: () => state.clear(),
   adjust_affinity: (args) => state.adjustAffinity(String(args.direction), String(args.magnitude)),
+  event_cue: (args) => state.fireEventCue(String(args.event), { force: args.force === true }),
 };
 
 function handleDebug(_ws: WebSocket, req: WsRequest): WsResponse {
@@ -138,6 +139,16 @@ function handleDebug(_ws: WebSocket, req: WsRequest): WsResponse {
       }
       case 'list_idle': {
         return { id: req.id, ok: true, result: state.listIdle() };
+      }
+      case 'list_event_cues': {
+        return { id: req.id, ok: true, result: state.listEventCues() };
+      }
+      case 'trigger_event': {
+        // force: the dev asked for this one, so skip cooldown/chance — but the
+        // affinity and time gates still apply, so what you see could really play.
+        const result = state.fireEventCue(action.event, { force: true });
+        if (!result.ok) return { id: req.id, ok: false, error: result.error };
+        return { id: req.id, ok: true, result };
       }
       case 'preview_cue': {
         return { id: req.id, ok: true, result: state.previewCue(action.cue) };

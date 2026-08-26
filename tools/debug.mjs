@@ -192,6 +192,7 @@ const completionCache = {
     'affinity',
     'restart',
     'idle',
+    'event',
     'poke',
     'list',
     'preview',
@@ -201,16 +202,19 @@ const completionCache = {
   ],
   cues: [],
   idlingCues: [],
+  events: [],
 };
 
 async function loadCompletions() {
   try {
-    const [state, idle] = await Promise.all([
+    const [state, idle, events] = await Promise.all([
       callTool('get_state'),
       callDebug({ type: 'list_idle' }),
+      callDebug({ type: 'list_event_cues' }),
     ]);
     completionCache.cues = state.availableCues ?? [];
     completionCache.idlingCues = (idle?.idlingCues ?? []).map((a) => a.name).filter(Boolean);
+    completionCache.events = (events?.events ?? []).map((e) => e.event);
   } catch (e) {
     console.error(`[debug] completion cache failed: ${e.message}`);
   }
@@ -228,11 +232,12 @@ Commands:
   affinity <value>                      set affinity to an absolute value
   restart                               stop and relaunch the display app
   idle [name]                           trigger an IdlingCue (random if no name)
+  event <event>                         fire an EventCue pool (tool_failure, agent_back, ...)
   poke [hover]                          fire a fidget interaction (poke; 'hover' to test hover)
-  list                                  list available cues and IdlingCues
+  list                                  list available cues, IdlingCues and EventCues
   preview <cue>                         show directives a Cue would produce
   watch                                 poll state every 500ms (Ctrl+C to stop)
-  refresh                               reload cue/idlingCue names for Tab completion
+  refresh                               reload cue/IdlingCue/EventCue names for Tab completion
   help                                  show this help
   exit                                  quit
 `;
@@ -288,14 +293,25 @@ const commands = {
   },
 
   list: async () => {
-    const [state, idle] = await Promise.all([
+    const [state, idle, events] = await Promise.all([
       callTool('get_state'),
       callDebug({ type: 'list_idle' }),
+      callDebug({ type: 'list_event_cues' }),
     ]);
     printJson({
       availableCues: state.availableCues,
       idlingCues: idle.idlingCues,
+      eventCues: events,
     });
+  },
+
+  event: async (tokens) => {
+    const event = tokens[1];
+    if (!event) {
+      const known = await callDebug({ type: 'list_event_cues' });
+      throw new Error(`usage: event <event>. known: ${known.events.map((e) => e.event).join(', ')}`);
+    }
+    printJson(await callDebug({ type: 'trigger_event', event }));
   },
 
   preview: async (tokens) => {
@@ -372,6 +388,8 @@ function completer(line) {
     candidates = completionCache.cues;
   } else if (cmd === 'idle') {
     candidates = completionCache.idlingCues;
+  } else if (cmd === 'event') {
+    candidates = completionCache.events;
   }
   const hits = candidates.filter((c) => c.startsWith(prefix));
   return [hits, prefix];

@@ -1,5 +1,11 @@
-// Shared helper for the Claude Code hooks: speak one line through the running
+// Shared helper for the Claude Code hooks: report one event to the running
 // mascot and get out of the way.
+//
+// The hooks deliberately know nothing about *what* ういちゃん says. They name
+// the event ("tool_failure", "agent_back"); the app owns the lines, the
+// weights, the cooldowns and the affinity gates as `eventCues` in
+// ui-chan.config.json. That keeps one clock and one place to edit — the debug
+// console fires the same pools through the same path.
 //
 // Every hook here runs inside Claude Code's critical path, so the rules are the
 // same for all of them: never block, never throw, never print to stdout (the
@@ -29,17 +35,13 @@ function readPayload() {
   }
 }
 
-function pick(list) {
-  return list[Math.floor(Math.random() * list.length)];
-}
-
 /**
- * Send one set_cue to the mascot, then exit. Unlike the MCP bridge this does
+ * Tell the mascot an event happened, then exit. Unlike the MCP bridge this does
  * NOT launch the app: a hook firing mid-session should stay silent when the
  * mascot isn't up, not pop a window open behind the user's work.
  */
-function speak(line, agent) {
-  if (!line) process.exit(0);
+function fireEvent(event, agent) {
+  if (!event) process.exit(0);
 
   let settled = false;
   let ws;
@@ -64,19 +66,11 @@ function speak(line, agent) {
   }
 
   ws.addEventListener('open', () => {
-    ws.send(
-      JSON.stringify({
-        id: 1,
-        type: 'tool',
-        agent,
-        tool: 'set_cue',
-        args: { cue: line.cue, text: line.text, reading: line.reading },
-      }),
-    );
+    ws.send(JSON.stringify({ id: 1, type: 'tool', agent, tool: 'event_cue', args: { event } }));
     // Give the bridge a beat to process, then leave.
     setTimeout(done, 250);
   });
   ws.addEventListener('error', () => done());
 }
 
-module.exports = { readPayload, readPort, pick, speak, root };
+module.exports = { readPayload, readPort, fireEvent, root };

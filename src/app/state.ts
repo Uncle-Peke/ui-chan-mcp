@@ -23,7 +23,7 @@ const MAX_QUEUE = 20;
 // only be preempted by something of equal-or-higher priority: debug (the dev
 // forcing things) > fidget (physical touch, must feel instant) > MCP (the
 // agent) > idling (self-initiated filler, yields to everyone).
-const PRIORITY = { idle: 0, mcp: 1, fidget: 2, debug: 3 } as const;
+const PRIORITY = { idle: 0, event: 1, mcp: 2, fidget: 3, debug: 4 } as const;
 
 type EnqueueResult =
   | { ok: true; displayed: boolean; queue_length: number }
@@ -113,6 +113,9 @@ export class UiChanState {
   private sequenceActive = false;
   private affinity: number;
   private lastCueWarning: string | null = null;
+  /** throttle key → when that group last spoke. EventCue cooldowns live here
+   *  (not in the hook) so every caller shares one clock. */
+  private eventCueLastAt = new Map<string, number>();
 
   constructor(
     private config: MascotConfig,
@@ -529,7 +532,9 @@ export class UiChanState {
         ? PRIORITY.fidget
         : source === 'debug'
           ? PRIORITY.debug
-          : PRIORITY.idle;
+          : source === 'event'
+            ? PRIORITY.event
+            : PRIORITY.idle;
     this.idleTimer = clearTimeoutSafe(this.idleTimer);
     this.sequenceActive = true;
     this.playSequenceStep(cue.steps, 0, source);
@@ -594,6 +599,79 @@ export class UiChanState {
   applyVisual(): void {
     const { directives, blink } = this.composeDirectives(this.cueState.cue);
     this.emit({ type: 'apply', directives, blink });
+  }
+
+  /** Fire the EventCue pool for `event` — something happened in the session
+   *  around her (a command failed, a subagent returned, she's waiting on the
+   *  user) and she may have something to say about it.
+   *
+   *  All of the judgement lives here rather than in the caller: whether the
+   *  pool exists, whether this kind of line is on cooldown, whether the dice
+   *  say to stay quiet, and which of the eligible lines to use. A hook only
+   *  has to name the event, so every trigger (hooks, the debug console, a
+   *  future in-app source) throttles against the same clock and honours the
+   *  same affinity gates.
+   *
+   *  `force` (the debug console) skips the cooldown and the chance roll, and
+   *  does not start a cooldown of its own, so previewing a line never silences
+   *  the next real event. Affinity and time gates still apply, so what you see
+   *  is a line that could genuinely play right now. */
+  fireEventCue(
+    event: string,
+    opts: { force?: boolean } = {},
+  ): { ok: true; spoke: boolean; name?: string; reason?: string } | { ok: false; error: string } {
+    const cfg = this.config.eventCues;
+    if (cfg?.enabled === false) return { ok: true, spoke: false, reason: 'eventCues disabled' };
+
+    const group = cfg?.events?.[event];
+    if (!group) {
+      const known = Object.keys(cfg?.events ?? {});
+      return { ok: false, error: `unknown event "${event}". known: ${known.join(', ') || '(none)'}` };
+    }
+
+    const key = group.throttleKey ?? event;
+    const cooldownMs = (group.cooldownSec ?? 90) * 1000;
+    const lastAt = this.eventCueLastAt.get(key);
+    if (!opts.force && lastAt !== undefined && Date.now() - lastAt < cooldownMs) {
+      return { ok: true, spoke: false, reason: 'cooldown' };
+    }
+    if (!opts.force && Math.random() >= (group.chance ?? 1)) {
+      return { ok: true, spoke: false, reason: 'chance' };
+    }
+
+    const item = weightedPick(this.eligible(group.items ?? []));
+    if (!item?.steps?.length) return { ok: true, spoke: false, reason: 'no eligible EventCue' };
+
+    // An EventCue reports something real, so it outranks idle filler — but it
+    // must never talk over the agent or a poke.
+    if (PRIORITY.event < this.effectivePriority()) {
+      return { ok: true, spoke: false, reason: 'busy' };
+    }
+
+    // A forced preview must not consume the real cooldown, or checking a line
+    // in the debug console would silence the next genuine event.
+    if (!opts.force) this.eventCueLastAt.set(key, Date.now());
+    this.cancelSequence();
+    this.performSequence(item, opts.force ? 'debug' : 'event');
+    return { ok: true, spoke: true, name: item.name };
+  }
+
+  /** Debug: list the configured EventCue pools. */
+  listEventCues(): {
+    enabled: boolean;
+    events: { event: string; count: number; cooldownSec: number; chance: number; names: string[] }[];
+  } {
+    const cfg = this.config.eventCues;
+    return {
+      enabled: cfg?.enabled !== false,
+      events: Object.entries(cfg?.events ?? {}).map(([event, group]) => ({
+        event,
+        count: group.items?.length ?? 0,
+        cooldownSec: group.cooldownSec ?? 90,
+        chance: group.chance ?? 1,
+        names: (group.items ?? []).map((i) => i.name).filter((n): n is string => Boolean(n)),
+      })),
+    };
   }
 
   /** Debug: force-run one IdlingCue immediately (or the named one).

@@ -62,6 +62,7 @@ export interface MascotConfig {
   speech?: SpeechTimingConfig;
   ambient?: AmbientConfig;
   interactions?: InteractionsConfig;
+  eventCues?: EventCuesConfig;
 }
 
 /** Direct physical interaction with the mascot — the fidget. FidgetCues PREEMPT
@@ -186,6 +187,34 @@ export interface CueSequence {
 export type IdlingCue = CueSequence;
 /** A CueSequence fired by a direct physical interaction (a poke) — the fidget. */
 export type FidgetCue = CueSequence;
+/** A CueSequence fired by something that happened in the session around her —
+ *  a command failed, a subagent came back, the agent is waiting on the user.
+ *  The trigger lives outside the app (a Claude Code hook posts `event_cue`),
+ *  but the *reaction* — which lines exist, how often she'll say one, whether
+ *  affinity or the clock gates it — is config here, exactly like an IdlingCue.
+ *  See VISION.md. */
+export type EventCue = CueSequence;
+
+/** Named pools of EventCues, one per event the outside world can report. */
+export interface EventCuesConfig {
+  /** Master switch. Default true. */
+  enabled?: boolean;
+  /** Event name (`tool_failure`, `agent_back`, …) → its pool. */
+  events: Record<string, EventCueGroup>;
+}
+
+export interface EventCueGroup {
+  items: EventCue[];
+  /** Minimum seconds between two lines from this throttle group. Default 90. */
+  cooldownSec?: number;
+  /** Probability (0–1) that a fire actually speaks. Default 1. Use it for
+   *  events that happen every turn, so reacting stays a beat and not a tic. */
+  chance?: number;
+  /** Share one cooldown with other events by giving them the same key.
+   *  Defaults to the event's own name — which is what keeps a send-off from
+   *  silencing the matching return. */
+  throttleKey?: string;
+}
 
 export interface CueStep {
   /** Cue to switch to for this step (must exist in the loaded Cue set). Omitted = keep whatever Cue the previous step left. */
@@ -302,6 +331,8 @@ export type DebugAction =
   | { type: 'trigger_idle'; name?: string }
   | { type: 'trigger_chatter' }
   | { type: 'list_idle' }
+  | { type: 'list_event_cues' }
+  | { type: 'trigger_event'; event: string }
   | { type: 'preview_cue'; cue: string }
   | { type: 'set_affinity'; value: number }
   | { type: 'interact'; kind?: string };
@@ -312,7 +343,7 @@ export interface WsRequest {
   agent?: string;
   /** TTS credentials forwarded from the agent side (mcp.json env); kept in memory only */
   tts?: { username: string; password: string };
-  tool?: 'set_cue' | 'get_state' | 'clear' | 'adjust_affinity';
+  tool?: 'set_cue' | 'get_state' | 'clear' | 'adjust_affinity' | 'event_cue';
   args?: Record<string, unknown>;
   debug?: DebugAction;
 }

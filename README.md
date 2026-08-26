@@ -116,7 +116,7 @@ Cue の一覧は `persona` プロンプト（と SessionStart フック）が `c
 | `npm run editor` | Cue エディタ「雨衣ちゃんのデバッグルーム」 |
 | `npm run debug` | 対話型デバッグコンソール（MCP 不要・WebSocket 直叩き） |
 | `npm run debug:launch` / `debug:restart` | アプリ起動込みのデバッグコンソール |
-| `npm run debug:state` / `debug:list` | 状態の取得／Cue・IdlingCue 一覧 |
+| `npm run debug:state` / `debug:list` | 状態の取得／Cue・IdlingCue・EventCue 一覧 |
 | `npm run dump-psd -- assets/foo.psd` | PSD レイヤー構造のダンプ |
 | `npm run validate-cues` | `cues/*.json` のスキーマ検証 |
 | `npm run lint` / `lint:fix` / `format` | Biome |
@@ -177,6 +177,20 @@ PSD が `assets/` に無い場合はプレースホルダ表示になります�
 `ui-chan.config.json` の `idle.idlingCues` にある `minSec` / `maxSec`（既定 120〜300秒）で間隔を、
 各 IdlingCue の `weight` で出やすさを調整します。`minAffinity` / `maxAffinity` で
 好感度による出し分けもできます。
+</details>
+
+<details>
+<summary><b>作業中の反応（失敗した・サブエージェントが帰ってきた 等）を変えたい</b></summary>
+
+`ui-chan.config.json` の `eventCues.events` です。イベント名ごとにセリフのプールがあり、
+`cooldownSec`（同じ `throttleKey` を持つイベントで共有）と `chance` で騒がしさを調整します。
+中身は IdlingCue と同じ形なので `weight` / `minAffinity` / `maxAffinity` / `hours` が使えます。
+
+用意されているイベント：`permission`（許可待ち）、`idle_wait`（入力待ち）、`tool_failure`、
+`turn_done`、`compact`、`agent_out`（サブエージェント送り出し）、`agent_back`（帰還）。
+
+確認は `npm run debug` の `event <イベント名>`。フック側（`hooks/`）はイベント名を投げるだけなので、
+セリフを変えるのに JavaScript を触る必要はありません。
 </details>
 
 <details>

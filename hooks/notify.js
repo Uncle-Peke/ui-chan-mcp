@@ -1,49 +1,15 @@
 #!/usr/bin/env node
-// Notification hook: when Claude Code needs the user's attention
-// (permission prompt, or the prompt has been idle waiting for input),
-// have ui-chan poke the user from her speech bubble.
-const { readPayload, pick, speak } = require('./lib/mascot');
+// Notification hook: when Claude Code needs the user's attention (a permission
+// prompt, or the prompt sitting idle waiting for input), let ういちゃん poke
+// them from her speech bubble.
+//
+// The lines live in `eventCues.events.permission` / `.idle_wait` in
+// ui-chan.config.json — both configured with no cooldown, because being
+// ignored when she is trying to fetch the user is the one case where staying
+// quiet is the wrong call.
+const { readPayload, fireEvent } = require('./lib/mascot');
 
-// Idle-waiting vs permission-request lines, in ui-chan's voice.
-const PERMISSION = [
-  {
-    text: 'ねぇ、きみの許可待ちだって〜。ボタン押したげて',
-    reading: 'ねぇ、きみのきょかまちだって〜。ぼたんおしたげて',
-    cue: 'sys_address',
-  },
-  {
-    text: 'おーい、確認だってさ。まだ止まってるが？',
-    reading: 'おーい、かくにんだってさ。まだとまってるが？',
-    cue: 'mix_disgust_anger',
-  },
-  {
-    text: 'きみのターンだよ〜。ぽちっとして',
-    reading: 'きみのたーんだよ〜。ぽちっとして',
-    cue: 'emo_joy_lo',
-  },
-];
-const IDLE = [
-  {
-    text: 'おーい、置いてけぼりなんだけど？',
-    reading: 'おーい、おいてけぼりなんだけど？',
-    cue: 'sys_awkward',
-  },
-  {
-    text: 'きみ、どこいったの〜。待ってるんだけど',
-    reading: 'きみ、どこいったの〜。まってるんだけど',
-    cue: 'emo_sad_lo',
-  },
-  {
-    text: 'ひま。まだ？',
-    reading: 'ひま。まだ？',
-    cue: 'pose_arms_crossed',
-  },
-];
+const message = String(readPayload().message || '').toLowerCase();
+const waiting = message.includes('waiting') || message.includes('idle') || message.includes('input');
 
-function chooseLine(message) {
-  const m = String(message || '').toLowerCase();
-  if (m.includes('waiting') || m.includes('idle') || m.includes('input')) return pick(IDLE);
-  return pick(PERMISSION);
-}
-
-speak(chooseLine(readPayload().message), 'notify-hook');
+fireEvent(waiting ? 'idle_wait' : 'permission', 'notify-hook');
