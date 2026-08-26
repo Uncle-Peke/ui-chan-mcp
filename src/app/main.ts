@@ -179,6 +179,10 @@ function handleRequest(ws: WebSocket, req: WsRequest): WsResponse {
     switch (req.type) {
       case 'hello': {
         agents.set(ws, { name: req.agent ?? 'unknown', connectedAt: new Date().toISOString() });
+        if (exitTimer) {
+          clearTimeout(exitTimer);
+          exitTimer = null;
+        }
         if (req.tts?.username && tts) {
           tts.setCredentials(req.tts.username, req.tts.password);
         }
@@ -237,11 +241,46 @@ function startWsServer(): void {
       }
       ws.send(JSON.stringify(handleRequest(ws, req)));
     });
-    ws.on('close', () => agents.delete(ws));
+    ws.on('close', () => {
+      agents.delete(ws);
+      scheduleExitIfIdle();
+    });
   });
   wss.on('error', (err) => {
     console.error(`[ui-chan] WebSocket server error: ${err.message}`);
   });
+}
+
+/**
+ * Quit once nothing is connected any more.
+ *
+ * The app is launched detached (by the MCP server or the SessionStart hook), so
+ * without this it outlives every client and has to be killed by hand from the
+ * repo. Agents are tracked per WebSocket, which makes "is anyone still there?"
+ * exact across windows, apps and other MCP clients alike — and it needs no
+ * cooperation from the client, so a session that dies without a goodbye still
+ * releases her.
+ *
+ * The delay matters: restarting Claude Code drops the socket and reconnects a
+ * few seconds later, and quitting on the gap would make every restart blink the
+ * mascot out of existence. Any reconnection inside the window cancels it.
+ */
+let exitTimer: NodeJS.Timeout | null = null;
+
+function scheduleExitIfIdle(): void {
+  if (exitTimer) {
+    clearTimeout(exitTimer);
+    exitTimer = null;
+  }
+  const sec = config.exitAfterLastAgentSec ?? 0;
+  if (sec <= 0 || agents.size > 0) return;
+
+  exitTimer = setTimeout(() => {
+    exitTimer = null;
+    if (agents.size > 0) return; // someone came back while we waited
+    console.error(`[ui-chan] no agents connected for ${sec}s — quitting`);
+    app.quit();
+  }, sec * 1000);
 }
 
 function createWindow(): void {

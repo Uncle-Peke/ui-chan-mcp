@@ -54,6 +54,12 @@ export interface MascotConfig {
   cuesDir?: string;
   personaFile?: string;
   window: { width: number; height: number; margin: number };
+  /** Seconds to wait after the last agent disconnects before quitting.
+   *  0 disables the auto-quit (the app then only stops via `npm run stop`).
+   *  The grace period exists because a Claude Code restart drops the socket
+   *  and reconnects seconds later — quitting instantly would make every
+   *  restart flash the mascot away and back. */
+  exitAfterLastAgentSec?: number;
   port: number;
   lipSync?: LipSyncConfig;
   tts?: TtsConfig;

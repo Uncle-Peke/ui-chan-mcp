@@ -45,6 +45,9 @@ Cue選定・PSDレイヤー名カタログなど、**新規Cue制作のための
 
 - `assetsDir` — PSD を探すディレクトリ（最初に見つかった `.psd` を使用）
 - `window` — ウィンドウサイズ・画面端からのマージン
+- `exitAfterLastAgentSec` — 最後のエージェントが切断してから終了するまでの秒数（既定 60、`0` で無効）。
+  アプリは detached で起動するため、これが無いとクライアントを閉じても残り続ける。
+  猶予を置くのは、Claude Code の再起動による一時的な切断で消えないようにするため
 - `cuesDir` — Cueのディレクトリ（デフォルト `cues`）
 - `idle.idlingCues` — アイドル中に自発的に再生される**IdlingCue**（Cue＋任意のセリフのステップ列）のプール。
   `items[].steps[]`は`{ cue?, text?, reading?, holdMs? }`で、`cue`を省略すると直前のCueを維持する。

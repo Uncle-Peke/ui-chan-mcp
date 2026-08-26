@@ -256,6 +256,49 @@ PSD が `assets/` に無い場合はプレースホルダ表示になります�
 </details>
 
 <details>
+<summary><b>マスコットを終了させたい</b></summary>
+
+MCP ツールには終了コマンドがありません（次にツールを呼んだ時点で MCP サーバが
+アプリを起動し直すため、ツールとして持たせても意味がないからです）。
+
+リポジトリのある場所で:
+
+```bash
+npm run stop
+```
+
+どこからでも止める場合:
+
+```bash
+pkill -f "ui-chan-mcp/node_modules/electron"
+npm --prefix /path/to/ui-chan-mcp run stop   # これでも可
+```
+
+アプリは detached で起動しているため、Claude Code や Claude Desktop を閉じても
+残り続けます。止めたいときは明示的に終了させてください。
+</details>
+
+<details>
+<summary><b>マスコットを終了させたい</b></summary>
+
+**接続しているエージェントがすべて切断されると、自動で終了します**（既定 60 秒後。
+`ui-chan.config.json` の `exitAfterLastAgentSec`、`0` で無効）。Claude Code を閉じても
+Claude Desktop や他の MCP クライアントが繋がっていれば終了しないので、
+共有していても取り合いになりません。猶予があるのは、Claude Code の再起動で一瞬
+切断されるだけのときに消えてしまわないようにするためです。
+
+すぐ止めたい場合：
+
+```bash
+npm run stop                                  # リポジトリのある場所で
+npm --prefix /path/to/ui-chan-mcp run stop    # どこからでも
+```
+
+MCP ツールに終了コマンドはありません。次にツールを呼んだ時点で MCP サーバが
+アプリを起動し直すため、ツールとして持たせても意味がないからです。
+</details>
+
+<details>
 <summary><b>ういビームが撃てない</b></summary>
 
 好感度が閾値（65）に届いていません。感謝・気遣い・覚えていてくれること で上がります。

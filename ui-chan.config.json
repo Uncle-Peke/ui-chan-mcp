@@ -6,6 +6,7 @@
     "height": 680,
     "margin": 16
   },
+  "exitAfterLastAgentSec": 60,
   "port": 8123,
   "idle": {
     "$comment": "IdlingCue（Cue+セリフのステップ列）のプール。weightで出やすさ（レア度）を、minAffinity/maxAffinityで必要な好感度範囲を指定できる。nameは半角英数字推奨（Tab補完対象になる）。各ステップのholdMsは無言ステップ（textなし）専用のタイマー。textがあるステップは実際にそのセリフを喋り終えるまで待ってから次に進むため、holdMsを書いても無視される",
