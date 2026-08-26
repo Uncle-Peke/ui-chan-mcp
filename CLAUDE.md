@@ -296,11 +296,25 @@ All three call `buildPersonaText()`. The hook used to build its own copy; that
 duplication is gone, and with it the class of bug where the mascot behaved
 differently depending on which door the persona came through.
 
-The handshake is what makes the plugin optional: plugins are a Claude-Code-only
-concept, so without `instructions` any other client would get the *body* (tools)
-with no character behind it. Escape hatches, for when both doors are open and
-the double injection isn't wanted: `UI_CHAN_NO_PERSONA_INSTRUCTIONS=1` (server
-side) and `UI_CHAN_NO_PERSONA_HOOK=1` (hook side; keeps the app-launch half).
+The handshake is what makes the plugin optional: a client connected to nothing
+but the MCP server would otherwise get the *body* (tools) with no character
+behind it. **Verified**: with only the connector configured (no plugin), Claude
+Desktop speaks as ういちゃん — Desktop does read `instructions`. Escape hatches,
+for when both doors are open and the double injection isn't wanted:
+`UI_CHAN_NO_PERSONA_INSTRUCTIONS=1` (server side) and `UI_CHAN_NO_PERSONA_HOOK=1`
+(hook side; keeps the app-launch half).
+
+### Claude Desktop is not a lesser client
+
+Desktop shares the plugin registry (`~/.claude/plugins/`) with Claude Code: a
+plugin registered from Claude Code — including a `directory` source pointing at
+this repo — also appears under Desktop's 設定 → プラグイン with its skills,
+agents, connectors and hooks. Desktop's own "add" UI only accepts GitHub
+marketplaces, which is why registration is done from the Claude Code side. Note
+that installing the plugin also registers the MCP server (`.mcp.json`), so a
+hand-written `claude_desktop_config.json` entry on top of it starts the same
+server twice — harmless (state lives in the app, multiple agents are supported)
+but pure waste. The real axis is connector-only vs plugin, not Code vs Desktop.
 
 `agents/` (talk, mode) and `skills/` (talk, mode, beam, eli14) are the plugin's
 subagents and slash commands. To retarget a different character, rewrite
