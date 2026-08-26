@@ -176,7 +176,7 @@
           "name": "evening",
           "weight": 6,
           "hours": [18, 22],
-          "steps": [{ "cue": "sys_neutral", "text": "もう夜だ。おつかれさま。", "reading": "もうよるだ。おつかれさま。" }]
+          "steps": [{ "cue": "emo_anger_lo", "text": "うい、そろそろ帰りたいんだけど。", "reading": "うい、そろそろかえりたいんだけど。" }]
         },
         {
           "name": "night_sleepy",
