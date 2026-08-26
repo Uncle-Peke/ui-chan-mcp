@@ -45,7 +45,23 @@ npm run doctor                  # ビルド・PSD・資格情報・エンジン�
 /plugin install ui-chan@ui-chan
 ```
 
-**Claude Desktop** — 1コマンドで登録できます（既存の設定は保持し、`.bak` を残します）。
+**Claude Desktop** — アプリ内に追加ボタンは無く、設定ファイルに書く方式です。
+**設定 → 開発者 → 設定を編集** で `claude_desktop_config.json` を開き、次を書き足してから
+アプリを完全に終了（⌘Q）して起動し直します。`command` には `which node` の結果を入れてください
+（Claude Desktop はターミナルと環境が違うため、`node` とだけ書くと見つからないことがあります）。
+
+```json
+{
+  "mcpServers": {
+    "ui-chan": {
+      "command": "/usr/local/bin/node",
+      "args": ["/path/to/ui-chan-mcp/dist/mcp-server.js"]
+    }
+  }
+}
+```
+
+同じことを1コマンドでやる場合（既存の設定は保持し、`.bak` を残します）：
 
 ```bash
 npm run install-desktop        # 解除は npm run install-desktop -- --remove
