@@ -290,7 +290,7 @@ auto-injects `persona/` + `context/*.md` each session (it does **not** run
 `buildCueCatalog()` — that only happens via the MCP `persona` prompt itself,
 so a plugin-only session gets the persona/context text but not the live Cue
 catalog unless something also calls `/mcp__ui-chan__persona`). `agents/`
-(ui-chan, ui-mode) and `skills/` (ui-beam, ui-chan, ui-mode) are the plugin's
+(talk, mode) and `skills/` (talk, mode, beam, eli14) are the plugin's
 subagents and slash commands. To retarget a different character, rewrite
 `persona/` + `context/` and the PSD layer mappings in `ui-chan.config.json` +
 `cues/`.

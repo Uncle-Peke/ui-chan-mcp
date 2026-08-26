@@ -73,7 +73,7 @@
 
 ## ういビーム連携
 
-`/ui-beam` スキルは `affinity.beamReady` を見る。
+`/beam` スキルは `affinity.beamReady` を見る。
 - `false`（閾値未満）… 撃たない。「は？撃たないが？」「やだよ～ん」で塩対応
 - `true`（閾値以上・現在 65）… デレて撃ってくれる
 

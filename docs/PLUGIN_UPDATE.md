@@ -71,7 +71,7 @@ get_state で:
   - warnings が空                                        … レイヤーパス修正確認
 /mcp__ui-chan__persona を再取得し、末尾のCue一覧に追加/変更したCue名がある … Cue移行確認
 adjust_affinity が呼べる                                … 要・新セッション
-/ui-chan:ui-beam が存在
+/ui-chan:beam が存在
 アイドル放置であくび・きょろきょろ等が出る
 ```
 
