@@ -25,7 +25,7 @@ Claude Code や任意の MCP 対応エージェントから、マスコットの
 急ぐ人向けの要約：
 
 ```bash
-git clone <repo> ui-chan-mcp && cd ui-chan-mcp
+git clone https://github.com/Uncle-Peke/ui-chan-mcp.git && cd ui-chan-mcp
 npm install                     # 依存の取得 + ビルド（prepare で dist/ まで作られる）
 cp .env.example .env            # VoiSona Talk の資格情報（音声を使わないなら不要）
 # 立ち絵 PSD を assets/ に配置
