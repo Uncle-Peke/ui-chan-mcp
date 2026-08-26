@@ -174,7 +174,7 @@ PSD が `assets/` に無い場合はプレースホルダ表示になります�
 <details>
 <summary><b>アイドル中の独り言がうるさい／静かすぎる</b></summary>
 
-`ui-chan.config.json` の `idle.idlingCues` にある `minSec` / `maxSec`（既定 45〜120秒）で間隔を、
+`ui-chan.config.json` の `idle.idlingCues` にある `minSec` / `maxSec`（既定 120〜300秒）で間隔を、
 各 IdlingCue の `weight` で出やすさを調整します。`minAffinity` / `maxAffinity` で
 好感度による出し分けもできます。
 </details>
