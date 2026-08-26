@@ -10,9 +10,38 @@
 // install, so if it doesn't also generate the catalog, an agent that never
 // manually calls `/mcp__ui-chan__persona` would never learn what Cues exist.
 const fs = require('fs');
+const net = require('net');
 const path = require('path');
+const { spawn } = require('child_process');
 
 const root = path.resolve(__dirname, '..');
+
+/**
+ * Start the display app if nothing is listening on its WebSocket port yet.
+ *
+ * The MCP server already relaunches the app on demand, but only once a tool is
+ * actually called — so a fresh session shows no mascot until the agent happens
+ * to speak. Firing this from SessionStart means she's on screen from the start.
+ * Fire-and-forget: the hook must not block the session, and a failure here is
+ * never worth breaking persona injection over.
+ */
+function ensureAppRunning(port) {
+  const probe = net.connect({ host: '127.0.0.1', port });
+  probe.setTimeout(700);
+  const launch = () => {
+    probe.destroy();
+    try {
+      // In a plain Node process, require('electron') resolves to the binary path.
+      const electronPath = require(path.join(root, 'node_modules', 'electron'));
+      spawn(electronPath, [root], { detached: true, stdio: 'ignore' }).unref();
+    } catch {
+      /* electron not installed (npm install not run yet) — nothing to launch */
+    }
+  };
+  probe.on('connect', () => probe.destroy()); // already running
+  probe.on('timeout', launch);
+  probe.on('error', launch);
+}
 
 function readIfExists(p) {
   try {
@@ -29,6 +58,8 @@ try {
   /* use defaults */
 }
 const personaFile = config.personaFile ?? 'persona/ui-chan.md';
+
+ensureAppRunning(Number(process.env.UI_CHAN_PORT ?? config.port ?? 8123));
 
 const parts = [];
 const persona = readIfExists(path.join(root, personaFile));
