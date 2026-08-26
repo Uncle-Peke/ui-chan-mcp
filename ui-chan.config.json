@@ -12,8 +12,8 @@
     "revertAfterSec": 5,
     "idlingCues": {
       "enabled": true,
-      "minSec": 12,
-      "maxSec": 30,
+      "minSec": 45,
+      "maxSec": 120,
       "items": [
         {
           "name": "salty",
