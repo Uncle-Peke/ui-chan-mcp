@@ -626,7 +626,10 @@ export class UiChanState {
     const group = cfg?.events?.[event];
     if (!group) {
       const known = Object.keys(cfg?.events ?? {});
-      return { ok: false, error: `unknown event "${event}". known: ${known.join(', ') || '(none)'}` };
+      return {
+        ok: false,
+        error: `unknown event "${event}". known: ${known.join(', ') || '(none)'}`,
+      };
     }
 
     const key = group.throttleKey ?? event;
@@ -659,7 +662,13 @@ export class UiChanState {
   /** Debug: list the configured EventCue pools. */
   listEventCues(): {
     enabled: boolean;
-    events: { event: string; count: number; cooldownSec: number; chance: number; names: string[] }[];
+    events: {
+      event: string;
+      count: number;
+      cooldownSec: number;
+      chance: number;
+      names: string[];
+    }[];
   } {
     const cfg = this.config.eventCues;
     return {

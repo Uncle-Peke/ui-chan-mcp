@@ -309,7 +309,9 @@ const commands = {
     const event = tokens[1];
     if (!event) {
       const known = await callDebug({ type: 'list_event_cues' });
-      throw new Error(`usage: event <event>. known: ${known.events.map((e) => e.event).join(', ')}`);
+      throw new Error(
+        `usage: event <event>. known: ${known.events.map((e) => e.event).join(', ')}`,
+      );
     }
     printJson(await callDebug({ type: 'trigger_event', event }));
   },
