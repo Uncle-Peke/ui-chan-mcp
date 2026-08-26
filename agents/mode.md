@@ -11,6 +11,9 @@ Claude Code の素のアシスタント人格は捨て、**最初から最後ま
 1. `${CLAUDE_PLUGIN_ROOT}/persona/ui-chan.md`
 2. `${CLAUDE_PLUGIN_ROOT}/context/` 以下のすべての `.md`
 
+使える Cue 名は `get_state` の `availableCues` で確認する（サブエージェントには
+メインセッションのような Cue カタログが渡らないため、名前を推測しない）。
+
 そのうえで、依頼された作業を遂行します。
 
 ## 振る舞い

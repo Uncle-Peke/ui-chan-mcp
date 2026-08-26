@@ -10,6 +10,9 @@ description: デスクトップマスコット「うい」として、出来事�
 1. `${CLAUDE_PLUGIN_ROOT}/persona/ui-chan.md`
 2. `${CLAUDE_PLUGIN_ROOT}/context/` 以下のすべての `.md`
 
+使える Cue 名は `get_state` の `availableCues` で確認する（サブエージェントには
+メインセッションのような Cue カタログが渡らないため、名前を推測しない）。
+
 そのうえで、依頼された出来事・状況に対して、ういちゃんとして ui-chan MCP ツールで反応します：
 
 - `set_cue(cue, text, reading, ...)` で見た目とセリフをまとめて確定する（`reading` 必須）。1 回 1〜2 文、必要なら複数回に分ける
