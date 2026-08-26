@@ -296,7 +296,7 @@
     <h1><span class="ruby">S E T U P</span>ういを動かすまで</h1>
     <p class="hero-note">
       クローンしてきてから、画面のすみっこにういが出てくるまで。
-      Claude Code でも Claude Desktop でも動くよ。順番にやれば大丈夫。
+      Claude Code でも Claude Desktop でも、同じ手順で動くよ。
     </p>
   </header>
 
@@ -395,52 +395,56 @@ cd ui-chan-mcp</pre>
   </section>
 
   <section>
-    <h2><span class="n">03</span>どっちの Claude で使う？</h2>
+    <h2><span class="n">03</span>入れ方は2つ。おすすめは「プラグイン」</h2>
     <p class="lede">
-      Claude Code（ターミナルのやつ）と Claude Desktop（アプリのやつ）、どっちでも動く。
-      両方に入れてもいいよ。ういは1人しかいないから、同じ子が両方から喋る。
+      Claude Code（ターミナルのやつ）でも Claude Desktop（アプリのやつ）でも、
+      入れ方は同じ2択。<b>アプリの違いじゃなくて、入れ方の違いで</b>できることが変わるよ。
     </p>
     <div class="fig">
-      <svg viewBox="0 0 620 250" role="img" aria-label="Claude Code と Claude Desktop でできることの比較">
-        <rect x="14" y="20" width="286" height="212" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></rect>
-        <rect x="320" y="20" width="286" height="212" rx="12" fill="var(--card)" stroke="var(--rule)" stroke-width="1.5"></rect>
+      <svg viewBox="0 0 620 250" role="img" aria-label="コネクタのみとプラグインでできることの比較">
+        <rect x="14" y="20" width="286" height="212" rx="12" fill="var(--card)" stroke="var(--rule)" stroke-width="1.5"></rect>
+        <rect x="320" y="20" width="286" height="212" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></rect>
         <g font-family="Zen Maru Gothic, sans-serif" font-size="16" fill="var(--ink)" text-anchor="middle">
-          <text x="157" y="52">Claude Code</text>
-          <text x="463" y="52">Claude Desktop</text>
+          <text x="157" y="52">コネクタだけ</text>
+          <text x="463" y="52">プラグイン</text>
         </g>
         <g font-family="Roboto Mono, monospace" font-size="11" fill="var(--ink-faint)" text-anchor="middle">
-          <text x="157" y="72">ターミナル / 全部入り</text>
-          <text x="463" y="72">アプリ / 会話がメイン</text>
+          <text x="157" y="72">設定ファイルに数行</text>
+          <text x="463" y="72">コマンド2行・おすすめ</text>
         </g>
         <g font-family="Zen Kaku Gothic New, sans-serif" font-size="13" fill="var(--ink)">
           <text x="40" y="106">画面に出る・喋る</text><text x="272" y="106" text-anchor="end">できる</text>
           <text x="40" y="134">ういの性格</text><text x="272" y="134" text-anchor="end">入る</text>
-          <text x="40" y="162">/talk などのコマンド</text><text x="272" y="162" text-anchor="end">使える</text>
-          <text x="40" y="190">失敗に自分で反応</text><text x="272" y="190" text-anchor="end">する</text>
-          <text x="40" y="218">入れかた</text><text x="272" y="218" text-anchor="end">コマンド2行</text>
+          <text x="40" y="162">/talk などのコマンド</text><text x="272" y="162" text-anchor="end" fill="var(--warm)">なし</text>
+          <text x="40" y="190">失敗に自分で反応</text><text x="272" y="190" text-anchor="end" fill="var(--warm)">しない</text>
+          <text x="40" y="218">コネクタの登録</text><text x="272" y="218" text-anchor="end">自分でやる</text>
 
           <text x="346" y="106">画面に出る・喋る</text><text x="578" y="106" text-anchor="end">できる</text>
           <text x="346" y="134">ういの性格</text><text x="578" y="134" text-anchor="end">入る</text>
-          <text x="346" y="162">/talk などのコマンド</text><text x="578" y="162" text-anchor="end" fill="var(--warm)">なし</text>
-          <text x="346" y="190">失敗に自分で反応</text><text x="578" y="190" text-anchor="end" fill="var(--warm)">しない</text>
-          <text x="346" y="218">入れかた</text><text x="578" y="218" text-anchor="end">設定ファイル1つ</text>
+          <text x="346" y="162">/talk などのコマンド</text><text x="578" y="162" text-anchor="end">使える</text>
+          <text x="346" y="190">失敗に自分で反応</text><text x="578" y="190" text-anchor="end">する</text>
+          <text x="346" y="218">コネクタの登録</text><text x="578" y="218" text-anchor="end">ついてくる</text>
         </g>
       </svg>
     </div>
-    <p class="cap">
-      右の2つが「なし」なのは、Claude Desktop にプラグインの仕組みが無いから。
-      喋る・表情が変わる・性格が入る、は同じように動くよ。
-    </p>
+    <div class="callout">
+      プラグインを入れるとコネクタも一緒に付いてくる。<b>両方やると同じものが二重に動く</b>ので、
+      プラグインにするなら手で書いた設定は消してね。
+    </div>
   </section>
 
   <section>
-    <h2><span class="n">04</span>Claude Code に入れる</h2>
-    <p class="lede">Claude Code を開いて、この2行を打つだけ。パスは 01 で置いた場所。</p>
+    <h2><span class="n">04</span>プラグインで入れる（おすすめ）</h2>
+    <p class="lede">
+      Claude Code で2行打つだけ。<b>入れた内容は Claude Desktop にも共有される</b>ので、
+      Desktop 側でやることは無いよ。
+    </p>
     <div class="steps">
       <div class="step">
         <div class="no">01</div>
         <div class="body">
           <h3>置き場所を教える</h3>
+          <p>Claude Code の中で打つ。パスは 01 で置いた場所。</p>
           <pre>/plugin marketplace add /path/to/ui-chan-mcp</pre>
         </div>
       </div>
@@ -455,17 +459,25 @@ cd ui-chan-mcp</pre>
         <div class="no">03</div>
         <div class="body">
           <h3>開き直す</h3>
-          <p>Claude Code を一度終了して、もう一度開く。次に開いたときからういが出てくる。</p>
+          <p>
+            Claude Code は一度終了してもう一度開く。Claude Desktop も使うなら、そっちは
+            <b>完全に終了</b>してから起動（Mac は ⌘ + Q。ウィンドウを閉じるだけだと終わってない）。
+            設定 → プラグイン に「ういちゃんデスクトップマスコット」が出ていればOK。
+          </p>
         </div>
       </div>
     </div>
+    <p class="cap">
+      Claude Desktop 側の追加ボタンは GitHub からの追加だけで、手元のフォルダは選べない。
+      だから登録は Claude Code から。台帳は共有なので、一度やれば両方に出る。
+    </p>
   </section>
 
   <section>
-    <h2><span class="n">05</span>Claude Desktop に入れる</h2>
+    <h2><span class="n">05</span>コネクタだけで入れる</h2>
     <p class="lede">
-      アプリの中に「追加」ボタンは無くて、<b>設定ファイルに数行書く</b>やりかた。
-      こわく見えるけど、やることはコピペだけ。
+      コマンドは使いたくない、あるいは喋ってくれればいい、という場合。
+      Claude Desktop の設定ファイルに数行書く。こわく見えるけどコピペだけ。
     </p>
     <div class="steps">
       <div class="step">
@@ -473,9 +485,8 @@ cd ui-chan-mcp</pre>
         <div class="body">
           <h3>設定ファイルを開く</h3>
           <p>
-            Claude Desktop の <b>設定</b>（Mac は ⌘ + カンマ）→ <b>開発者</b> →
-            <b>設定を編集</b>。<code>claude_desktop_config.json</code> の場所が開くので、
-            そのファイルをテキストエディタで開く。
+            <b>設定</b>（Mac は ⌘ + カンマ）→ <b>開発者</b> → <b>設定を編集</b>。
+            <code>claude_desktop_config.json</code> の場所が開くので、テキストエディタで開く。
           </p>
         </div>
       </div>
@@ -492,9 +503,8 @@ cd ui-chan-mcp</pre>
         <div class="body">
           <h3>書き足す</h3>
           <p>
-            ファイルが空っぽなら下をまるごと貼る。すでに何か書いてあるなら
-            <code>"mcpServers"</code> の中に <code>"ui-chan"</code> の行だけ足す。
-            <b>2か所</b>を自分の環境に置き換えてね。
+            空っぽなら下をまるごと貼る。何か書いてあるなら <code>"mcpServers"</code> の中に
+            <code>"ui-chan"</code> だけ足す。<b>2か所</b>を自分の環境に置き換えてね。
           </p>
           <pre>{
   "mcpServers": {
@@ -511,20 +521,16 @@ cd ui-chan-mcp</pre>
         <div class="body">
           <h3>アプリを開き直す</h3>
           <p>
-            <b>完全に終了</b>してから起動する（Mac は ⌘ + Q。ウィンドウを閉じるだけだと終わってない）。
-            入力欄のあたりに工具のアイコンが出ていれば繋がってる。
+            ⌘ + Q で完全に終了してから起動。<code>+</code> メニューの <b>コネクタ</b> に
+            ui-chan が出ていれば繋がってる（プラグインの棚じゃないので注意）。
           </p>
         </div>
       </div>
     </div>
     <div class="callout">
-      コマンドが平気な人は <code>npm run install-desktop</code> で 01〜03 が一発で終わる。
+      コマンドが平気な人は <code>npm run install-desktop</code> で 01〜03 が一発。
       元の設定は <code>.bak</code> に残るし、<code>npm run install-desktop -- --remove</code> で戻せる。
     </div>
-    <p class="cap">
-      うまくいかないときは、まず node の場所が合ってるか確認。
-      Claude Desktop はターミナルと違う環境で動くので、<code>node</code> とだけ書くと見つからないことがある。
-    </p>
   </section>
 
   <section>

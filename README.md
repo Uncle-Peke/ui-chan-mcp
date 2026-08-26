@@ -35,19 +35,30 @@ npm run doctor                  # ビルド・PSD・資格情報・エンジン�
 ### つなぐ
 
 **どの繋ぎ方でも、繋いだ時点で完了**です。マスコットのアプリと VoiSona Talk は接続時に自動起動し、
-人格は MCP のハンドシェイクに乗って渡ります。人格ファイルを貼る作業はありません。
+人格は MCP のハンドシェイク（`instructions`）に乗って渡ります。人格ファイルを貼る作業はありません。
 
-**Claude Code（プラグイン・推奨）** — MCP 登録・人格注入・アプリ起動に加えて、
-スラッシュコマンドと作業への自動リアクションが付きます。
+**プラグインとして入れる（Claude Code / Claude Desktop 共通・推奨）**
+
+プラグインの台帳は Claude Code と Claude Desktop で共有されます。Claude Code で一度登録すれば、
+Desktop 側の「設定 → プラグイン」にも同じものが現れます（逆に Desktop の追加 UI は GitHub からの
+追加のみで、ローカルのフォルダは指定できません）。
 
 ```
-/plugin marketplace add /path/to/ui-chan-mcp
+/plugin marketplace add /path/to/ui-chan-mcp      # ローカルのクローンから
 /plugin install ui-chan@ui-chan
 ```
 
-**Claude Desktop** — アプリ内に追加ボタンは無く、設定ファイルに書く方式です。
-**設定 → 開発者 → 設定を編集** で `claude_desktop_config.json` を開き、次を書き足してから
-アプリを完全に終了（⌘Q）して起動し直します。`command` には `which node` の結果を入れてください
+GitHub から入れる場合は `Uncle-Peke/ui-chan-mcp` を指定します（ただし `dist/` はコミットされていないため、
+別途クローンして `npm install` した実体が必要です）。
+
+プラグインを入れると、**コネクタ（MCP サーバ）も一緒に登録されます**（`.mcp.json`）。
+手動でのコネクタ登録は不要で、両方やると同じサーバが二重に起動します。
+
+**MCP サーバだけを使う（コネクタのみ）**
+
+スキルやフックは要らず、ツールと人格だけあればいい場合。Claude Desktop なら
+**設定 → 開発者 → 設定を編集** で `claude_desktop_config.json` を開き、次を書き足して
+アプリを完全に終了（⌘Q）してから起動し直します。`command` には `which node` の結果を入れてください
 （Claude Desktop はターミナルと環境が違うため、`node` とだけ書くと見つからないことがあります）。
 
 ```json
@@ -67,21 +78,25 @@ npm run doctor                  # ビルド・PSD・資格情報・エンジン�
 npm run install-desktop        # 解除は npm run install-desktop -- --remove
 ```
 
-**その他の MCP クライアント / 手動登録** — 認証情報は `.env` から読まれるので `env` は不要です。
+Claude Code で手動登録する場合は次のとおりです。認証情報は `.env` から読まれるので `env` は不要です。
 
 ```bash
 claude mcp add ui-chan -- node /path/to/ui-chan-mcp/dist/mcp-server.js
 ```
 
-### クライアントによる違い
+### 入れ方による違い
 
-| | Claude Code（プラグイン） | Claude Desktop / その他 |
+| | コネクタのみ | プラグイン |
 |---|---|---|
 | ツール（`set_cue` ほか） | ○ | ○ |
-| 人格 | ○（フック＋ハンドシェイク） | ○（ハンドシェイク） |
+| 人格（ハンドシェイクで注入） | ○ | ○ |
 | アプリ・音声エンジンの自動起動 | ○ | ○ |
-| `/ui-chan:talk` などのコマンド | ○ | ✕（プラグインは Claude Code 専用） |
-| 作業への自動リアクション（EventCue） | ○ | ✕（フックが無いため） |
+| `/talk` `/mode` `/beam` `/eli14` | ✕ | ○ |
+| サブエージェント（talk / mode） | ✕ | ○ |
+| 作業への自動リアクション（EventCue） | ✕ | ○ |
+
+Claude Code と Claude Desktop の差ではなく、**入れ方の差**です。どちらのアプリでも、
+プラグインとして入れれば同じものが使えます。
 
 ## アーキテクチャ
 
