@@ -78,7 +78,12 @@ Google Fonts を1行で読む：
 - 図は `.fig`（`--card` 面 + `--rule` 枠 + `border-radius: 14px` + `overflow-x: auto`）に入れる。
   中の SVG は `width: 100%` / `height: auto` / `min-width: 380px`
 - 特に注意してほしいことは `.callout`（左に `--warm` の3px罫 + `--warm-soft` の面）1個まで
-- 装飾アニメは `@media (prefers-reduced-motion: no-preference)` の中だけ。ヒーローに1つで十分
+- **雨は全ページ共通の背景**。`.rain`（`position: fixed; inset: 0; z-index: 0`）に細い `<i>` を
+  十数本入れ、`left` / `height` / `animation-duration` / `animation-delay` を1本ずつバラす。
+  `.wrap` は `position: relative; z-index: 1` で必ず雨の上に置く（本文に雨をかぶせない）。
+  スクロールしても画面に貼り付いたまま降り続けるのが正しい状態
+- 装飾アニメは `@media (prefers-reduced-motion: no-preference)` の中だけ。
+  `reduce` 側では `.rain { display: none }` で雨ごと消す
 
 #### 図の描きかた
 

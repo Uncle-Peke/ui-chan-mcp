@@ -98,15 +98,6 @@
     gap: 20px;
   }
 
-  header .rain {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-  }
-
-  header > * { position: relative; z-index: 1; }
-
   h1 { font-size: clamp(34px, 7vw, 52px); }
   h1 .ruby { display: block; font-size: 14px; letter-spacing: 0.3em; color: var(--accent); font-weight: 500; }
 
@@ -190,6 +181,38 @@
     color: var(--ink);
   }
 
+  /* 雨：スクロールしても付いてくる全面レイヤー。常にコンテンツの後ろ */
+  .rain {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .rain i {
+    position: absolute;
+    top: -12vh;
+    width: 2px;
+    height: 16px;
+    border-radius: 1px;
+    background: var(--drop);
+    opacity: 0.5;
+  }
+  .wrap { position: relative; z-index: 1; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .rain i { animation: fall linear infinite; }
+    @keyframes fall {
+      from { transform: translateY(0); opacity: 0; }
+      8%   { opacity: 0.5; }
+      92%  { opacity: 0.5; }
+      to   { transform: translateY(118vh); opacity: 0; }
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rain { display: none; }
+  }
+
   footer {
     border-top: 1px solid var(--rule);
     padding-top: 22px;
@@ -201,32 +224,28 @@
   }
   footer a { color: var(--accent); }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .drop { animation: fall 3.6s linear infinite; }
-    .drop:nth-child(2) { animation-duration: 4.4s; animation-delay: -1.2s; }
-    .drop:nth-child(3) { animation-duration: 3.1s; animation-delay: -2.4s; }
-    .drop:nth-child(4) { animation-duration: 5s; animation-delay: -0.6s; }
-    .drop:nth-child(5) { animation-duration: 4s; animation-delay: -3s; }
-    @keyframes fall {
-      from { transform: translateY(-30px); opacity: 0; }
-      15% { opacity: 1; }
-      to { transform: translateY(220px); opacity: 0; }
-    }
-  }
 </style>
+
+<div class="rain" aria-hidden="true">
+    <i style="left: 4%; height: 14px; animation-duration: 5.2s; animation-delay: -0.4s;"></i>
+    <i style="left: 11%; height: 18px; animation-duration: 6.6s; animation-delay: -2.9s;"></i>
+    <i style="left: 19%; height: 12px; animation-duration: 4.6s; animation-delay: -1.7s;"></i>
+    <i style="left: 27%; height: 16px; animation-duration: 7.2s; animation-delay: -4.1s;"></i>
+    <i style="left: 34%; height: 20px; animation-duration: 5.8s; animation-delay: -0.9s;"></i>
+    <i style="left: 42%; height: 13px; animation-duration: 6.1s; animation-delay: -3.3s;"></i>
+    <i style="left: 49%; height: 17px; animation-duration: 4.9s; animation-delay: -2.2s;"></i>
+    <i style="left: 57%; height: 15px; animation-duration: 7.6s; animation-delay: -5.0s;"></i>
+    <i style="left: 64%; height: 19px; animation-duration: 5.5s; animation-delay: -1.1s;"></i>
+    <i style="left: 71%; height: 12px; animation-duration: 6.9s; animation-delay: -3.8s;"></i>
+    <i style="left: 79%; height: 16px; animation-duration: 5.0s; animation-delay: -2.6s;"></i>
+    <i style="left: 86%; height: 18px; animation-duration: 7.0s; animation-delay: -0.2s;"></i>
+    <i style="left: 93%; height: 14px; animation-duration: 6.3s; animation-delay: -4.4s;"></i>
+    <i style="left: 97%; height: 17px; animation-duration: 5.4s; animation-delay: -1.9s;"></i>
+</div>
 
 <div class="wrap">
 
   <header>
-    <svg class="rain" viewBox="0 0 720 240" preserveAspectRatio="none" aria-hidden="true">
-      <g fill="var(--drop)">
-        <ellipse class="drop" cx="60" cy="20" rx="1.6" ry="7"></ellipse>
-        <ellipse class="drop" cx="180" cy="10" rx="1.6" ry="7"></ellipse>
-        <ellipse class="drop" cx="520" cy="16" rx="1.6" ry="7"></ellipse>
-        <ellipse class="drop" cx="640" cy="8" rx="1.6" ry="7"></ellipse>
-        <ellipse class="drop" cx="410" cy="24" rx="1.6" ry="7"></ellipse>
-      </g>
-    </svg>
     <p class="label">ELI14 — じぶんの説明</p>
     <h1><span class="ruby">U I</span>ういって、なに？</h1>
     <p class="hero-note">
