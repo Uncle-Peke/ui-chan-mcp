@@ -10,287 +10,198 @@ Claude Code や任意の MCP 対応エージェントから、マスコットの
   視覚操作ツールは `set_cue` ただ1つ
 - 発話キュー・複数エージェント同時接続に対応
 
-## 素材について（重要）
-
-立ち絵 PSD はリポジトリに **含まれていません**（著作権保護された素材のため）。
-`assets/` ディレクトリに PSDTool 対応の PSD ファイルを置くと動きます。
-PSD が無い場合はアプリに案内が表示されます。
-
-同梱の `ui-chan.config.json` と `cues/*.json` は
-[雨衣（うい）立ち絵素材（坂本アヒル様）](https://www.ui-roid.com/) のレイヤー構成向けに書かれています。
-利用時は[雨衣キャラクターガイドライン](https://www.ui-roid.com/guidelines/)の範囲でどうぞ。
-別の PSD を使う場合は `npm run dump-psd -- path/to/file.psd` でレイヤー名を確認し、
-`ui-chan.config.json`（`cues/default.json` が土台）と `cues/*.json`（見た目＋声）を書き換えてください。
+> **立ち絵 PSD はリポジトリに含まれていません**（著作権保護された素材のため）。
+> `assets/` に PSDTool 対応の PSD を置くと動きます。無い場合はプレースホルダで起動します。
+> 同梱の `ui-chan.config.json` と `cues/*.json` は
+> [雨衣（うい）立ち絵素材（坂本アヒル様）](https://www.ui-roid.com/) のレイヤー構成向けです。
+> 利用は[雨衣キャラクターガイドライン](https://www.ui-roid.com/guidelines/)の範囲でどうぞ。
 
 ## セットアップ
 
+**→ [図解セットアップ手順](https://claude.ai/code/artifact/7baf161a-20a2-435d-ac9a-9da363be8be7)**
+（クローンから画面に出るまで。人が読んでも AI が読んでも分かる粒度で書いてあります）
+
+急ぐ人向けの要約：
+
 ```bash
-npm install          # 依存の取得とビルド（prepare スクリプトで dist/ まで作られます）
-cp .env.example .env # VoiSona Talk の資格情報を書く（音声を使わないなら不要）
-# 立ち絵PSDを assets/ に配置
-npm run doctor       # ビルド・PSD・資格情報・エンジン起動をまとめて確認
+git clone <repo> ui-chan-mcp && cd ui-chan-mcp
+npm install                     # 依存の取得 + ビルド（prepare で dist/ まで作られる）
+cp .env.example .env            # VoiSona Talk の資格情報（音声を使わないなら不要）
+# 立ち絵 PSD を assets/ に配置
+npm run doctor                  # ビルド・PSD・資格情報・エンジン起動をまとめて確認
 ```
 
-`npm run doctor` は足りないものだけを教えてくれます（PSD なし・資格情報なしは警告どまりで、
-アプリ自体は起動します）。
-
-### Claude Code プラグインとして使う（推奨）
-
-このリポジトリ自体が Claude Code プラグイン兼マーケットプレイスです。
-事前に `npm install` を済ませたうえで（ビルドは `prepare` で自動実行されます）：
+Claude Code につなぐ方法は 2 つ。**プラグインが推奨**です（MCP 登録・人格注入・アプリ起動が全部自動）。
 
 ```
 /plugin marketplace add /path/to/ui-chan-mcp
 /plugin install ui-chan@ui-chan
 ```
 
-プラグインを有効にすると：
-
-- **MCP サーバが自動登録**される（`.mcp.json`、手動の `claude mcp add` 不要）
-- **セッション開始時に人格を自動注入**（SessionStart フックが persona/ と context/ を読み込む。
-  最初から常にういちゃんとして振る舞う）
-- **セッション開始時に表示アプリを自動起動**（同じフックが WebSocket ポートを確認し、
-  起動していなければ Electron アプリを立ち上げる。最初のツール呼び出しを待たずに画面に出る）
-- **`/ui-chan:persona`** — 人格ファイル編集後の再読み込み
-- **`/ui-chan:ui-beam`** — ういビーム（ファンサービス必殺技）
-- **ui-chan エージェント** — 「ういちゃんにリアクションさせる」用のサブエージェント
-
-VoiSona Talk の認証情報は、リポジトリ直下の `.env` に書くのが手軽です
-（`.env` は gitignore 済み）：
+プラグインを使わない場合は MCP サーバを手で登録します。認証情報は `.env` から読まれるので
+`env` は省略できます。
 
 ```bash
-cp .env.example .env
-# .env
-# UI_CHAN_TTS_USERNAME=you@example.com
-# UI_CHAN_TTS_PASSWORD=api-password
+claude mcp add ui-chan -- node /path/to/ui-chan-mcp/dist/mcp-server.js
 ```
-
-シェルの環境変数でも渡せます（プラグインが環境を継承します）。**環境変数のほうが優先**され、
-`.env` はそれを上書きしません：
-
-```bash
-# ~/.zshrc など
-export UI_CHAN_TTS_USERNAME="you@example.com"
-export UI_CHAN_TTS_PASSWORD="api-password"
-```
-
-### Claude Code への登録（プラグインを使わない場合）
-
-プロジェクトの `.mcp.json`（またはユーザー設定の `mcpServers`）に定義します。
-**VoiSona Talk の認証情報はここ（エージェント定義側）に書き、本サーバの config には持たせません**：
-
-```json
-{
-  "mcpServers": {
-    "ui-chan": {
-      "command": "node",
-      "args": ["/path/to/ui-chan-mcp/dist/mcp-server.js"],
-      "env": {
-        "UI_CHAN_TTS_USERNAME": "VoiSonaログインのメールアドレス",
-        "UI_CHAN_TTS_PASSWORD": "VoiSonaのAPIタブで設定したパスワード"
-      }
-    }
-  }
-}
-```
-
-CLI で登録する場合：
-
-```bash
-claude mcp add ui-chan \
-  -e UI_CHAN_TTS_USERNAME="you@example.com" \
-  -e UI_CHAN_TTS_PASSWORD="api-password" \
-  -- node /path/to/ui-chan-mcp/dist/mcp-server.js
-```
-
-音声を使わないなら `env` ごと省略できます（`.env` を置いておけばそちらから読まれます）。
-表示アプリはツール呼び出し時に自動起動されます（手動起動は `npm run app`）。
-
-VoiSona Talk が起動していなければ MCP サーバが自動で起動し、**REST API が応答するまで待ちます**
-（macOS、`tts.enabled: true` のとき／最大20秒）。セッション中にエンジンを終了しても、次の
-`set_cue` で起動し直します（30秒に1回まで）。エンジンに繋がらないあいだは音声なしで喋り続け、
-`get_state` の `warnings` にその旨が出ます。
-
-## MCP ツール
-
-| ツール | 引数 | 説明 |
-|---|---|---|
-| `set_cue` | `cue`, `text?`, `reading?`, `duration_ms?`, `pitch?`, `speed?`, `volume?`, `intonation?` | Cue（見た目＋声）を切り替え、任意でセリフを同時に話す。`text` を省略すると無言でCueだけ変わる。未知の`cue`名は`default`にフォールバックし`note`が付く。`pitch`/`speed`/`volume`/`intonation` はその一行だけのアドリブ演技パラメータ |
-| `get_state` | — | 現在の状態・接続エージェント・好感度（`affinity`）・警告 |
-| `adjust_affinity` | `delta`, `reason?` | 好感度を相対的に増減（セッション内のみ・再起動でリセット）。褒められたら＋、旦那面・塩鮭案件で−。ういビームの発射可否を左右 |
-| `clear` | — | 吹き出し・Cueを初期状態（`default`）にリセット |
-
-Cueの一覧は`get_state`ではなく、`persona`プロンプトが起動のたびに`cues/*.json`から動的生成してAIのコンテキストに渡します（`get_state`はあくまで現在のランタイム状態のためのツール）。
 
 ## アーキテクチャ
 
-```
-Agent (Claude Code 等) ──stdio──▶ dist/mcp-server.js ──WebSocket(127.0.0.1:8123)──▶ Electron アプリ
-                                   （未起動なら自動起動）                          ├─ 状態管理（発話キュー・アイドル）
-                                                                                  └─ レンダラ（PSD合成・吹き出し・まばたき）
-```
+MCP サーバは薄いブリッジで、**状態はすべて Electron アプリ側に一元化**されています。
+複数のエージェントが同時に繋いでも状態が食い違いません。
 
-- MCP サーバは薄いブリッジで、状態は Electron 側に一元化。複数エージェントが同時接続しても矛盾しません
-- ポートは `ui-chan.config.json` の `port` または環境変数 `UI_CHAN_PORT` で変更可能
-- エージェント名は MCP クライアント情報から自動取得（`UI_CHAN_AGENT_NAME` で上書き可）
+```mermaid
+flowchart LR
+  agent["エージェント<br/>(Claude Code 等)"]
+  mcp["dist/mcp-server.js<br/>ステートレスなブリッジ"]
 
-## Cue（cues/）
+  subgraph app["Electron アプリ (dist/app/main.js)"]
+    direction TB
+    state["UiChanState<br/>発話キュー・好感度・アイドル"]
+    tts["VoiSonaTalkClient<br/>音声合成"]
+    renderer["レンダラ<br/>PSD合成・吹き出し・口パク"]
+  end
 
-見た目＋声のセットは **`cues/<Cue名>.json` に 1 Cue = 1 ファイル**で管理します
-（`cue.schema.json` 準拠）。ファイル名がそのまま `set_cue` の `cue` 名になり、ファイルを追加すれば
-新しいCueが増えます。継承なし・完全に自己完結（同じレイヤー指定が複数ファイルに重複してもよい）。
-**保存すると即時リロード**され、表示中のCueにもすぐ反映されるので、アプリを再起動せずに調整できます。
+  voisona["VoiSona Talk<br/>REST API :32766"]
 
-```json
-{
-  "select": ["!眉/*上がり", "!目/*にっこり2", "!口/*あは", "!頬・顔色/*頬2"],
-  "blink": false,
-  "voice": {
-    "style_weights": { "Happy": 0.7, "Bashful": 0.3 }
-  }
-}
-```
-
-- `select / show / hide` — 生の PSD レイヤーパス指定（全Cue共通の `cues/default.json` に上書きされる
-  差分だけ書けばよい）。顔・腕・エフェクトを区別せず、そのCueに必要なレイヤーパスを並べるだけでよい
-- `blink` — まばたきの有効化（目が開いているCueのみ true 推奨）
-- `voice.style_weights` — スタイル名 → 重みのオブジェクト。省略すればデフォルトの声
-- `voice.alp` / `voice.huskiness` — このCue固有の声色パラメータ（VoiSona の `global_parameters` にそのまま渡る）
-- 強さ違い（例: 「激おこ」）は intensity ではなく別ファイル（例 `gekioko.json`）として作る
-- JSON が壊れている、または `cue.schema.json` に適合しないファイルはスキップされ、`get_state` の
-  `warnings` に出ます
-- `cues/default.json` は全Cue共通の下地（旧`config.base`＋腕の基本ポーズに相当）で、他のCueと
-  同じ形式の1ファイル。`set_cue`はこの`default`のdirectivesの上に指定されたCueのdirectivesを重ねて合成する
-- `description`（任意） — このCueがどんな場面・気持ちを表すかの短い説明。`set_cue`の実行には一切
-  使われず、`persona` MCPプロンプトが起動のたびに`cues/`の中身から動的にAI向けカタログを生成する
-  ためだけに読まれる（手書きの早見表を持たないので、Cue追加時にドキュメント更新を忘れてズレる、
-  ということが起きない）
-- `internal`（任意・真偽値） — `true`にすると、そのCueはAI向けカタログから除外される（`set_cue`で
-  直接呼べば動作はする）。IdlingCueが内部的に組み立てるための部品Cue（`cues/idling_*.json`）に付与
-
-Cue選定・PSDレイヤー名カタログなど、**新規Cue制作のための人間向け参照ドキュメント**は
-`docs/CUES.md` を参照。実行時にもAIのコンテキストにもロードされない（`context/`ではなく
-あえて`docs/`に置いている）。
-
-## 設定（ui-chan.config.json）
-
-- `assetsDir` — PSD を探すディレクトリ（最初に見つかった `.psd` を使用）
-- `window` — ウィンドウサイズ・画面端からのマージン
-- `cuesDir` — Cueのディレクトリ（デフォルト `cues`）
-- `idle.idlingCues` — アイドル中に自発的に再生される**IdlingCue**（Cue＋任意のセリフのステップ列）のプール。
-  `items[].steps[]`は`{ cue?, text?, reading?, holdMs? }`で、`cue`を省略すると直前のCueを維持する。
-  各 IdlingCue は `weight`（出やすさ、デフォルト 1）、`minAffinity`（必要な好感度）、`maxAffinity`（上限好感度）を持てる。
-  無言の仕草（あくび、きょろきょろなど）は `weight` を高く、レアな独り言や高好感度専用セリフは `weight` を低く／`minAffinity` を高く、低好感度専用の冷たい反応は `maxAffinity` を低く設定する。
-- `lipSync` — リップシンク設定。`mouths` は母音（a/e/i/o/u/n）→ 口レイヤー名、`charsPerSec` は口を
-  動かす速度、`audioPollMs`（デフォルト33）は音声駆動リップシンクが再生位置をチェックする間隔。
-  読みのかなを母音に変換して口形を切り替える。漢字など読めない文字はパクパク
-  （開閉交互）にフォールバック。発話終了時・無音区間は `n`（閉じ口）に自動復帰
-- `speech` — `set_cue`の`duration_ms`省略時の表示時間算出パラメータ。テキスト駆動は
-  `baseMs + 文字数*msPerChar` を `minMs`〜`maxMs` にクランプ、音声駆動は合成音声の長さ +
-  `audioPaddingMs`（`audioMinMs`床）
-- `ambient` — レンダラーのBlink（`blinkMinIntervalMs`/`blinkMaxIntervalMs`/`blinkDurationMs`）の
-  タイミング。VISION.mdの語彙でBlinkはCue/Idling外で唯一独立ループする演出なので、IdlingCueとは
-  別枠でレンダラー側に残る
-
-レイヤーパスは `/` 区切りで PSD のレイヤー名と完全一致。存在しないパスは無視され、
-`get_state` の `warnings` に報告されます（別 PSD への差し替えを安全にするため）。
-
-## 人格（ペルソナ）の注入
-
-MCP が提供できるのはツール（＝身体）だけで、**キャラクターの人格はエージェント側のコンテキストに
-入れる必要があります**。人格は 2 ヶ所で定義します：
-
-- `persona/ui-chan.md`（`personaFile` で変更可）— 基本人格とツール使用方針（「reading を必ず付ける」「セリフは 1〜2 文で区切る」等）
-- `context/*.md` — 追加コンテキスト。`SOUL.md`（価値観・内面）、`VOCABULARY.md`（語彙・口癖・NGワード）、
-  `AFFINITY.md`（好感度の機微）など、Markdown を置いた分だけファイル名順で全部読み込まれます。
-  **AIに読ませたくない内容（PSDレイヤーパスの生カタログ等）はここに置かない** — `context/`は
-  中身を問わず丸ごとAIに注入される場所なので、人間向けの制作リファレンスは`docs/`に置く
-  （`docs/CUES.md`がその例）
-- 利用できる Cue の一覧・意味は `context/*.md` ではなく、`persona` プロンプトが `cues/*.json` の
-  `description` から起動のたびに動的生成して渡す（`set_cue`のカタログ）
-
-読み込ませる方法は 3 つ（上ほど推奨）：
-
-0. **プラグイン（自動）** — プラグインを入れていれば SessionStart フックが毎セッション自動注入します。以下の 1・2 は不要
-
-1. **MCP プロンプト（手動・どの MCP クライアントでも）** — 本サーバは `persona` プロンプトを公開しており、
-   Claude Code ではスラッシュコマンド **`/mcp__ui-chan__persona`** で会話に読み込めます。
-   ファイルは呼び出しのたびに読まれるので、編集が即反映されます
-2. **常時適用（Claude Code）** — プロジェクトの `CLAUDE.md` に
-   `@/path/to/ui-chan-mcp/persona/ui-chan.md` と書いてインポートすれば、
-   セッション開始時から常にういちゃんとして振る舞います
-
-別キャラクターの PSD に差し替える場合は、`persona/` の Markdown も丸ごと書き換えてください。
-
-## 音声合成（VoiSona Talk 連携）
-
-[VoiSona Talk](https://voisona.com/talk/download/)（テクノスピーチ、無料）の REST API 経由で、
-`set_cue` のセリフを実際に喋らせることができます。合成は `destination: memory` で行い、
-WAV と音素タイミング（`phonemes` / `phoneme_durations`）を取得してアプリ側で再生するため、
-**口パクは音素単位で音声と完全同期**します。吹き出しの表示時間も音声の実時間に一致します。
-
-API リファレンスは REST API 有効化後に http://localhost:32766/docs/talk_api.html で読めます。
-
-### 有効化手順
-
-1. VoiSona Talk を起動してログインし、ボイスライブラリを 1 つ以上ダウンロード
-2. メニュー「編集 > 環境設定」の **API タブ** で待ち受けポート（デフォルト 32766）と API 用パスワードを設定し、「REST API を有効にする」をチェック
-3. 認証情報を **mcp.json の `env`** に設定（上記「Claude Code への登録」参照）。
-   本サーバの config はディスク上に認証情報を持たず、MCP ブリッジ経由でメモリ上にのみ渡されます
-
-`ui-chan.config.json` 側の設定は接続先とボイス選択だけです：
-
-```json
-"tts": {
-  "enabled": true,
-  "provider": "voisona-talk",
-  "url": "http://127.0.0.1:32766",
-  "voice_name": "使いたいボイス名（空なら日本語対応の最初のボイス）",
-  "language": "ja_JP",
-  "app_name": "VoiSona Talk"
-}
+  agent -- "stdio (MCP)" --> mcp
+  mcp -- "WebSocket :8123" --> state
+  mcp -. "未起動なら自動起動" .-> app
+  mcp -. "未起動なら自動起動" .-> voisona
+  state --> tts
+  tts -- "WAV + 音素タイミング" --> renderer
+  tts <--> voisona
+  state -- "IPC (RenderCommand)" --> renderer
 ```
 
-- `enabled` — TTS のマスタースイッチ。true でも認証情報が届くまでは音声なしで動きます
-- `app_name` — MCP サーバ起動時に API へ到達できないとき `open -a` で起動するアプリ名（macOS）
+- **ポート** — `ui-chan.config.json` の `port`、または環境変数 `UI_CHAN_PORT`
+- **自動起動** — アプリはセッション開始時（SessionStart フック）と各ツール呼び出し時に、
+  VoiSona Talk は MCP 起動時と `set_cue` のたびに、落ちていれば起こし直されます
+- **エージェント名** — MCP クライアント情報から自動取得（`UI_CHAN_AGENT_NAME` で上書き可）
 
-### Cueと声のトーンの連動
+より詳しい実装のガイドは [CLAUDE.md](CLAUDE.md) を参照。
 
-`set_cue(cue)` が顔と声の両方を駆動します。各Cueファイル（`cues/<cue>.json`）の `voice` ブロックが
-そのCueの声を決めます：
+## コマンド一覧
 
-- `voice.style_weights` はスタイル名 → 重みのオブジェクト（`{"Happy": 0.7, "Bashful": 0.3}`）。
-  ブレンド計算はせず、ボイスの `style_names` の並び順に変換して VoiSona の `global_parameters.style_weights`
-  にそのまま渡ります
-- `voice.alp` / `voice.huskiness` もCueに焼き込め、同じく `global_parameters` に素通しされます
-- そのセリフ一行だけの演技（`pitch`/`speed`/`volume`/`intonation`）は `set_cue` の引数として渡します。
-  Cueの `voice` と `set_cue` のアドリブパラメータはどちらも同じ `global_parameters` にマージされて送られます
-- スタイル名はボイスごとに異なるので `GET {url}/api/talk/v1/voices/{voice_name}/{voice_version}` の
-  `style_names` で確認して合わせてください。一致しない場合はデフォルトのトーンで喋ります
+### MCP ツール（エージェントが呼ぶ）
 
-利用可能なボイス名は `GET {url}/api/talk/v1/voices`（Basic 認証）で確認できます。
+| ツール | 引数 | 説明 |
+|---|---|---|
+| `set_cue` | `cue`, `text?`, `reading?`, `duration_ms?`, `pitch?`, `speed?`, `volume?`, `intonation?` | Cue（見た目＋声）を切り替え、任意でセリフを同時に話す。`text` を省略すると無言でCueだけ変わる。未知の `cue` 名は `default` にフォールバックし `note` が付く。`pitch`/`speed`/`volume`/`intonation` はその一行だけのアドリブ演技 |
+| `get_state` | — | 現在の状態・接続エージェント・利用可能Cue・好感度・警告 |
+| `adjust_affinity` | `direction`（`up`/`down`）, `magnitude`（`low`/`middle`/`high`） | 好感度を増減（セッション内のみ・再起動でリセット）。実際の増減量はエンジンが決めます |
+| `clear` | — | 吹き出し・Cueを初期状態（`default`）にリセット |
 
-- 雨衣（うい）ちゃんのボイスが発売されたら、`voice_name` を差し替えるだけで対応できる想定です
-- エンジンに接続できない場合は音声なしで動き続けます（60 秒のクールダウン後に再試行）。その間のリップシンクはテキスト読み駆動（`set_cue` の `reading`）にフォールバックします
+Cue の一覧は `persona` プロンプト（と SessionStart フック）が `cues/*.json` から起動のたびに
+生成してエージェントのコンテキストに渡します。
 
-## 開発ツール
+### スラッシュコマンド（プラグイン導入時）
 
-```bash
-npm run app                             # Electron アプリを起動
-npm run stop                            # 起動中のアプリを終了
-npm run restart                         # 終了 → 再起動
-npm run dump-psd -- assets/ui_sozai.psd # PSDレイヤー構造のダンプ
-npm run debug                           # 対話型デバッグコンソール（MCP 不要、WebSocket直叩き）
-npm run debug:launch                    # アプリを自動起動してデバッグコンソール
-npm run debug:restart                   # 終了 → デバッグコンソール付きで再起動
-npm run doctor                          # セットアップの事前チェック
-npm run debug:state                     # 現在の状態を取得
-npm run debug:list                      # 利用可能 Cue + IdlingCue + chatter 一覧
-node tools/ws-test.mjs set_cue '{"cue":"happy","text":"テスト","reading":"てすと"}' # WebSocket直叩きテスト
-node tools/mcp-test.mjs                       # MCP stdio 経由のE2Eテスト
-```
+| コマンド | 説明 |
+|---|---|
+| `/ui-chan <メッセージ>` | ういちゃんと会話する（作業はしない） |
+| `/ui-mode [依頼]` | セッションごと憑依モードにする。以後の作業も会話もういちゃん本人として行う |
+| `/ui-beam` | ういビーム。好感度が閾値未満なら撃ってくれない |
+| `/eli14 [お題]` | 14才目線の図解で説明する（HTMLアーティファクト＋口頭解説） |
+| `/mcp__ui-chan__persona` | 人格ファイルを編集したあとの読み込み直し |
 
-デバッグツールは `.env.example` をコピーして `.env` を作成すれば、TTS 認証情報を自動で読み込みます。
-TTS の動作確認は VoiSona Talk アプリが起動している必要があります（`npm run mcp` 経由で起動した場合は自動起動します）。
+### npm スクリプト
 
-アプリの終了は Dock アイコンから、または `pkill -f "ui-chan-mcp/node_modules/electron"`。
+| コマンド | 説明 |
+|---|---|
+| `npm run doctor` | セットアップの事前チェック（ビルド・PSD・資格情報・エンジン） |
+| `npm run app` / `stop` / `restart` | Electron アプリの起動／終了／再起動 |
+| `npm run build` | `src/` を `dist/` にビルド（`npm install` 時に自動実行） |
+| `npm run editor` | Cue エディタ「雨衣ちゃんのデバッグルーム」 |
+| `npm run debug` | 対話型デバッグコンソール（MCP 不要・WebSocket 直叩き） |
+| `npm run debug:launch` / `debug:restart` | アプリ起動込みのデバッグコンソール |
+| `npm run debug:state` / `debug:list` | 状態の取得／Cue・IdlingCue 一覧 |
+| `npm run dump-psd -- assets/foo.psd` | PSD レイヤー構造のダンプ |
+| `npm run validate-cues` | `cues/*.json` のスキーマ検証 |
+| `npm run lint` / `lint:fix` / `format` | Biome |
+| `node tools/mcp-test.mjs` | MCP stdio 経由の E2E テスト |
+
+## Q&A
+
+<details>
+<summary><b>ビルドはいつ必要？</b></summary>
+
+`src/` の TypeScript を直したときだけ。`npm install` が `prepare` で1回ビルドするので、
+クローン直後も `npm run build` を打つ必要はありません。Cue や `ui-chan.config.json` は
+JSON なのでビルド不要です（Cue は保存すると即リロード）。
+
+ただし **MCP サーバはセッション開始時のコードを抱えたまま動き続けます**。ビルドし直しても
+そのセッションには反映されないので、MCP を繋ぎ直すかセッションを開き直してください。
+</details>
+
+<details>
+<summary><b>声が出ない</b></summary>
+
+`npm run doctor` を実行してください。よくある原因は、VoiSona Talk が未起動、
+`.env` に資格情報が無い、VoiSona 側で REST API が有効になっていない、のどれかです。
+
+声が出ない状態でも吹き出しは出ますし、口パクも `reading` のかなから動きます。
+VoiSona は `set_cue` のたびに起こし直され（30秒に1回まで）、REST が応答するまで最大20秒待ちます。
+`get_state` の `warnings` に理由が出ます。詳しくは [docs/TTS.md](docs/TTS.md)。
+</details>
+
+<details>
+<summary><b>マスコットが画面に出てこない</b></summary>
+
+まず `npm run app` で単体起動を試すと切り分けられます。プラグイン導入時は
+SessionStart フックが起動を試みるので、通常はセッションを開くだけで出てきます。
+PSD が `assets/` に無い場合はプレースホルダ表示になります。
+</details>
+
+<details>
+<summary><b>新しい表情（Cue）を追加したい</b></summary>
+
+`cues/<名前>.json` を1ファイル作るだけです。継承なし・完全に自己完結で、保存すると即リロードされます。
+ビジュアルに作るなら `npm run editor`。書式とレイヤー指定は
+[docs/CUES_AND_CONFIG.md](docs/CUES_AND_CONFIG.md)、PSD レイヤー名の早見表は
+[docs/CUES.md](docs/CUES.md)。
+</details>
+
+<details>
+<summary><b>性格やセリフを変えたい</b></summary>
+
+`persona/ui-chan.md`（基本人格とツール使用方針）と `context/*.md`（`SOUL.md` 価値観 /
+`VOCABULARY.md` 語彙・NGワード / `AFFINITY.md` 好感度）です。`context/` に置いた Markdown は
+ファイル名順に全部エージェントへ注入されます。詳しくは [docs/PERSONA.md](docs/PERSONA.md)。
+</details>
+
+<details>
+<summary><b>アイドル中の独り言がうるさい／静かすぎる</b></summary>
+
+`ui-chan.config.json` の `idle.idlingCues` にある `minSec` / `maxSec`（既定 45〜120秒）で間隔を、
+各 IdlingCue の `weight` で出やすさを調整します。`minAffinity` / `maxAffinity` で
+好感度による出し分けもできます。
+</details>
+
+<details>
+<summary><b>別のキャラクターに差し替えたい</b></summary>
+
+`npm run dump-psd -- path/to/file.psd` でレイヤー名を確認し、`ui-chan.config.json` と
+`cues/*.json`（土台は `cues/default.json`）を書き換えます。人格側は `persona/` と `context/` を
+丸ごと差し替えてください。存在しないレイヤーパスは無視され `get_state` の `warnings` に出るので、
+差し替え作業中もクラッシュはしません。
+</details>
+
+<details>
+<summary><b>ういビームが撃てない</b></summary>
+
+好感度が閾値（65）に届いていません。感謝・気遣い・覚えていてくれること で上がります。
+直球の好意表現はむしろ下がります。
+</details>
+
+## ドキュメント
+
+| ファイル | 内容 |
+|---|---|
+| [docs/CUES_AND_CONFIG.md](docs/CUES_AND_CONFIG.md) | Cue ファイルの書式と `ui-chan.config.json` の全設定項目 |
+| [docs/CUES.md](docs/CUES.md) | PSD レイヤー名カタログ（新規Cue制作用・人間向け） |
+| [docs/PERSONA.md](docs/PERSONA.md) | 人格の定義場所と注入方法 |
+| [docs/TTS.md](docs/TTS.md) | VoiSona Talk 連携の詳細 |
+| [docs/PLUGIN_UPDATE.md](docs/PLUGIN_UPDATE.md) | プラグインの更新手順 |
+| [CLAUDE.md](CLAUDE.md) | 実装ガイド（AI・コントリビュータ向け） |
+| [VISION.md](VISION.md) | 用語とコンセプト |
