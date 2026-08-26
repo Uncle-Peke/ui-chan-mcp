@@ -7,6 +7,8 @@
   "type": "commonjs",
   "scripts": {
     "build": "tsc -p tsconfig.json && esbuild src/renderer/renderer.ts --bundle --platform=browser --format=iife --outfile=dist/renderer/bundle.js && esbuild src/renderer/editor.ts --bundle --platform=browser --format=iife --outfile=dist/renderer/editor.js && node -e \"const fs=require('fs');fs.copyFileSync('src/renderer/index.html','dist/renderer/index.html');fs.copyFileSync('src/renderer/editor.html','dist/renderer/editor.html')\"",
+    "prepare": "npm run build",
+    "doctor": "node tools/doctor.mjs",
     "app": "npm run build && electron .",
     "editor": "npm run build && electron dist/app/editor-main.js",
     "stop": "node tools/stop-app.mjs",

@@ -11,6 +11,15 @@ import type { Cue, MascotConfig, WsResponse } from './shared/types';
 import { DEFAULT_CUE_NAME } from './shared/types';
 
 const projectRoot = path.resolve(__dirname, '..');
+
+// TTS credentials may live in a .env next to the config instead of the shell
+// environment (env vars still win — loadEnvFile does not overwrite them).
+try {
+  process.loadEnvFile(path.join(projectRoot, '.env'));
+} catch {
+  /* no .env — credentials just come from the environment, or TTS stays off */
+}
+
 const config: MascotConfig = JSON.parse(
   fs.readFileSync(path.join(projectRoot, 'ui-chan.config.json'), 'utf-8'),
 );
@@ -34,17 +43,59 @@ function ttsCredentials(): { username: string; password: string } | undefined {
   return username && password ? { username, password } : undefined;
 }
 
-/** Launch VoiSona Talk (macOS) if its REST API is not reachable yet. */
+const VOISONA_PROBE_TIMEOUT_MS = 1500;
+const VOISONA_READY_TIMEOUT_MS = 20_000;
+const VOISONA_RECHECK_MS = 30_000;
+let lastVoiSonaCheckAt = 0;
+
+async function voiSonaReachable(url: string): Promise<boolean> {
+  try {
+    await fetch(`${url}/docs/talk_api.html`, {
+      signal: AbortSignal.timeout(VOISONA_PROBE_TIMEOUT_MS),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Launch VoiSona Talk (macOS) if its REST API is not reachable, then wait for
+ * the port to actually answer. Firing `open` and returning immediately used to
+ * mean the first few lines hit a still-booting engine, and each miss put the
+ * TTS client into its retry cooldown — silence for the rest of the warm-up.
+ * Throttled, and re-run on tool calls, so quitting the engine mid-session
+ * self-heals the same way a closed display app does.
+ */
 async function ensureVoiSonaRunning(): Promise<void> {
   const tts = config.tts;
-  if (!tts?.enabled || process.platform !== 'darwin') return;
-  try {
-    await fetch(`${tts.url}/docs/talk_api.html`, { signal: AbortSignal.timeout(1500) });
-  } catch {
-    const appName = tts.app_name ?? 'VoiSona Talk';
-    log(`TTS engine not reachable at ${tts.url} — launching "${appName}"`);
-    spawn('open', ['-g', '-a', appName], { stdio: 'ignore' }).unref();
+  if (!tts?.enabled) return;
+  if (Date.now() - lastVoiSonaCheckAt < VOISONA_RECHECK_MS) return;
+  lastVoiSonaCheckAt = Date.now();
+
+  if (await voiSonaReachable(tts.url)) return;
+  if (process.platform !== 'darwin') {
+    log(`TTS engine not reachable at ${tts.url} — start it manually (auto-launch is macOS only)`);
+    return;
   }
+
+  const appName = tts.app_name ?? 'VoiSona Talk';
+  log(`TTS engine not reachable at ${tts.url} — launching "${appName}"`);
+  spawn('open', ['-g', '-a', appName], { stdio: 'ignore' }).unref();
+
+  const deadline = Date.now() + VOISONA_READY_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if (await voiSonaReachable(tts.url)) {
+      log(`TTS engine ready at ${tts.url}`);
+      lastVoiSonaCheckAt = Date.now();
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  log(
+    `TTS engine still not reachable after ${VOISONA_READY_TIMEOUT_MS / 1000}s — speaking silently`,
+  );
+  lastVoiSonaCheckAt = Date.now();
 }
 
 function agentName(): string {
@@ -207,6 +258,9 @@ function wrapTool<A>(
 ) {
   return async (a: A) => {
     try {
+      // Not awaited: the engine can boot while the line is queued, and the TTS
+      // client's short unreachable-cooldown picks it up once it answers.
+      if (toolName === 'set_cue') void ensureVoiSonaRunning();
       return toolResult(await callTool(toolName, toArgs(a)));
     } catch (e) {
       return toolError(e);

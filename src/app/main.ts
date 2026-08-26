@@ -17,6 +17,15 @@ import { UiChanState } from './state';
 import { VoiSonaTalkClient } from './tts';
 
 const projectRoot = path.resolve(__dirname, '..', '..');
+
+// TTS credentials live in .env / env vars (never in the config). The MCP bridge
+// also forwards them on connect; this covers a manually launched `npm run app`.
+try {
+  process.loadEnvFile(path.join(projectRoot, '.env'));
+} catch {
+  /* no .env — credentials just come from the environment, or TTS stays off */
+}
+
 const configPath = path.join(projectRoot, 'ui-chan.config.json');
 const config: MascotConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 const port = Number(process.env.UI_CHAN_PORT ?? config.port ?? 8123);
@@ -59,6 +68,28 @@ const state = new UiChanState(
   tts ? (text, cue, adlib) => tts.synthesize(text, cue, adlib) : undefined,
 );
 
+/** Setup-level problems the agent can't see from tool results alone (no PSD in
+ *  assets/, TTS on but unusable) surface as warnings so they're diagnosable
+ *  from a single get_state instead of by reading the app's stderr. */
+function setupWarnings(psdFile: string | null): string[] {
+  const out: string[] = [];
+  if (!psdFile) {
+    out.push(
+      `立ち絵PSDが見つかりません: ${path.join(projectRoot, 'assets')} に PSD を置いてください`,
+    );
+  }
+  const t = tts?.status();
+  if (t?.enabled && !t.hasCredentials) {
+    out.push(
+      'TTSの資格情報がありません: .env（または環境変数）に UI_CHAN_TTS_USERNAME / UI_CHAN_TTS_PASSWORD を設定してください',
+    );
+  }
+  if (t?.enabled && t.hasCredentials && t.engineUnreachable) {
+    out.push(`VoiSona Talk に接続できません (${config.tts?.url}): 起動しているか確認してください`);
+  }
+  return out;
+}
+
 function buildSnapshot(): MascotStateSnapshot {
   const psdFile = findPsd();
   const { cueWarning, ...rest } = state.snapshot();
@@ -69,7 +100,12 @@ function buildSnapshot(): MascotStateSnapshot {
     connectedAgents: [...agents.values()],
     availableCues: state.listCues(),
     tts: tts ? tts.status() : { enabled: false },
-    warnings: [...rendererWarnings, ...cueErrors, ...(cueWarning ? [cueWarning] : [])],
+    warnings: [
+      ...setupWarnings(psdFile),
+      ...rendererWarnings,
+      ...cueErrors,
+      ...(cueWarning ? [cueWarning] : []),
+    ],
     affinity: state.affinitySnapshot(),
   };
 }
