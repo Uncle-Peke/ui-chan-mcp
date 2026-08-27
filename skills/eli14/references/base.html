@@ -213,6 +213,40 @@
     .rain { display: none; }
   }
 
+  /* ---- テーマ切り替え ---- */
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 13px 7px 11px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--ink-soft);
+    font-family: "Roboto Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: color 120ms ease, border-color 120ms ease;
+  }
+  .theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
+  .theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .theme-toggle svg { display: block; width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+  .theme-toggle .sun { display: none; }
+  .theme-toggle[data-mode="dark"] .sun { display: block; }
+  .theme-toggle[data-mode="dark"] .moon { display: none; }
+  .theme-toggle .now::after { content: "DARK"; }
+  .theme-toggle[data-mode="dark"] .now::after { content: "LIGHT"; }
+
+  @media (max-width: 600px) {
+    .theme-toggle .now { display: none; }
+    .theme-toggle { padding: 8px; }
+  }
+
   footer {
     border-top: 1px solid var(--rule);
     padding-top: 22px;
@@ -225,6 +259,12 @@
   footer a { color: var(--accent); }
 
 </style>
+
+<button class="theme-toggle" type="button" aria-live="polite">
+  <svg class="moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.2A6.6 6.6 0 0 1 7.8 4a6.6 6.6 0 1 0 8.2 8.2z"></path></svg>
+  <svg class="sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"></circle><path d="M10 2.2v1.6M10 16.2v1.6M2.2 10h1.6M16.2 10h1.6M4.5 4.5l1.1 1.1M14.4 14.4l1.1 1.1M15.5 4.5l-1.1 1.1M5.6 14.4l-1.1 1.1"></path></svg>
+  <span class="now"></span>
+</button>
 
 <div class="rain" aria-hidden="true">
     <i style="left: 4%; height: 14px; animation-duration: 5.2s; animation-delay: -0.4s;"></i>
@@ -418,4 +458,38 @@
     <p>利用は<a href="https://www.ui-roid.com/guidelines" target="_blank" rel="noopener">雨衣キャラクターガイドライン</a>の範囲で。</p>
   </footer>
 
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.querySelector('.theme-toggle');
+    var KEY = 'ui-chan-setup-theme';
+    var dark = window.matchMedia('(prefers-color-scheme: dark)');
+
+    var saved = null;
+    try { saved = localStorage.getItem(KEY); } catch (e) { /* プライベートウィンドウなど */ }
+    if (saved === 'light' || saved === 'dark') root.dataset.theme = saved;
+
+    function current() {
+      return root.dataset.theme || (dark.matches ? 'dark' : 'light');
+    }
+    function sync() {
+      var now = current();
+      btn.dataset.mode = now;
+      btn.setAttribute(
+        'aria-label',
+        now === 'dark' ? 'ライトテーマに切り替える' : 'ダークテーマに切り替える'
+      );
+    }
+
+    btn.addEventListener('click', function () {
+      var next = current() === 'dark' ? 'light' : 'dark';
+      root.dataset.theme = next;
+      root.style.colorScheme = next;
+      try { localStorage.setItem(KEY, next); } catch (e) { /* 保存できなくても切り替えは効く */ }
+      sync();
+    });
+    dark.addEventListener('change', sync);
+    sync();
+  })();
+</script>
 </div>
