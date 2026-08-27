@@ -37,16 +37,29 @@ npm run doctor                  # ビルド・PSD・資格情報・エンジン�
 **どの繋ぎ方でも、繋いだ時点で完了**です。マスコットのアプリと VoiSona Talk は接続時に自動起動し、
 人格は MCP のハンドシェイク（`instructions`）に乗って渡ります。人格ファイルを貼る作業はありません。
 
-**プラグインとして入れる（Claude Code / Claude Desktop 共通・推奨）**
+**プラグインとして入れる（Claude Code・フル機能）**
 
 プラグインの台帳は Claude Code と Claude Desktop で共有されます。Claude Code で一度登録すれば、
 Desktop 側の「設定 → プラグイン」にも同じものが現れます（逆に Desktop の追加 UI は GitHub からの
-追加のみで、ローカルのフォルダは指定できません）。
+追加のみで、ローカルのフォルダは指定できません）。ただし **Desktop のチャットはプラグインの
+MCP サーバを起動しません**。Desktop で使うなら次項のコネクタ登録が要ります。
 
 ```
 /plugin marketplace add /path/to/ui-chan-mcp      # ローカルのクローンから
 /plugin install ui-chan@ui-chan
 ```
+
+```bash
+npm run link-plugin       # ★ クローンを SSOT にする（下記）
+```
+
+`claude plugin install` はプラグインを `~/.claude/plugins/cache/` に**コピー**するので、そのままだと
+リポジトリを直しても Claude Code 側は古いコピーを読み続けます（直すたびに marketplace update →
+再インストールが必要）。`npm run link-plugin` はそのコピーを**クローンへの symlink に置き換え**、
+リポジトリを唯一の実体にします。以後は `npm run build` だけで両クライアントに反映されます。
+
+- 効くのは次のセッションから。解除は `npm run link-plugin -- --remove`
+- `claude plugin install` を実行し直すとコピーが戻るので、そのときは `npm run link-plugin` をもう一度
 
 GitHub から入れる場合は `Uncle-Peke/ui-chan-mcp` を指定します（ただし `dist/` はコミットされていないため、
 別途クローンして `npm install` した実体が必要です）。
@@ -78,10 +91,16 @@ GitHub から入れる場合は `Uncle-Peke/ui-chan-mcp` を指定します（�
 npm run install-desktop        # 解除は npm run install-desktop -- --remove
 ```
 
+登録されるのは `bin/ui-chan-node`（node を自力で探して exec するランチャ）と、クローン内の
+`dist/mcp-server.js` です。**コネクタは最初からクローンを直接指す**ので、こちら側は
+`npm run build` するだけで常に最新になります。GUI から起動される Desktop は launchd の最小 PATH
+（`/usr/bin:/bin:/usr/sbin:/sbin`）しか持たず、Homebrew や nvm で入れた `node` が見えないため、
+`"command": "node"` と書くと黙って起動失敗します。ランチャはそれを吸収します。
+
 Claude Code で手動登録する場合は次のとおりです。認証情報は `.env` から読まれるので `env` は不要です。
 
 ```bash
-claude mcp add ui-chan -- node /path/to/ui-chan-mcp/dist/mcp-server.js
+claude mcp add ui-chan -- /path/to/ui-chan-mcp/bin/ui-chan-node /path/to/ui-chan-mcp/dist/mcp-server.js
 ```
 
 ### 入れ方による違い
@@ -95,8 +114,18 @@ claude mcp add ui-chan -- node /path/to/ui-chan-mcp/dist/mcp-server.js
 | サブエージェント（talk / mode） | ✕ | ○ |
 | 作業への自動リアクション（EventCue） | ✕ | ○ |
 
-Claude Code と Claude Desktop の差ではなく、**入れ方の差**です。どちらのアプリでも、
-プラグインとして入れれば同じものが使えます。
+### どちらをどこに入れるか
+
+| | Claude Code | Claude Desktop |
+|---|---|---|
+| プラグイン | ○ フル機能 | △ 設定 → プラグインには出るが、**チャットは MCP サーバを起動しない** |
+| コネクタ | ○（プラグインを入れるなら不要） | ○ **Desktop で使うならこれが必須** |
+
+**推奨は「Claude Code はプラグイン、Desktop はコネクタ」**です。Desktop でもツールと人格は
+そのまま使えます（スキルとサブエージェントは Claude Code 側だけ）。
+
+どちらも `npm run link-plugin` / `npm run install-desktop` を済ませればクローンを直接読むので、
+**リポジトリが唯一の実体**です。直したら `npm run build`、それだけ。
 
 ## アーキテクチャ
 
@@ -164,6 +193,7 @@ Cue の一覧は `persona` プロンプト（と SessionStart フック）が `c
 |---|---|
 | `npm run doctor` | セットアップの事前チェック（ビルド・PSD・資格情報・エンジン） |
 | `npm run install-desktop` | Claude Desktop に MCP サーバを登録（`-- --remove` で解除） |
+| `npm run link-plugin` | プラグインのコピーをクローンへの symlink に置換＝SSOT化（`-- --remove` で解除） |
 | `npm run app` / `stop` / `restart` | Electron アプリの起動／終了／再起動 |
 | `npm run build` | `src/` を `dist/` にビルド（`npm install` 時に自動実行） |
 | `npm run editor` | Cue エディタ「雨衣ちゃんのデバッグルーム」 |

@@ -10,6 +10,7 @@
     "prepare": "npm run build",
     "doctor": "node tools/doctor.mjs",
     "install-desktop": "node tools/install-desktop.mjs",
+    "link-plugin": "node tools/link-plugin.mjs",
     "app": "npm run build && electron .",
     "editor": "npm run build && electron dist/app/editor-main.js",
     "stop": "node tools/stop-app.mjs",

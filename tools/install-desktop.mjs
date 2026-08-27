@@ -69,8 +69,11 @@ if (remove) {
   process.exit(0);
 }
 
+// bin/ui-chan-node rather than this process's node: Desktop is GUI-launched
+// and inherits launchd's minimal PATH, and a node pinned here would break the
+// day the user's node moves (a Homebrew upgrade, a version manager switch).
 const entry = {
-  command: process.execPath,
+  command: path.join(projectRoot, 'bin', 'ui-chan-node'),
   args: [path.join(projectRoot, 'dist', 'mcp-server.js')],
 };
 // TTS credentials stay in .env (gitignored); the server loads that itself, so

@@ -324,15 +324,35 @@ for when both doors are open and the double injection isn't wanted:
 
 ### Claude Desktop is not a lesser client
 
-Desktop shares the plugin registry (`~/.claude/plugins/`) with Claude Code: a
+Desktop shares the plugin registry (`~/.claude/plugins/`) with Claude Code, so a
 plugin registered from Claude Code — including a `directory` source pointing at
-this repo — also appears under Desktop's 設定 → プラグイン with its skills,
-agents, connectors and hooks. Desktop's own "add" UI only accepts GitHub
-marketplaces, which is why registration is done from the Claude Code side. Note
-that installing the plugin also registers the MCP server (`.mcp.json`), so a
-hand-written `claude_desktop_config.json` entry on top of it starts the same
-server twice — harmless (state lives in the app, multiple agents are supported)
-but pure waste. The real axis is connector-only vs plugin, not Code vs Desktop.
+this repo — appears under Desktop's 設定 → プラグイン. Desktop's own "add" UI
+only accepts GitHub marketplaces, which is why registration is done from the
+Claude Code side.
+
+**Observed, and the reason the connector still exists:** Desktop's chat does
+*not* start a plugin's MCP server. A Desktop session with only the plugin
+installed has no `set_cue` and no persona — it lists the account's other
+connectors and nothing of ours. So Desktop needs its own
+`claude_desktop_config.json` entry (`npm run install-desktop`), and the
+"installing the plugin makes a hand-written entry redundant" rule holds for
+Claude Code only. Practical split: **Claude Code → plugin, Desktop → connector.**
+
+Two more things GUI-launched clients get wrong, both fixed in-repo:
+
+- Desktop inherits launchd's minimal PATH (`/usr/bin:/bin:/usr/sbin:/sbin`), so
+  `"command": "node"` resolves in a terminal and silently fails there. Every
+  entry point goes through `bin/ui-chan-node`, which finds node itself
+  (PATH → Homebrew → `~/.local` → volta → asdf → fnm → nvm) and execs it.
+  `.mcp.json`, all seven hooks in `hooks/hooks.json`, and what
+  `tools/install-desktop.mjs` writes all use it.
+- `claude plugin install` *copies* the plugin into
+  `~/.claude/plugins/cache/…`, so the repo stops being the single source of
+  truth the moment you edit anything. `npm run link-plugin`
+  (`tools/link-plugin.mjs`) replaces that copy with a symlink to the working
+  tree; the connector already points straight at `dist/`. With both done,
+  `npm run build` is the only step that propagates a change to either client.
+  Re-running `claude plugin install` restores the copy — re-run link-plugin.
 
 `agents/` (talk, mode) and `skills/` (talk, mode, beam, eli14) are the plugin's
 subagents and slash commands. To retarget a different character, rewrite
