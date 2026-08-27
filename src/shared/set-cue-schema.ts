@@ -22,7 +22,12 @@ export const setCueShape = {
     .max(1000)
     .optional()
     .describe(
-      'Hiragana reading of text, for vowel-based lip sync (e.g. text 雨衣 → reading うい). Provide whenever text is given.',
+      'Hiragana reading of the WHOLE line — drives lip sync, and is what the TTS engine actually ' +
+        'speaks whenever text contains Latin letters or digits. Leave NO Latin letters, digits or ' +
+        'symbols in it: write how a Japanese speaker actually says the line, judging each term from ' +
+        'your own knowledge rather than transliterating its spelling (k8s → くーばねてぃす, ' +
+        'bash → ばっしゅ, NPO → えぬぴーおー, 3回 → さんかい). Anything left in Latin is read out ' +
+        'letter-by-letter in English. Provide whenever text is given.',
     ),
   duration_ms: z
     .number()

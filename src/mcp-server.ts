@@ -305,7 +305,13 @@ server.registerTool(
       "(see the returned note, or get_state's warnings). " +
       'text is optional: omit it to change the look silently (e.g. a wordless reaction while you ' +
       'keep working). When text is given, ALWAYS also pass reading (its full hiragana reading) so ' +
-      'the mouth lip-syncs to the vowels — kanji cannot be lip-synced without it. ' +
+      'the mouth lip-syncs to the vowels — kanji cannot be lip-synced without it. reading is also ' +
+      'what gets SPOKEN when text contains Latin letters or digits, so it must contain NO Latin ' +
+      'letters, digits or symbols at all — anything left in Latin is spelled out letter-by-letter ' +
+      'in English. Use your own knowledge of how a Japanese speaker actually SAYS each term rather ' +
+      'than transliterating its spelling: an established reading wins however far it is from the ' +
+      'spelling (k8s → くーばねてぃす), otherwise judge by word shape (bash → ばっしゅ, NPO → えぬぴーおー). ' +
+      'Numbers, units and paths become sound too (3回 → さんかい, ~/.zshrc → ちるだ どっと ずぃーしぇるあーるしー). ' +
       'pitch/speed/volume/intonation are one-line ad-lib performance knobs layered on top of this ' +
       "Cue's baked voice.style_weights/alp/huskiness; leave them unset to just use the Cue's voice as-is.",
     inputSchema: setCueShape,

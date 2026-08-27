@@ -263,7 +263,25 @@ spoken under (fixed at `set_cue` call time), so a later `set_cue` can't
 retroactively recolor an in-flight line's voice. Lip-sync is phoneme-timed
 from the synthesized audio; if the engine is unreachable it falls back to
 kana-driven mouth movement from `set_cue`'s `reading` (60s cooldown before
-retry). Credentials come from `UI_CHAN_TTS_USERNAME` / `UI_CHAN_TTS_PASSWORD`
+retry).
+
+`reading` is not only for lip-sync: `state.ts`'s `ttsTextFor()` hands the engine
+`reading` instead of `text` whenever `text` contains Latin letters or digits.
+VoiSona spells Latin out in English (`zsh` → "ゼッドエスエイチ"), and the agent
+already supplies a full hiragana `reading`, so that is the correct pronunciation
+for those lines. The swap is deliberately *scoped* to that case rather than
+always preferring `reading`: hiragana-only input costs the engine its
+kanji-based accent estimation, and pure-Japanese lines (the majority) read
+better from `text`. The bubble always shows `text`. This is why `persona/ui-chan.md`
+carries a "reading の作り方" section insisting that `reading` contain no Latin
+characters at all. It states a *principle* — write what a Japanese speaker
+actually says, from the model's own knowledge — not a lookup table: `NPO` is
+えぬぴーおー and `k8s` is くーばねてぃす, and no hand-maintained table would ever
+cover that split. The rule is character-agnostic, so it lives in the persona
+entry (and in `set_cue`'s own tool description, the one door every MCP client
+gets), not in `context/VOCABULARY.md`, which is ういちゃん's vocabulary.
+
+Credentials come from `UI_CHAN_TTS_USERNAME` / `UI_CHAN_TTS_PASSWORD`
 env vars passed through the MCP bridge in memory — never written to
 `ui-chan.config.json` or committed.
 
