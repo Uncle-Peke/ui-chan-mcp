@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.js\""
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/ui-chan-node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.js\""
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/notify.js\""
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/ui-chan-node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/notify.js\""
           }
         ]
       }
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/reaction.js\""
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/ui-chan-node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/reaction.js\""
           }
         ]
       }
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/reaction.js\""
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/ui-chan-node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/reaction.js\""
           }
         ]
       }
@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/reaction.js\""
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/ui-chan-node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/reaction.js\""
           }
         ]
       }
@@ -58,7 +58,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/reaction.js\""
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/ui-chan-node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/reaction.js\""
           }
         ]
       }
@@ -68,7 +68,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/reaction.js\""
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/ui-chan-node\" \"${CLAUDE_PLUGIN_ROOT}/hooks/reaction.js\""
           }
         ]
       }

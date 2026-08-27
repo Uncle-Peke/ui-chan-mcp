@@ -1,0 +1,35 @@
+#!/bin/sh
+# Find a usable node, then exec it with whatever we were handed.
+#
+# GUI-launched clients (Claude Desktop) inherit launchd's minimal PATH —
+# /usr/bin:/bin:/usr/sbin:/sbin — which contains no node under any of the
+# usual installers (Homebrew, nvm, volta, asdf, fnm, a plain ~/.local/bin).
+# A plugin that just says `command: "node"` therefore starts fine from a
+# terminal and silently fails to start under Desktop, which is exactly the
+# "Desktop is a lesser client" failure this repo refuses to accept.
+#
+# Used by .mcp.json and hooks/hooks.json. Order: whatever PATH already
+# resolves (a terminal session, or a user who set PATH deliberately), then
+# the common install locations.
+set -e
+
+if command -v node >/dev/null 2>&1; then
+  exec node "$@"
+fi
+
+for candidate in \
+  /opt/homebrew/bin/node \
+  /usr/local/bin/node \
+  "$HOME/.local/bin/node" \
+  "$HOME/.volta/bin/node" \
+  "$HOME/.asdf/shims/node" \
+  "$HOME/.local/share/fnm/aliases/default/bin/node" \
+  "$HOME/.nvm/versions/node"/*/bin/node
+do
+  if [ -x "$candidate" ]; then
+    exec "$candidate" "$@"
+  fi
+done
+
+echo "[ui-chan] node が見つかりません。node をインストールするか、PATH を通してください。" >&2
+exit 127
