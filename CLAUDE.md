@@ -330,13 +330,15 @@ this repo — appears under Desktop's 設定 → プラグイン. Desktop's own 
 only accepts GitHub marketplaces, which is why registration is done from the
 Claude Code side.
 
-**Observed, and the reason the connector still exists:** Desktop's chat does
-*not* start a plugin's MCP server. A Desktop session with only the plugin
-installed has no `set_cue` and no persona — it lists the account's other
-connectors and nothing of ours. So Desktop needs its own
-`claude_desktop_config.json` entry (`npm run install-desktop`), and the
-"installing the plugin makes a hand-written entry redundant" rule holds for
-Claude Code only. Practical split: **Claude Code → plugin, Desktop → connector.**
+**Observed, and the reason the connector still exists:** Desktop surfaces a
+plugin's skills and subagents (all four of ours show up in its chat), but does
+*not* start the plugin's MCP server. A Desktop session with only the plugin
+installed has the skills and no `set_cue`, no persona — the MCP servers it lists
+are the account's other connectors and nothing of ours, restart included. So
+**Desktop wants both**: the plugin for skills, and its own
+`claude_desktop_config.json` entry (`npm run install-desktop`) for tools and
+persona. The "installing the plugin makes a hand-written entry redundant" rule
+holds for Claude Code only.
 
 Two more things GUI-launched clients get wrong, both fixed in-repo:
 

@@ -37,12 +37,13 @@ npm run doctor                  # ビルド・PSD・資格情報・エンジン�
 **どの繋ぎ方でも、繋いだ時点で完了**です。マスコットのアプリと VoiSona Talk は接続時に自動起動し、
 人格は MCP のハンドシェイク（`instructions`）に乗って渡ります。人格ファイルを貼る作業はありません。
 
-**プラグインとして入れる（Claude Code・フル機能）**
+**プラグインとして入れる（Claude Code / Claude Desktop 共通）**
 
 プラグインの台帳は Claude Code と Claude Desktop で共有されます。Claude Code で一度登録すれば、
 Desktop 側の「設定 → プラグイン」にも同じものが現れます（逆に Desktop の追加 UI は GitHub からの
-追加のみで、ローカルのフォルダは指定できません）。ただし **Desktop のチャットはプラグインの
-MCP サーバを起動しません**。Desktop で使うなら次項のコネクタ登録が要ります。
+追加のみで、ローカルのフォルダは指定できません）。スキルとサブエージェントは Desktop でも
+そのまま使えますが、**Desktop はプラグイン同梱の MCP サーバを起動しません**。ツールと人格は
+次項のコネクタ登録で入れてください。
 
 ```
 /plugin marketplace add /path/to/ui-chan-mcp      # ローカルのクローンから
@@ -118,11 +119,15 @@ claude mcp add ui-chan -- /path/to/ui-chan-mcp/bin/ui-chan-node /path/to/ui-chan
 
 | | Claude Code | Claude Desktop |
 |---|---|---|
-| プラグイン | ○ フル機能 | △ 設定 → プラグインには出るが、**チャットは MCP サーバを起動しない** |
-| コネクタ | ○（プラグインを入れるなら不要） | ○ **Desktop で使うならこれが必須** |
+| プラグイン | ○ フル機能 | ○ スキル・サブエージェントは出る。ただし **MCP サーバは起動しない** |
+| コネクタ | 不要（入れると二重起動） | ○ **ツールと人格はこれで入れる** |
 
-**推奨は「Claude Code はプラグイン、Desktop はコネクタ」**です。Desktop でもツールと人格は
-そのまま使えます（スキルとサブエージェントは Claude Code 側だけ）。
+つまり Desktop は **両方入れる**のが正解です。スキル（`/talk` ほか）はプラグインから、
+ツール（`set_cue`）と人格はコネクタから来ます。Claude Code はプラグイン1つで足ります。
+
+実測メモ：プラグインだけ入れた Desktop セッションは、スキルは4つとも出るのに `set_cue` も人格も
+無く、繋がっている MCP は他のコネクタだけ、という状態になりました（再起動後も同じ）。
+Desktop は一覧に出しても、プラグイン同梱の `.mcp.json` を起動していません。
 
 どちらも `npm run link-plugin` / `npm run install-desktop` を済ませればクローンを直接読むので、
 **リポジトリが唯一の実体**です。直したら `npm run build`、それだけ。
