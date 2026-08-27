@@ -51,6 +51,22 @@ function estimateSpeechDurationMs(text: string, speech?: SpeechTimingConfig): nu
   return Math.min(Math.max(estimated, speech?.minMs ?? 2500), speech?.maxMs ?? 20000);
 }
 
+/** What the TTS engine should actually be handed for this line.
+ *
+ *  VoiSona reads Latin letters as English spelling — `zsh` comes out
+ *  "ゼッドエスエイチ", `npm` as "エヌピーエム". The agent already supplies
+ *  `reading` (full hiragana) for lip-sync, so that is the correct pronunciation
+ *  to speak. We do NOT always prefer it, though: hiragana-only input costs the
+ *  engine its kanji-based accent estimation, and most lines are pure Japanese
+ *  where `text` reads better. So the swap is scoped to exactly the broken case
+ *  — the line contains Latin letters (or digits, same problem) and a reading
+ *  was given. The bubble still shows `text` either way. */
+function ttsTextFor(text: string, reading?: string): string {
+  const yomi = reading?.trim();
+  if (!yomi) return text;
+  return /[A-Za-z0-9]/.test(text) ? yomi : text;
+}
+
 /** Every idle timer in this class follows the same "hold an id, clear-then-null
  *  it" shape (mirrors renderer.ts's clearTimeoutSafe for the browser side). */
 function clearTimeoutSafe(id: NodeJS.Timeout | null): null {
@@ -373,7 +389,8 @@ export class UiChanState {
   private async startSpeech(item: SpeechItem): Promise<void> {
     let audio: TtsAudio | null = null;
     if (this.synthesize) {
-      audio = await this.synthesize(item.text, item.cue, item.voice).catch(() => null);
+      const spoken = ttsTextFor(item.text, item.reading);
+      audio = await this.synthesize(spoken, item.cue, item.voice).catch(() => null);
     }
     if (this.currentSpeech !== item) return; // cleared while synthesizing
     const speech = this.config.speech;
