@@ -277,6 +277,52 @@ edit with no hook code involved.
   cooldown and chance and does **not** stamp the cooldown, so previewing a line
   can't silence the next real one. Affinity/time gates still apply.
 
+#### Writing EventCue lines: who is speaking, and what they're allowed to know
+
+Two rules, both learned by getting them wrong. Every line in `eventCues` (and
+`idlingCues`) has to satisfy both.
+
+**1. うい is the observer, never the worker.** Per the persona boundary, the
+work is done by Claude (or a subagent); ういちゃん watches from the side and
+narrates it *to the user*. So the grammar of every line is fixed:
+
+> **speaker = うい / listener = きみ (the user) / actor = Claude or お手伝いの子, in the third person (`〜だって`, `〜みたい`, `〜らしい`)**
+
+Lines that slipped were all the same shape — she'd taken the actor's seat:
+`compact` said 「ちょっと**記憶の整理**するね」 (it's *Claude's* history being
+compacted, not hers) and `agent_out` said 「この件は別の子に**投げた**」 (Claude
+dispatched it) while the very next clause said 「ういは見てる」. Fixing them is
+usually just moving to reported speech.
+
+**2. A line may not know more than its hook passed.** The hooks send an *event
+name* and nothing else, so the pool has no access to what actually happened:
+
+| event | what's actually known | what is NOT |
+|---|---|---|
+| `permission` | stopped, waiting on the user | what it's asking for |
+| `idle_wait` | prompt sitting idle | — |
+| `tool_failure` | a Bash/Edit/Write-class tool failed (user aborts already filtered out in `isFailure`) | which tool, what error |
+| `turn_done` | the turn ended | **whether it went well** |
+| `compact` | about to compact (PreCompact — hasn't happened yet) | — |
+| `agent_out` | about to dispatch (PreToolUse — hasn't gone yet) | what it was sent to do |
+| `agent_back` | the subagent stopped | **whether it succeeded, what it returned** |
+
+So `turn_done` must not appraise the work (「いい感じじゃん」「えらいえらい」 both
+had to go — they fire just as happily on a turn that failed), and `agent_back`
+must not claim 「仕事終わったみたいよ」 when "gave up" reads identically from
+here. Saying she doesn't know is in character and better UX:
+「どうだった？」/「何持って帰ってきたんだろね。」 push the user to go *look*, which
+is what you wanted them to do anyway. `tool_failure` is blunt (「あ、こけた。」)
+precisely because failure is the one outcome a hook does report.
+
+A third, softer rule: an EventCue that fires on a *stall* (`idle_wait`) must not
+reuse IdlingCue vocabulary. 「ひま。まだ？」 was indistinguishable from ambient
+「ひま〜。」, which hid the one thing the user needed to know — that the session is
+actually blocked on them.
+
+Voice: `context/VOCABULARY.md` is authoritative for 一人称 (**「わたし」「うい」 —
+not 「あたし」**) and for calling the user 「きみ」.
+
 ### Rejected designs (do not reintroduce)
 
 `extends` inheritance between scenes; named wrapper fields (`pose`,
