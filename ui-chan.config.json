@@ -744,20 +744,20 @@
             ]
           },
           {
-            "name": "done_good",
+            "name": "done_handoff",
             "steps": [
               {
-                "cue": "emo_trust_lo",
+                "cue": "sys_address",
                 "text": "手ぇ止まったよ。きみの番。",
                 "reading": "てぇとまったよ。きみのばん。"
               }
             ]
           },
           {
-            "name": "done_praise",
+            "name": "done_ask",
             "steps": [
               {
-                "cue": "emo_trust_hi",
+                "cue": "emo_antic_lo",
                 "text": "はい、終わり〜。どうだった？",
                 "reading": "はい、おわり〜。どうだった？"
               }
@@ -798,7 +798,7 @@
             "name": "agent_out_threw",
             "steps": [
               {
-                "cue": "pose_smug_hips",
+                "cue": "sys_smirk",
                 "text": "この件、お手伝いの子に投げたって。",
                 "reading": "このけん、おてつだいのこになげたって。"
               }
@@ -853,7 +853,7 @@
             "name": "agent_back_done",
             "steps": [
               {
-                "cue": "sys_relief",
+                "cue": "sys_present",
                 "text": "お手伝いの子、終わったみたい。結果、きみが見てあげて。",
                 "reading": "おてつだいのこ、おわったみたい。けっか、きみがみてあげて。"
               }
