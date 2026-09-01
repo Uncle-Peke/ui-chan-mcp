@@ -309,11 +309,24 @@ function startAudioLipSync(
   }, lipConfig?.audioPollMs ?? 33);
 }
 
+/** Break the bubble after each sentence so a two-sentence line reads as two
+ *  lines instead of one long run that wraps wherever the box happens to end.
+ *
+ *  Display only — this never touches what the TTS engine is given (that comes
+ *  from the SpeechItem in the main process, not from the bubble), so the
+ *  reading and lip sync are unaffected. Any whitespace the author put after the
+ *  punctuation is absorbed into the break, and a sentence ender with nothing
+ *  after it (the usual trailing 。) doesn't produce a blank last line. An
+ *  explicit \n in the text survives too, thanks to `white-space: pre-wrap`. */
+function bubbleText(text: string): string {
+  return text.replace(/([。！？!?]+)[ \u3000]*(?=[^」』）)】])/g, '$1\n');
+}
+
 let hideTextTimer: number | null = null;
 function setSpeech(text: string | null): void {
   hideTextTimer = clearTimeoutSafe(hideTextTimer);
   if (text !== null) {
-    bubble.textContent = text;
+    bubble.textContent = bubbleText(text);
     bubble.classList.add('visible');
   } else {
     bubble.classList.remove('visible');

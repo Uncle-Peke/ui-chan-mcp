@@ -52,6 +52,8 @@
       transform: translateY(6px);
       transition: opacity 0.18s ease, transform 0.18s ease;
       word-break: break-word;
+      /* 文ごとの改行（bubbleText）と、明示的な \n を効かせる */
+      white-space: pre-wrap;
     }
     #bubble.visible {
       opacity: 1;
