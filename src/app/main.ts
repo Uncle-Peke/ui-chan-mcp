@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, powerMonitor, screen } from 'electron';
 import { type WebSocket, WebSocketServer } from 'ws';
 import { setCueArgsSchema } from '../shared/set-cue-schema';
 import type {
@@ -66,6 +66,9 @@ const state = new UiChanState(
   cues,
   sendToRenderer,
   tts ? (text, cue, adlib) => tts.synthesize(text, cue, adlib) : undefined,
+  // OS-wide "seconds since the user last touched keyboard or mouse" — what lets
+  // Idling read the user's presence instead of only its own timers.
+  () => powerMonitor.getSystemIdleTime(),
 );
 
 /** Setup-level problems the agent can't see from tool results alone (no PSD in

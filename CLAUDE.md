@@ -178,11 +178,57 @@ mechanism. `state.ts` implements this as one pool (`idle.idlingCues` in
 - `maxAffinity` gates an item so it only plays when affinity is low enough —
   useful for cold or sulky reactions that should stop appearing once the mascot
   warms up to the user.
-- `idle.idlingCues` fires on a single schedule (default every 12–30s); the
+- `idle.idlingCues` fires on a single schedule (default every 120–300s); the
   old separate `idle.chatter` pool has been merged into this one pool.
 
 `source` is `'idling-cue'` for auto-scheduled steps and `'debug'` for steps
 forced via the debug console, for `cue.agent` / speech `agent` bookkeeping.
+
+#### The system-idle gate (`idle.idlingCues.systemIdle`)
+
+By itself the schedule above only ever measures **ういちゃん's own** activity
+(every `scheduleIdlingCue()` call site is her finishing something), so she talks
+over a user who is mid-keystroke and keeps talking to an empty chair. The gate
+adds the other half: `powerMonitor.getSystemIdleTime()` — OS-wide seconds since
+the last key or mouse event — injected into `UiChanState` as `systemIdleSec`
+from `main.ts` (the class itself stays Electron-free; no source = gate off).
+
+It is a **window**, not a threshold, and both edges are load-bearing:
+
+| OS idle `t` | meaning | behavior |
+|---|---|---|
+| `t < minSec` (60s) | working | stay quiet |
+| `minSec ≤ t < awaySec` | hands off the keys | play IdlingCues |
+| `t ≥ awaySec` (15min) | away | `awayCue` once, then silence |
+| `t` drops | they're back | `wakeCue` once |
+
+A lower bound alone would still leave her performing to an empty desk, which is
+the whole reason `awaySec` exists; `awayCue` is a *doze* rather than plain
+silence so the away state is visible instead of indistinguishable from a long
+gap, and the wake-up on the way back is the payoff that state buys.
+
+Implementation notes, all in `tickIdling()` (1s poll, armed only when gated):
+
+- The countdown is kept in **OS idle seconds** (`idlingThresholdSec`), not wall
+  clock, so “ういちゃん just spoke” and “the user is still sitting there
+  quietly” compose into one number instead of two competing timers. Gated,
+  `scheduleIdlingCue()` just pushes that bar further along the same axis.
+- The first cue after the user goes quiet uses the shorter `[minSec,
+  firstMaxSec]` roll; steady state returns to `[minSec, maxSec]` (120–300s).
+- The idle counter only climbs while the user is away from the input devices,
+  so **a drop is the one unambiguous input signal** — that's the wake trigger.
+- `userAway` is sticky (only input clears it) so she sleeps through the whole
+  absence. Both transitions have to respect what's playing: entering away
+  **waits** for a lull (flipping the sticky flag mid-line would swallow the
+  doze and never retry), while waking **preempts** via `preempt()` — but only
+  when `effectivePriority() <= PRIORITY.idle`, so it cuts off her own snoring
+  and never the agent.
+- `awayCue`/`wakeCue` are ordinary `CueSequence`es in config. They're reachable
+  by name from `npm run debug` → `idle away_doze` / `idle wake_up` (and listed
+  by `list`), but excluded from the random pick — their real triggers are 15
+  minutes away, and a performance you can only see by waiting a quarter hour
+  never gets looked at.
+- `systemIdle.enabled: false` restores the pure wall-clock behavior exactly.
 
 **`holdMs` only times silent steps.** A step with `text` advances when that
 line *actually* finishes playing (real TTS audio duration if synthesized,

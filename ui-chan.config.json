@@ -15,6 +15,30 @@
       "enabled": true,
       "minSec": 120,
       "maxSec": 300,
+      "systemIdle": {
+        "$comment": "IdlingCueを「ユーザーがキーボードもマウスも触っていない時間」で門番する設定。minSec未満は作業中とみなして黙る。手が止まってからの1本目は minSec〜firstMaxSec のどこかで出る（毎回同じ間にならないようゆらぎを持たせる）。2本目以降は上の minSec/maxSec の間隔に戻る。awaySec を超えたら離席とみなし、awayCue を一度だけ再生して以降は沈黙。次にキーかマウスが動いた瞬間に wakeCue で起きる。enabled:false で従来どおり（ういちゃん基準のタイマーだけ）",
+        "enabled": true,
+        "minSec": 60,
+        "firstMaxSec": 120,
+        "awaySec": 900,
+        "awayCue": {
+          "name": "away_doze",
+          "steps": [
+            { "cue": "sys_sleepy", "text": "……もう、いないの？", "reading": "……もう、いないの？" },
+            { "cue": "idling_doze_1", "holdMs": 1200 },
+            { "cue": "idling_doze_2", "holdMs": 1500 },
+            { "cue": "idling_doze_3", "holdMs": 2000 }
+          ]
+        },
+        "wakeCue": {
+          "name": "wake_up",
+          "steps": [
+            { "cue": "idling_doze_1", "holdMs": 400 },
+            { "cue": "emo_surprise_lo", "holdMs": 600 },
+            { "cue": "emo_joy_lo", "text": "……ん、おかえり。", "reading": "……ん、おかえり。" }
+          ]
+        }
+      },
       "items": [
         {
           "name": "salty",

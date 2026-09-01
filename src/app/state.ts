@@ -12,6 +12,7 @@ import type {
   SetCueResult,
   SpeechItem,
   SpeechTimingConfig,
+  SystemIdleConfig,
   TtsAudio,
   VoiceAdlib,
 } from '../shared/types';
@@ -24,6 +25,11 @@ const MAX_QUEUE = 20;
 // forcing things) > fidget (physical touch, must feel instant) > MCP (the
 // agent) > idling (self-initiated filler, yields to everyone).
 const PRIORITY = { idle: 0, event: 1, mcp: 2, fidget: 3, debug: 4 } as const;
+
+/** How often the system-idle gate re-reads the OS idle counter. One second is
+ *  what makes "she wakes up when you come back" feel like a reaction rather
+ *  than a delayed timer; the read itself is a cheap native property lookup. */
+const SYSTEM_IDLE_POLL_MS = 1000;
 
 type EnqueueResult =
   | { ok: true; displayed: boolean; queue_length: number }
@@ -74,11 +80,23 @@ function clearTimeoutSafe(id: NodeJS.Timeout | null): null {
   return null;
 }
 
+/** clearTimeoutSafe's twin for the one repeating timer (the system-idle poll). */
+function clearIntervalSafe(id: NodeJS.Timeout | null): null {
+  if (id !== null) clearInterval(id);
+  return null;
+}
+
 /** Random idle gap in ms, picked uniformly in [minSec, maxSec] (minSec floored to 1s). */
 function randomDelayMs(minSec?: number, maxSec?: number): number {
+  return randomDelaySec(minSec, maxSec) * 1000;
+}
+
+/** Same roll in seconds — the system-idle gate counts in OS idle seconds
+ *  rather than wall-clock ms, so it needs the unrounded number. */
+function randomDelaySec(minSec?: number, maxSec?: number): number {
   const min = Math.max(minSec ?? 0, 1);
   const max = Math.max(maxSec ?? min, min);
-  return (min + Math.random() * (max - min)) * 1000;
+  return min + Math.random() * (max - min);
 }
 
 /** Is `hour` inside the inclusive [from, to] window? A window with from > to
@@ -125,6 +143,19 @@ export class UiChanState {
   private speechTimer: NodeJS.Timeout | null = null;
   private idleTimer: NodeJS.Timeout | null = null;
   private idlingCueTimer: NodeJS.Timeout | null = null;
+  /** Poll driving the system-idle gate; only armed when the gate is on. */
+  private idlingTickTimer: NodeJS.Timeout | null = null;
+  /** True while the user counts as away (OS idle past awaySec). Cleared by the
+   *  first real input, which is also what triggers the wake performance. */
+  private userAway = false;
+  /** The OS idle reading at which the next IdlingCue becomes eligible. Kept in
+   *  idle-seconds rather than wall clock so that "ういちゃん just did
+   *  something" and "the user is still sitting there quietly" compose into one
+   *  number instead of two competing timers. */
+  private idlingThresholdSec = 0;
+  /** Previous OS idle reading. The counter only climbs while the user is away
+   *  from the keyboard, so a drop is the one unambiguous input signal. */
+  private lastSystemIdleSec = 0;
   private sequenceHoldTimer: NodeJS.Timeout | null = null;
   private sequenceActive = false;
   private affinity: number;
@@ -142,6 +173,10 @@ export class UiChanState {
       cue: string,
       adlib?: VoiceAdlib,
     ) => Promise<TtsAudio | null>,
+    /** Seconds since the user last touched keyboard or mouse, OS-wide. Injected
+     *  (Electron's powerMonitor in main.ts) so this class stays free of
+     *  Electron; absent = the system-idle gate is simply off. */
+    private systemIdleSec?: () => number,
   ) {
     this.cues = cues;
     this.cueState = { cue: DEFAULT_CUE_NAME, agent: null };
@@ -463,6 +498,18 @@ export class UiChanState {
     }, sec * 1000);
   }
 
+  /** Tear down whatever is playing — speech, queue, in-flight audio/bubble and
+   *  any running sequence — so a reaction can start from a clean slate. The
+   *  caller is responsible for having earned the interruption (see
+   *  effectivePriority). */
+  private preempt(): void {
+    this.speechTimer = clearTimeoutSafe(this.speechTimer);
+    this.speechQueue = [];
+    this.currentSpeech = null;
+    this.emit({ type: 'speech', text: null });
+    this.cancelSequence();
+  }
+
   /** Cancel any playing CueSequence (called when real activity happens). */
   private cancelSequence(): void {
     this.sequenceHoldTimer = clearTimeoutSafe(this.sequenceHoldTimer);
@@ -501,23 +548,41 @@ export class UiChanState {
     const item = weightedPick(this.eligible(cfg?.poke ?? []));
     if (!item?.steps?.length) return;
     this.lastInteractionAt = now;
-    // Preempt: tear down current speech + queue + any running sequence, kill the
-    // in-flight audio/bubble, then play the reaction from a clean slate.
-    this.speechTimer = clearTimeoutSafe(this.speechTimer);
-    this.speechQueue = [];
-    this.currentSpeech = null;
-    this.emit({ type: 'speech', text: null });
-    this.cancelSequence();
+    this.preempt();
     this.performSequence(item, 'interaction');
+  }
+
+  /** The system-idle gate's config, or null when it's off (disabled, or no
+   *  idle-time source was injected). */
+  private systemIdleGate(): SystemIdleConfig | null {
+    const gate = this.config.idle?.idlingCues?.systemIdle;
+    if (!gate?.enabled || !this.systemIdleSec) return null;
+    return gate;
+  }
+
+  private readSystemIdleSec(): number {
+    const sec = this.systemIdleSec?.() ?? 0;
+    return Number.isFinite(sec) && sec > 0 ? sec : 0;
   }
 
   /** (Re)start the Idling countdown. On a lull it occasionally plays one
    *  eligible IdlingCue (silent ambient motion or a speaking bit — same
-   *  mechanism) so the desk has some life. Reschedules itself each time. */
+   *  mechanism) so the desk has some life. Reschedules itself each time.
+   *
+   *  Two modes, same pool. Ungated, the countdown measures wall time since
+   *  ういちゃん last did anything. Gated (systemIdle), it measures the *user's*
+   *  OS idle time instead, and this call just pushes the bar further out along
+   *  that axis — see tickIdling for the window it lives in. */
   private scheduleIdlingCue(): void {
     this.idlingCueTimer = clearTimeoutSafe(this.idlingCueTimer);
     const idlingCues = this.config.idle?.idlingCues;
     if (!idlingCues?.enabled || !idlingCues.items?.length) return;
+    if (this.systemIdleGate()) {
+      this.idlingThresholdSec =
+        this.readSystemIdleSec() + randomDelaySec(idlingCues.minSec, idlingCues.maxSec);
+      this.startIdlingTick();
+      return;
+    }
     this.idlingCueTimer = setTimeout(
       () => {
         this.idlingCueTimer = null;
@@ -536,6 +601,77 @@ export class UiChanState {
       },
       randomDelayMs(idlingCues.minSec, idlingCues.maxSec),
     );
+  }
+
+  private startIdlingTick(): void {
+    if (this.idlingTickTimer) return;
+    this.idlingTickTimer = setInterval(() => this.tickIdling(), SYSTEM_IDLE_POLL_MS);
+    this.lastSystemIdleSec = this.readSystemIdleSec();
+  }
+
+  /** The system-idle gate, once per second.
+   *
+   *  OS idle time `t` is read as a window rather than a threshold:
+   *
+   *    t < minSec            the user is working — stay out of the way
+   *    minSec ≤ t < awaySec  their hands are off the keys — this is the moment
+   *    t ≥ awaySec           nobody's there — nod off and stay quiet
+   *
+   *  and the drop in `t` on the way back is what wakes her up. The lower bound
+   *  alone would still leave her performing to an empty desk, which is the
+   *  failure the away half exists for. */
+  private tickIdling(): void {
+    const gate = this.systemIdleGate();
+    const idlingCues = this.config.idle?.idlingCues;
+    if (!gate || !idlingCues?.enabled || !idlingCues.items?.length) {
+      this.idlingTickTimer = clearIntervalSafe(this.idlingTickTimer);
+      return;
+    }
+    const idleSec = this.readSystemIdleSec();
+    const dropped = idleSec < this.lastSystemIdleSec;
+    this.lastSystemIdleSec = idleSec;
+    if (dropped) this.onUserActivity(gate);
+
+    // Away is sticky: only real input (above) clears it, so she sleeps through
+    // the whole absence instead of waking every gap.
+    if (this.userAway) return;
+
+    const awaySec = gate.awaySec ?? 0;
+    if (awaySec > 0 && idleSec >= awaySec) {
+      // Hold the transition until she's actually free: flipping the (sticky)
+      // flag mid-line would drop the nodding-off performance on the floor and
+      // never retry it, leaving her silently "away" with no visible reason.
+      if (this.isBusy()) return;
+      this.userAway = true;
+      if (gate.awayCue) this.performSequence(gate.awayCue, 'idling-cue');
+      return;
+    }
+    if (idleSec < this.idlingThresholdSec) return;
+    // Past the bar but mid-performance: hold the bar and take the next lull.
+    if (this.isBusy()) return;
+    const eligible = this.eligibleIdlingCues();
+    if (eligible.length === 0) return;
+    const item = weightedPick(eligible);
+    // The sequence's own end rearms the threshold via scheduleIdlingCue().
+    if (item) this.performSequence(item, 'idling-cue');
+  }
+
+  /** The user touched something. Wake her if she'd nodded off, and re-arm the
+   *  bar at the *short* first gap: the interesting moment is the one just after
+   *  their hands stop, not two silent minutes later. */
+  private onUserActivity(gate: SystemIdleConfig): void {
+    if (this.userAway) {
+      this.userAway = false;
+      // Waking up has to cut in: the thing it's interrupting is her own doze,
+      // and a wake-up that waits politely for the snoring to finish isn't a
+      // reaction to anything. It still yields to the agent — effectivePriority
+      // is only `idle` when nothing above idle filler is playing.
+      if (gate.wakeCue && this.effectivePriority() <= PRIORITY.idle) {
+        this.preempt();
+        this.performSequence(gate.wakeCue, 'idling-cue');
+      }
+    }
+    this.idlingThresholdSec = randomDelaySec(gate.minSec, gate.firstMaxSec ?? gate.minSec);
   }
 
   /** Play a CueSequence: Cue(+line) steps that move together, then ease back to
@@ -700,6 +836,20 @@ export class UiChanState {
     };
   }
 
+  /** Every sequence `idle <name>` can force, including the two the system-idle
+   *  gate owns. Those are reachable by name but never by the random pick —
+   *  otherwise nodding off would show up mid-session as ordinary filler. They
+   *  need to be forceable because the real triggers are 15 minutes away, and a
+   *  performance you can only see by waiting a quarter hour never gets looked
+   *  at. */
+  private namedIdleSequences(): CueSequence[] {
+    const idlingCues = this.config.idle?.idlingCues;
+    const gate = idlingCues?.systemIdle;
+    return [...(idlingCues?.items ?? []), gate?.awayCue, gate?.wakeCue].filter(
+      (a): a is CueSequence => !!a,
+    );
+  }
+
   /** Debug: force-run one IdlingCue immediately (or the named one).
    *  Honors minAffinity/weight filters unless a specific name is requested. */
   triggerIdleAction(name?: string): { ok: true; name?: string } | { ok: false; error: string } {
@@ -709,9 +859,10 @@ export class UiChanState {
     }
     let item: CueSequence | undefined;
     if (name) {
-      item = idlingCues.items.find((a) => a.name === name);
+      const pool = this.namedIdleSequences();
+      item = pool.find((a) => a.name === name);
       if (!item) {
-        const names = idlingCues.items.map((a) => a.name).filter(Boolean);
+        const names = pool.map((a) => a.name).filter(Boolean);
         return { ok: false, error: `unknown idlingCue "${name}". known: ${names.join(', ')}` };
       }
     }
@@ -736,14 +887,13 @@ export class UiChanState {
     }[];
   } {
     return {
-      idlingCues:
-        this.config.idle?.idlingCues?.items.map((a) => ({
-          name: a.name,
-          stepCount: a.steps?.length ?? 0,
-          weight: a.weight,
-          minAffinity: a.minAffinity,
-          maxAffinity: a.maxAffinity,
-        })) ?? [],
+      idlingCues: this.namedIdleSequences().map((a) => ({
+        name: a.name,
+        stepCount: a.steps?.length ?? 0,
+        weight: a.weight,
+        minAffinity: a.minAffinity,
+        maxAffinity: a.maxAffinity,
+      })),
     };
   }
 

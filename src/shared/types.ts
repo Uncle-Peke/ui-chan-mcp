@@ -162,6 +162,38 @@ export interface IdlingCuesConfig {
   maxSec: number;
   /** Pool of IdlingCues to pick from. */
   items: IdlingCue[];
+  /** Optional: also require the *user* to be idle (see SystemIdleConfig). */
+  systemIdle?: SystemIdleConfig;
+}
+
+/** Gate IdlingCues on how long the user has left the keyboard and mouse alone
+ *  (Electron's `powerMonitor.getSystemIdleTime()`), not just on how long since
+ *  ういちゃん last did something.
+ *
+ *  Without this the Idling countdown only ever measures ういちゃん's own
+ *  activity, so she talks over someone who is mid-keystroke and keeps talking
+ *  to an empty chair. The gate turns OS idle time into a *window*: too little
+ *  and the user is working (stay out of the way), too much and they're gone
+ *  (there is no one to talk to). Both edges matter — a lower bound alone still
+ *  leaves her performing to an empty desk. */
+export interface SystemIdleConfig {
+  enabled: boolean;
+  /** Below this much OS idle the user is considered actively working: stay quiet. */
+  minSec: number;
+  /** The first IdlingCue after the user goes quiet fires somewhere in
+   *  [minSec, firstMaxSec] of OS idle, so she doesn't come in on the exact
+   *  same beat every time. Defaults to minSec (no jitter). */
+  firstMaxSec?: number;
+  /** At this much OS idle the user counts as away: play `awayCue` once, then
+   *  stay silent until input comes back. 0 / omitted disables the away state
+   *  (and with it the "keeps talking to an empty chair" half of the fix). */
+  awaySec?: number;
+  /** Played once on crossing into away — she nods off rather than just going
+   *  quiet, so the away state is visible instead of indistinguishable from a
+   *  long gap. */
+  awayCue?: CueSequence;
+  /** Played once when input comes back after being away. */
+  wakeCue?: CueSequence;
 }
 
 /** A CueSequence is a whole little performance — Cue and (optionally) speech
