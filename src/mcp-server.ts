@@ -33,6 +33,10 @@ const log = (msg: string) => process.stderr.write(`[ui-chan-mcp] ${msg}\n`);
  * the one channel every MCP client receives without the user doing anything, so
  * the character travels with the tools. Set UI_CHAN_NO_PERSONA_INSTRUCTIONS=1
  * to send tools only (Claude Code users who find the double injection wasteful).
+ *
+ * Built here, at process start, so reconnecting the MCP server (`/mcp` in Claude
+ * Code) re-reads persona/ + context/ from disk — that is the reload path after
+ * editing the character mid-session.
  */
 function personaInstructions(): string | undefined {
   if (process.env.UI_CHAN_NO_PERSONA_INSTRUCTIONS === '1') return undefined;
@@ -336,7 +340,10 @@ server.registerTool(
       'Unknown cue names fall back to "default" ' +
       "(see the returned note, or get_state's warnings). " +
       'text is optional: omit it to change the look silently (e.g. a wordless reaction while you ' +
-      'keep working). When text is given, ALWAYS also pass reading (its full hiragana reading) so ' +
+      'keep working). text is the ON-SCREEN line: write it in ordinary Japanese orthography, with ' +
+      'Latin names left in Latin (Linux, bash) and digits left as digits (バージョン 0.1) — spelling ' +
+      "the sound out there (リナックス, 零点一) is wrong; that is reading's job. " +
+      'When text is given, ALWAYS also pass reading (its full hiragana reading) so ' +
       'the mouth lip-syncs to the vowels — kanji cannot be lip-synced without it. reading is also ' +
       'what gets SPOKEN when text contains Latin letters or digits, so it must contain NO Latin ' +
       'letters, digits or symbols at all — anything left in Latin is spelled out letter-by-letter ' +
@@ -392,24 +399,6 @@ server.registerTool(
     inputSchema: {},
   },
   wrapTool('clear', () => ({})),
-);
-
-server.registerPrompt(
-  'persona',
-  {
-    title: 'ういちゃんペルソナ',
-    description:
-      "Load the mascot's persona (personality, tone, and tool-usage policy) into the conversation. " +
-      'Defined in persona/ui-chan.md — edit that file to change the character.',
-  },
-  () => ({
-    messages: [
-      {
-        role: 'user' as const,
-        content: { type: 'text' as const, text: buildPersona(paths) },
-      },
-    ],
-  }),
 );
 
 async function main() {

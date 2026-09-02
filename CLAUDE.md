@@ -196,13 +196,13 @@ that). This is the only cross-folder name dependency in the PSD.
 - Each Cue may carry an optional `description` (what scene/feeling it's for)
   and `internal` (excludes it from the AI-facing catalog below — used for the
   IdlingCue building-block Cues, `cues/idling_*.json`). Neither field affects
-  `set_cue`/`composeDirectives()` at all; they exist solely for the `persona`
-  prompt's generated catalog (see below).
+  `set_cue`/`composeDirectives()` at all; they exist solely for the persona
+  text's generated Cue catalog (see below).
 - `docs/PSD_LAYERS.md` is a hand-maintained reference catalog (raw PSD layer paths
   for parts not currently baked into any Cue, an "eyes/mouth/brows/..." parts
   table) for *authoring* new Cues. Deliberately in `docs/`, not `context/`:
-  `context/*.md` is swept wholesale into the AI's session by the `persona`
-  prompt and the SessionStart hook, and this file's raw layer-path listings
+  `context/*.md` is swept wholesale into the AI's session by the persona text
+  (handshake `instructions` and the SessionStart hook), and its raw layer-path listings
   are meaningless token spend for that audience — it's for whoever (human or
   agent) is writing a *new* Cue file, not for the roleplay agent calling
   `set_cue`. It is **not** loaded at runtime or injected into any prompt.
@@ -560,13 +560,21 @@ for those lines. The swap is deliberately *scoped* to that case rather than
 always preferring `reading`: hiragana-only input costs the engine its
 kanji-based accent estimation, and pure-Japanese lines (the majority) read
 better from `text`. The bubble always shows `text`. This is why `persona/ui-chan.md`
-carries a "reading の作り方" section insisting that `reading` contain no Latin
-characters at all. It states a *principle* — write what a Japanese speaker
+carries a "`text` と `reading` の書き分け" section insisting that `reading` contain
+no Latin characters at all. It states a *principle* — write what a Japanese speaker
 actually says, from the model's own knowledge — not a lookup table: `NPO` is
 えぬぴーおー and `k8s` is くーばねてぃす, and no hand-maintained table would ever
 cover that split. The rule is character-agnostic, so it lives in the persona
 entry (and in `set_cue`'s own tool description, the one door every MCP client
 gets), not in `context/VOCABULARY.md`, which is ういちゃん's vocabulary.
+
+The same section states the **other** half explicitly, and it has to: `text` is
+written in ordinary Japanese orthography (`Linux` stays `Linux`, `0.1` stays
+`0.1`). Left unsaid, the weight of the `reading` rules bleeds across and the
+bubble starts reading 「リナックス」「バージョン零点一」 — the agent transcribing
+the *sound* into the field that shows the *spelling*. Both fields' rules are
+therefore stated as one pair ("表記は `text`、音は `reading`"), in the persona,
+the tool description, and `text`'s own parameter description.
 
 Credentials come from `UI_CHAN_TTS_USERNAME` / `UI_CHAN_TTS_PASSWORD`
 env vars passed through the MCP bridge in memory — never written to
@@ -589,17 +597,21 @@ context injected into the agent, defined in Markdown:
   generated fresh from `cues/*.json` (every non-`internal` Cue's name, label and
   `description`). Never a hand-maintained list, so it can't go stale.
 
-### How it reaches a model (three doors, one text)
+### How it reaches a model (two doors, one text)
 
 | Door | Who gets it | When |
 |---|---|---|
 | MCP handshake `instructions` | **every** MCP client, Claude Desktop included | on connect, automatically |
 | `hooks/session-start.js` | Claude Code (plugin install) | at session start |
-| MCP prompt `persona` (`/mcp__ui-chan__persona`) | every MCP client | manually, to reload after editing |
 
-All three call `buildPersonaText()`. The hook used to build its own copy; that
-duplication is gone, and with it the class of bug where the mascot behaved
+Both call `buildPersonaText()` — one implementation, so the mascot cannot behave
 differently depending on which door the persona came through.
+
+Both fire automatically, and neither re-reads mid-session. **Reloading after
+editing `persona/` or `context/` is a reconnect** (`/mcp` in Claude Code): the
+server builds `instructions` at process start, so a fresh process picks the
+edits up. There is no manual re-injection tool — an MCP prompt existed for that
+and was removed as redundant with the reconnect.
 
 The handshake is what makes the plugin optional: a client connected to nothing
 but the MCP server would otherwise get the *body* (tools) with no character

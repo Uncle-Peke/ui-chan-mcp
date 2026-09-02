@@ -16,13 +16,19 @@ export const setCueShape = {
     .min(1)
     .max(500)
     .optional()
-    .describe('Optional line to speak in the bubble. Omit for a silent Cue change.'),
+    .describe(
+      'Optional line to speak in the bubble. Omit for a silent Cue change. Write it in ORDINARY ' +
+        'Japanese orthography, exactly as it should appear on screen: Latin names stay in Latin ' +
+        '(Linux, bash, k8s), digits stay as digits (バージョン 0.1, 3回), kanji stays kanji. The ' +
+        "pronunciation is reading's job — never spell the sound out here (NOT リナックス, NOT 零点一).",
+    ),
   reading: z
     .string()
     .max(1000)
     .optional()
     .describe(
-      'Hiragana reading of the WHOLE line — drives lip sync, and is what the TTS engine actually ' +
+      'Hiragana reading of the WHOLE line (text stays in ordinary orthography; this is the sound ' +
+        'of the same line) — drives lip sync, and is what the TTS engine actually ' +
         'speaks whenever text contains Latin letters or digits. Leave NO Latin letters, digits or ' +
         'symbols in it: write how a Japanese speaker actually says the line, judging each term from ' +
         'your own knowledge rather than transliterating its spelling (k8s → くーばねてぃす, ' +
