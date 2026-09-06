@@ -30,7 +30,7 @@
     "ajv": "^8.17.1",
     "electron": "^43.1.1",
     "ws": "^8.21.1",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.4",
