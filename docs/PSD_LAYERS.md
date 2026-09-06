@@ -1,29 +1,10 @@
-# PSD レイヤー早見表（Cue制作用）
+# PSD レイヤー早見表
 
-**Cue を書くときに「どのレイヤー名を指定すればいいか」を引く表。** 人間向けの資料で、
-AI のコンテキストには渡りません（`context/` に置かないのはそのため）。書式は
-[docs/CUE_AUTHORING.md](CUE_AUTHORING.md)。
+> **Cue を書くときに「どのレイヤー名を指定すればいいか」を引く表**です。書式は [CUE_AUTHORING.md](CUE_AUTHORING.md)。
 
+---
 
-うい（マスコット）の見た目＋声を操る唯一の単位が **Cue**。`cues/*.json`（1ファイル=1Cue、
-`cue.schema.json` 準拠）にある名前を `set_cue(cue, text?, ...)` に渡すだけで、顔・腕・声色が
-まとめて切り替わる。`set_expression`/`set_pose`/`set_face` のような部分操作ツールは存在しない。
-
-**このファイルは`docs/`にあり、実行時にもAIのコンテキストにも一切ロードされない。**
-人間（Cue制作者）向けの参照ドキュメント専用。`context/`直下ではなくあえて`docs/`に置いている
-理由もそれで、`context/*.md`は`persona`プロンプト・SessionStartフックの両方が中身を問わず
-まるごとAIの会話に注入する対象なので、生のPSDレイヤーパス一覧のようなAIが読む必要のない情報を
-`context/`に置くと、意味もなくAIのコンテキストを消費してしまう。
-
-起動時に読み込まれるのは `cues/*.json` の中身と `cue.schema.json` だけ。
-
-「今どんなCueが使えて、それぞれ何を表しているか」をAIに伝えるのはこのファイルの役目ではない。
-**各Cueファイル自身の`description`フィールドから、`persona`プロンプトが起動のたびに
-一覧を自動生成して渡す**（`src/mcp-server.ts`の`buildCueCatalog()`）。手書きの早見表は
-Cueを追加するたびに更新し忘れてズレる問題があったため廃止した。新しいCueを作ったら、
-そのファイルの`description`さえ書けば、次にpersonaが読まれたときに自動で一覧に載る。
-
-## 使い方の基本（Cue制作者向け）
+## `01` 使い方の基本（Cue制作者向け）
 
 - 場面に合う Cue 名を選んで `set_cue({ cue: "emo_joy", text: "やったー！", reading: "やったー！" })`
 - 無言で見た目だけ変えたいときは `text` を省略できる
@@ -38,7 +19,9 @@ Cueを追加するたびに更新し忘れてズレる問題があったため�
 
 ---
 
-## 新規Cue制作のためのパーツ・カタログ
+---
+
+## `02` 新規Cue制作のためのパーツ・カタログ
 
 `cues/*.json` の `select`/`show`/`hide` には生のPSDレイヤーパスをそのまま書く。以下は
 そのパスを組み立てるための参照表（旧 `set_face`/`set_pose` が使っていたスロット分類を、
@@ -123,7 +106,9 @@ Cueを追加するたびに更新し忘れてズレる問題があったため�
 
 ---
 
-## IdlingCue専用Cue（`idling_*`）
+---
+
+## `03` IdlingCue専用Cue（`idling_*`）
 
 `cues/idling_yawn_1〜3` / `idling_lookaround_1〜3` / `idling_ponder` / `idling_doze_1〜3` /
 `idling_giggle_1〜2` / `idling_sigh_1〜2` は、`ui-chan.config.json` の `idle.idlingCues`
@@ -132,3 +117,7 @@ Cueを追加するたびに更新し忘れてズレる問題があったため�
 使うために作られている。全ファイルに`"internal": true`を明示しており、`buildCueCatalog()`が
 AI向けの一覧生成時にこのフラグを見て除外している（ファイル名が`idling_`で始まることは判定条件では
 ない。たまたま命名が揃っているだけ）。`set_cue`から直接呼んでも動作はするが、通常は呼ばない。
+
+---
+
+<sub>次に読むなら [CUE_AUTHORING.md](CUE_AUTHORING.md)（書式と保存先） / [design/CUE_CATALOG.md](design/CUE_CATALOG.md)（何を作るべきか）</sub>

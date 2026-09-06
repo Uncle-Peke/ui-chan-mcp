@@ -1,7 +1,8 @@
 # 音声合成（VoiSona Talk 連携）
 
-**声が出ない／声を調整したいとき**に読む。有効化手順、設定項目、うまく喋らないときの原因。
+> **声が出ない、または声を調整したいとき**に読みます。有効化の手順、設定項目、うまく喋らないときの原因。
 
+---
 
 [VoiSona Talk](https://voisona.com/talk/download/)（テクノスピーチ、無料）の REST API 経由で、
 `set_cue` のセリフを実際に喋らせることができます。合成は `destination: memory` で行い、
@@ -10,7 +11,7 @@ WAV と音素タイミング（`phonemes` / `phoneme_durations`）を取得し�
 
 API リファレンスは REST API 有効化後に http://localhost:32766/docs/talk_api.html で読めます。
 
-### 有効化手順
+## `01` 有効化手順
 
 1. VoiSona Talk を起動してログインし、ボイスライブラリを 1 つ以上ダウンロード
 2. メニュー「編集 > 環境設定」の **API タブ** で待ち受けポート（デフォルト 32766）と API 用パスワードを設定し、「REST API を有効にする」をチェック
@@ -34,7 +35,9 @@ API リファレンスは REST API 有効化後に http://localhost:32766/docs/t
 - `enabled` — TTS のマスタースイッチ。true でも認証情報が届くまでは音声なしで動きます
 - `app_name` — MCP サーバ起動時に API へ到達できないとき `open -a` で起動するアプリ名（macOS）
 
-### Cueと声のトーンの連動
+---
+
+## `02` Cueと声のトーンの連動
 
 `set_cue(cue)` が顔と声の両方を駆動します。各Cueファイル（`cues/<cue>.json`）の `voice` ブロックが
 そのCueの声を決めます：
@@ -52,3 +55,7 @@ API リファレンスは REST API 有効化後に http://localhost:32766/docs/t
 
 - 雨衣（うい）ちゃんのボイスが発売されたら、`voice_name` を差し替えるだけで対応できる想定です
 - エンジンに接続できない場合は音声なしで動き続けます（60 秒のクールダウン後に再試行）。その間のリップシンクはテキスト読み駆動（`set_cue` の `reading`）にフォールバックします
+
+---
+
+<sub>次に読むなら [TROUBLESHOOTING.md](TROUBLESHOOTING.md)（ほかの不具合） / [CUE_AUTHORING.md](CUE_AUTHORING.md)（Cue ごとの声色を作る）</sub>

@@ -1,10 +1,11 @@
 # Cue を書く / 設定を変える
 
-**新しい表情（Cue）を足すとき**と、**`ui-chan.config.json` を調整するとき**に読む。
-使えるレイヤー名の早見表は [docs/PSD_LAYERS.md](PSD_LAYERS.md)、
-カタログ全体をどう整理するかの方針は [docs/design/CUE_CATALOG.md](design/CUE_CATALOG.md)。
+> **新しい表情（Cue）を足すとき**と、**設定を調整するとき**に読みます。
+> 使えるレイヤー名の早見表は [PSD_LAYERS.md](PSD_LAYERS.md)、カタログ全体の方針は [design/CUE_CATALOG.md](design/CUE_CATALOG.md)。
 
-## Cue（cues/）
+---
+
+## `01` Cue（cues/）
 
 見た目＋声のセットは **`cues/<Cue名>.json` に 1 Cue = 1 ファイル**で管理します
 （`cue.schema.json` 準拠）。ファイル名がそのまま `set_cue` の `cue` 名になり、ファイルを追加すれば
@@ -42,7 +43,9 @@ Cue選定・PSDレイヤー名カタログなど、**新規Cue制作のための
 `docs/PSD_LAYERS.md` を参照。実行時にもAIのコンテキストにもロードされない（`context/`ではなく
 あえて`docs/`に置いている）。
 
-## 設定（ui-chan.config.json）
+---
+
+## `02` 設定（ui-chan.config.json）
 
 - `assetsDir` — PSD を探すディレクトリ（最初に見つかった `.psd` を使用）
 - `window` — ウィンドウサイズ・画面端からのマージン
@@ -67,3 +70,7 @@ Cue選定・PSDレイヤー名カタログなど、**新規Cue制作のための
 
 レイヤーパスは `/` 区切りで PSD のレイヤー名と完全一致。存在しないパスは無視され、
 `get_state` の `warnings` に報告されます（別 PSD への差し替えを安全にするため）。
+
+---
+
+<sub>次に読むなら [PSD_LAYERS.md](PSD_LAYERS.md)（レイヤー名を引く） / [TTS.md](TTS.md)（声色の指定）</sub>

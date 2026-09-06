@@ -1,18 +1,23 @@
 # ドキュメント索引
 
-使うだけなら [../README.md](../README.md) で足ります。ここは「もう少し知りたい人」と
-「中を直す人」のための資料です。
+> **どのページを読めばいいか分からないとき**に見ます。
+> 入れて使うだけなら [../README.md](../README.md) で足ります。
 
-## 使う人向け
+---
+
+## `01` 使う人向け
 
 | やりたいこと | 読むもの |
 |---|---|
 | 図解でセットアップを見る | [SETUP.html](SETUP.html) |
-| どのアプリにどう入るのか、詳しく知る | [CLIENTS.md](CLIENTS.md) |
-| うまく動かないので調べる | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
-| 声のしくみと設定を知る | [TTS.md](TTS.md) |
+| どのアプリに何が書き込まれるか知る | [CLIENTS.md](CLIENTS.md) |
+| 動かないので調べる | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
+| 声を出す・調整する | [TTS.md](TTS.md) |
+| エージェントから何ができるか知る | [TOOLS.md](TOOLS.md) |
 
-## 作る人向け
+---
+
+## `02` 作る人向け
 
 | やりたいこと | 読むもの |
 |---|---|
@@ -21,9 +26,18 @@
 | 用語を確認する（Idling / Cue / EventCue …） | [../VISION.md](../VISION.md) |
 | 新しい表情（Cue）を足す | [CUE_AUTHORING.md](CUE_AUTHORING.md) → レイヤー名は [PSD_LAYERS.md](PSD_LAYERS.md) |
 | 性格・口調を変える | [PERSONA.md](PERSONA.md) |
-| エージェント側から見た操作面を知る | [TOOLS.md](TOOLS.md) |
 | Cueカタログの設計方針を知る | [design/CUE_CATALOG.md](design/CUE_CATALOG.md) |
+| **ドキュメントを書く・直す** | [STYLE.md](STYLE.md) |
 
-**注意：`persona/` と `context/` はドキュメントではありません。** あそこに置いた Markdown は
-そのまま AI のコンテキストに注入されるので、編集するとういちゃんの振る舞いが変わります
-（人間向けの制作資料をあそこに置かないこと。理由は [PERSONA.md](PERSONA.md)）。
+---
+
+## `03` ドキュメントではないもの
+
+> [!IMPORTANT]
+> `persona/` と `context/` の Markdown は**資料ではなく、AI に注入される設定**です。
+> 編集するとういちゃんの振る舞いが変わります。人間向けの制作資料をそこに置かないでください
+> （理由は [PERSONA.md](PERSONA.md)）。
+
+---
+
+<sub>ページの型・色の使い分け・口調のルールは [STYLE.md](STYLE.md) にあります。</sub>
