@@ -221,6 +221,9 @@ function handleDebug(_ws: WebSocket, req: WsRequest): WsResponse {
         state.onInteraction(action.kind ?? 'poke');
         return { id: req.id, ok: true, result: { ok: true } };
       }
+      case 'panel': {
+        return { id: req.id, ok: true, result: panelAction(action.kind, action.value) };
+      }
       case 'fake_update': {
         sendToRenderer({
           type: 'update',
@@ -390,6 +393,93 @@ function homePosition(): { x: number; y: number } {
   return { x: wa.x + wa.width - width - margin, y: wa.y + wa.height - height - margin };
 }
 
+/** パネルのボタンの実体。IPC からも、デバッグ用の WS アクションからも同じ
+ *  ものを呼ぶ——押した結果を確かめる方法が無いと、今回のように
+ *  「押したのに何も起きない」不具合を見つけられない。 */
+function panelAction(kind: string, value?: number): unknown {
+  switch (kind) {
+    case 'affinity':
+      // The panel is the only place a human can move affinity directly; the
+      // agent's own adjust_affinity stays direction+magnitude, so this can't
+      // be used to sneak past the asymmetric curve on her behalf.
+      if (typeof value === 'number') state.setAffinity(value);
+      return state.affinitySnapshot();
+    case 'affinity:get':
+      return state.affinitySnapshot();
+    case 'mute':
+      muted = true;
+      return { muted };
+    case 'unmute':
+      muted = false;
+      return { muted };
+    case 'clear':
+      state.clear();
+      return { ok: true };
+    case 'restart':
+      app.relaunch();
+      app.quit();
+      return { ok: true };
+    case 'update': {
+      // 更新はこのプロセスが読んでいるファイルそのものを書き換えるので、
+      // 自分より長生きする子プロセスにやらせる（取得 → npm install →
+      // build → 起動しなおし）。
+      //
+      // ただし **投げっぱなしにはしない**。更新が無かった場合や失敗した
+      // 場合、子は何もせず終わるので、「着替えてくる」と言ったまま彼女が
+      // 戻ってこないように見える。結果を受け取って必ず言い直す。
+      const child = spawn(
+        path.join(projectRoot, 'bin', 'ui-chan-node'),
+        [path.join(projectRoot, 'bin', 'ui-chan.mjs'), 'update'],
+        { detached: true, stdio: ['ignore', 'pipe', 'pipe'] },
+      );
+      let out = '';
+      child.stdout?.on('data', (d: Buffer) => {
+        out += d;
+      });
+      child.stderr?.on('data', (d: Buffer) => {
+        out += d;
+      });
+      child.on('close', (code) => {
+        // 更新できた場合、子が stop → start するのでこの行には来ない
+        // （来たとしても、そのときは何も起きていない）。
+        if (out.includes('最新です')) {
+          state.setCue(
+            { cue: 'emo_joy_lo', text: 'もう最新だって。', reading: 'もうさいしんだって。' },
+            'panel',
+          );
+        } else if (code !== 0) {
+          const why = out.split('\n').find((l) => l.includes('❌')) ?? '';
+          state.setCue(
+            {
+              cue: 'sys_awkward',
+              text: `更新できなかった。${why.replace('❌ 更新できません: ', '')}`,
+              reading: 'こうしんできなかった。',
+            },
+            'panel',
+          );
+        }
+      });
+      child.unref();
+      state.setCue(
+        {
+          cue: 'sys_think',
+          text: '着替えてくる。ちょっと待ってて。',
+          reading: 'きがえてくる。ちょっとまってて。',
+        },
+        'panel',
+      );
+      return { ok: true };
+    }
+    case 'quit':
+      // Nothing to coordinate: a bridge only launches the app at its own
+      // startup, so quitting stays quit until a person starts her again.
+      app.quit();
+      return { ok: true };
+    default:
+      return { ok: false };
+  }
+}
+
 function createWindow(): void {
   const { width, height } = config.window;
   const home = homePosition();
@@ -441,58 +531,9 @@ if (!gotLock) {
   /** The panel's buttons. Deliberately few and all reversible-or-obvious:
    *  anything destructive belongs in the CLI, not in a window that pops open
    *  on its own. */
-  ipcMain.handle('ui-chan:panel-action', (_ev, kind: string, value?: number) => {
-    switch (kind) {
-      case 'affinity':
-        // The panel is the only place a human can move affinity directly; the
-        // agent's own adjust_affinity stays direction+magnitude, so this can't
-        // be used to sneak past the asymmetric curve on her behalf.
-        if (typeof value === 'number') state.setAffinity(value);
-        return state.affinitySnapshot();
-      case 'affinity:get':
-        return state.affinitySnapshot();
-      case 'mute':
-        muted = true;
-        return { muted };
-      case 'unmute':
-        muted = false;
-        return { muted };
-      case 'clear':
-        state.clear();
-        return { ok: true };
-      case 'restart':
-        app.relaunch();
-        app.quit();
-        return { ok: true };
-      case 'update': {
-        // The update rewrites the very files this process is running from, so
-        // it happens in a detached child that outlives us: pull, npm install,
-        // build, then start the app again on the new build.
-        const child = spawn(
-          path.join(projectRoot, 'bin', 'ui-chan-node'),
-          [path.join(projectRoot, 'bin', 'ui-chan.mjs'), 'update'],
-          { detached: true, stdio: 'ignore' },
-        );
-        child.unref();
-        state.setCue(
-          {
-            cue: 'sys_think',
-            text: '着替えてくる。ちょっと待ってて。',
-            reading: 'きがえてくる。ちょっとまってて。',
-          },
-          'panel',
-        );
-        return { ok: true };
-      }
-      case 'quit':
-        // Nothing to coordinate: a bridge only launches the app at its own
-        // startup, so quitting stays quit until a person starts her again.
-        app.quit();
-        return { ok: true };
-      default:
-        return { ok: false };
-    }
-  });
+  ipcMain.handle('ui-chan:panel-action', (_ev, kind: string, value?: number) =>
+    panelAction(kind, value),
+  );
 
   ipcMain.handle('ui-chan:get-init', () => {
     const psdFile = findPsd();

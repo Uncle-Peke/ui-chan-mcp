@@ -392,7 +392,9 @@ export type DebugAction =
   | { type: 'interact'; kind?: string }
   /** 更新の有無を強制する（撮影と手元確認用。実際の判定は6時間ごとの
    *  update-check.mjs が行う）。 */
-  | { type: 'fake_update'; available: boolean; behind?: number };
+  | { type: 'fake_update'; available: boolean; behind?: number }
+  /** パネルのボタンを押す。IPC は外から叩けないので、手元確認用の入口。 */
+  | { type: 'panel'; kind: string; value?: number };
 
 /** Who is on the other end of one WebSocket connection.
  *
