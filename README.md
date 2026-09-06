@@ -167,8 +167,17 @@ ui-chan update               # 最新版にする（--check で確認だけ）
 | 作業への自動リアクション（EventCue） | ✕ | ○ |
 
 **EventCue**っていうのは、きみの作業を見ててわたしが勝手に反応するやつ。コマンドがこけたとか、
-ターンが終わったとか、お手伝いの子が帰ってきたとか。**Claude Code / OpenCode / Hermes Agent** で動くよ
-（`ui-chan install <id>` が MCP 登録と一緒に置いてくれる）。
+ターンが終わったとか、お手伝いの子が帰ってきたとか。`ui-chan install <id>` が MCP 登録と一緒に
+置いてくれる。
+
+| ホスト | 状態 |
+|---|---|
+| Claude Code | ✅ 実機で確認済み |
+| OpenCode | 実装済み・**未検証**（`event` / `tool.execute.*` フック） |
+| Hermes Agent | 実装済み・**未検証**（Python プラグイン） |
+
+未検証のほうは、設定への書き込みと構文までは確かめてあるけど、実際に発火するところまでは
+見られてないの。試して転んだら [Issue](https://github.com/Uncle-Peke/ui-chan-mcp/issues) で教えて。
 
 フック側が決めるのは「**何が起きたか**」だけ。わたしが何て言うかは `ui-chan.config.json` の
 `eventCues` にあるから、ホストが違っても反応は同じだし、セリフを直すのに

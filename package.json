@@ -1,6 +1,6 @@
 {
   "name": "ui-chan-mcp",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Desktop mascot MCP server — control a PSD-based mascot (speech bubble, Cue-driven look + voice) from any MCP-capable agent",
   "main": "dist/app/main.js",
   "private": false,
