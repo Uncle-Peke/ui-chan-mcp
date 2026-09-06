@@ -2,10 +2,14 @@
   <img src="docs/images/faces.png" alt="ういちゃんの表情いろいろ" width="820">
 </p>
 
-<h1 align="center">ui-chan-mcp</h1>
+<h1 align="center">雨衣ちゃんMCP</h1>
 
 <p align="center">
   <sub>デスクトップの隅に住む、AI の体になるマスコット</sub><br>
+  <sub><code>ui-chan-mcp</code></sub>
+</p>
+
+<p align="center">
   <sub>立ち絵素材：雨衣（うい）／坂本アヒル様 — 本プロジェクトは非公式のファン制作物です</sub>
 </p>
 

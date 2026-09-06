@@ -1,7 +1,7 @@
 {
   "name": "ui-chan-mcp",
   "version": "0.5.0",
-  "description": "Desktop mascot MCP server — control a PSD-based mascot (speech bubble, Cue-driven look + voice) from any MCP-capable agent",
+  "description": "雨衣ちゃんMCP — デスクトップの隅に住む、AI の体になるマスコット（PSD立ち絵＋吹き出し＋音声。MCP で操作）",
   "main": "dist/app/main.js",
   "private": false,
   "type": "commonjs",
