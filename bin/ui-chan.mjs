@@ -32,6 +32,7 @@ import {
   writeCredentials,
 } from '../tools/setup/home.mjs';
 import { ask, askHidden, confirm, say, select } from '../tools/setup/prompt.mjs';
+import { checkUpdate, runUpdate } from '../tools/setup/update.mjs';
 
 const pkgRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
@@ -224,6 +225,32 @@ async function main() {
       }
       return say(c.snippet(serverCommand(pkgRoot), pkgRoot));
     }
+    case 'update': {
+      if (argv.includes('--check')) {
+        const st = checkUpdate(pkgRoot, { fetch: true });
+        if (!st.ok) return say(`確認できません: ${st.reason}`);
+        if (!st.available) return say('最新です');
+        const where =
+          st.via === 'gh'
+            ? `${st.slug} / gh 経由${st.installedSha ? '' : '・現在のバージョン不明'}`
+            : `${st.behind} コミット (${st.upstream})`;
+        return say(`更新あり: ${where}${st.blocked ? ` ※${st.blocked}` : ''}`);
+      }
+      const res = await runUpdate(pkgRoot, { log: (m) => say(`  ${m}`) });
+      if (!res.ok) {
+        say(`❌ 更新できません: ${res.reason}`);
+        process.exitCode = 1;
+        return;
+      }
+      if (!res.updated) return say('✅ 最新です');
+      say(`✅ 更新しました: ${res.from} → ${res.to}`);
+      // The running app is the old build; bring it back on the new one.
+      if (!argv.includes('--no-restart')) {
+        spawn(process.execPath, [path.join(pkgRoot, 'tools', 'stop-app.mjs')], { stdio: 'ignore' });
+        setTimeout(() => runApp([]), 1500);
+      }
+      return;
+    }
     case 'home':
       return say(homeDir());
     case 'start':
@@ -244,6 +271,7 @@ async function main() {
   ui-chan uninstall [...]  解除（--all / --purge でユーザーデータも削除）
   ui-chan doctor           状態チェック
   ui-chan print <id>       設定スニペットのみ表示
+  ui-chan update           最新版を取得して再ビルド（--check で確認のみ）
   ui-chan home             ユーザーデータの場所
   ui-chan start | stop     マスコットの起動 / 停止
 

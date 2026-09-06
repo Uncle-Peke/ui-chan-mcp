@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { app, BrowserWindow, ipcMain, powerMonitor, screen } from 'electron';
@@ -63,6 +64,38 @@ function sendToRenderer(cmd: RenderCommand): void {
  *  which is the question the connections panel exists to answer. */
 let activeAgent: number | null = null;
 let nextAgentId = 1;
+
+/** Is there a newer ui-chan upstream? Checked in a child process because it
+ *  touches the network (git fetch) and must never stall the mascot. Silent on
+ *  every failure — "can't tell" and "up to date" look the same on screen, and
+ *  neither is worth a warning. */
+function checkForUpdate(): void {
+  const child = spawn(
+    process.execPath,
+    [path.join(projectRoot, 'tools', 'setup', 'update-check.mjs'), projectRoot],
+    { stdio: ['ignore', 'pipe', 'ignore'] },
+  );
+  let out = '';
+  child.stdout?.on('data', (d: Buffer) => {
+    out += d;
+  });
+  child.on('close', () => {
+    try {
+      const st = JSON.parse(out);
+      sendToRenderer({
+        type: 'update',
+        available: Boolean(st.available),
+        behind: st.behind,
+        blocked: st.blocked ?? null,
+      });
+    } catch {
+      /* not a git install, offline, or git missing — say nothing */
+    }
+  });
+  child.on('error', () => {
+    /* no node? impossible here, but never throw from a timer */
+  });
+}
 
 /** Push the current connection list to the renderer. Called on connect,
  *  disconnect, and whenever she starts speaking for someone else — the panel
@@ -354,6 +387,10 @@ if (!gotLock) {
   app.whenReady().then(() => {
     startWsServer();
     createWindow();
+    // Once at startup, then every 6 hours: rare enough to be invisible, often
+    // enough that a long-running mascot notices a release.
+    setTimeout(checkForUpdate, 8_000);
+    setInterval(checkForUpdate, 6 * 60 * 60 * 1000);
     watchCues(cuesDir, () => {
       cues = loadCurrentCues();
       state.setCues(cues);
@@ -389,6 +426,26 @@ if (!gotLock) {
         app.relaunch();
         app.quit();
         return { ok: true };
+      case 'update': {
+        // The update rewrites the very files this process is running from, so
+        // it happens in a detached child that outlives us: pull, npm install,
+        // build, then start the app again on the new build.
+        const child = spawn(
+          path.join(projectRoot, 'bin', 'ui-chan-node'),
+          [path.join(projectRoot, 'bin', 'ui-chan.mjs'), 'update'],
+          { detached: true, stdio: 'ignore' },
+        );
+        child.unref();
+        state.setCue(
+          {
+            cue: 'sys_think',
+            text: '着替えてくる。ちょっと待ってて。',
+            reading: 'きがえてくる。ちょっとまってて。',
+          },
+          'panel',
+        );
+        return { ok: true };
+      }
       case 'quit':
         // Nothing to coordinate: a bridge only launches the app at its own
         // startup, so quitting stays quit until a person starts her again.

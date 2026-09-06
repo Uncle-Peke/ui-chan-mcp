@@ -449,7 +449,10 @@ export type RenderCommand =
   /** Who is connected right now, and who ういちゃん spoke for last. Drives the
    *  collapsible connections panel in the renderer — deliberately a render
    *  command like any other, so the panel can never disagree with the app. */
-  | { type: 'connections'; agents: ConnectedAgent[]; active: number | null };
+  | { type: 'connections'; agents: ConnectedAgent[]; active: number | null }
+  /** Whether a newer ui-chan is waiting upstream. The panel shows its update
+   *  entry only when this is true — nothing to announce, nothing on screen. */
+  | { type: 'update'; available: boolean; behind?: number; blocked?: string | null };
 
 // ---- Explicit per-tool result types (replaces the loose ToolResultInfo
 // index signature; each tool's actual return shape is now checked by tsc). ----

@@ -454,6 +454,31 @@ flag file, then a `goodnight` broadcast before `app.quit()`) are gone with it;
 if she is genuinely down, the tool call fails in ~1.5s saying how to start her,
 and starting her stays a person's choice.
 
+### Updating the tool itself
+
+`ui-chan update` (and the panel's download icon) fast-forwards the install and
+rebuilds it. Distribution is a git clone — the PSD and VoiSona can't be
+packaged, so there is no npm tarball to `npm update` — which makes the update
+three commands. The value is in what it refuses: never on a dirty tree, never
+with unpushed commits, `--ff-only` or nothing. Failing with a reason is fine;
+silently discarding someone's edits is not.
+
+**Either git or gh is enough.** A clone made with `gh repo clone` still has
+git (gh shells out to it), but a ZIP download, a copied directory, or a plugin
+cache has no `.git` at all. So `checkUpdate`/`runUpdate` fall back to gh:
+`gh api repos/<slug>/tarball` piped to `tar --strip-components=1 -C <pkgRoot>`,
+which overwrites tracked files and leaves node_modules — and everything the
+user added — alone. Since there is no git history to compare against, that path
+records the commit it installed in `.ui-chan-install.json`; with no stamp yet,
+it reports "update available" rather than guessing, the update being idempotent.
+The repo slug comes from the git remote, else `package.json`'s `repository`.
+
+The app checks 8s after start and every 6h, in a **child process** (`git fetch`
+touches the network; a hang must be a hung child, not a hung mascot). The
+panel's 6th icon exists only while an update is waiting, and its arrival opens
+the panel once — the same treatment a second session gets, for the same reason:
+it's news the user cannot infer.
+
 ### Rejected designs (do not reintroduce)
 
 `extends` inheritance between scenes; named wrapper fields (`pose`,

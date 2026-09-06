@@ -548,6 +548,17 @@ async function init(): Promise<void> {
       reportWarnings();
       lipCurrentMouth = null; // let the next lip tick re-assert its mouth
       draw();
+    } else if (cmd.type === 'update') {
+      const btn = document.getElementById('panel-update') as HTMLButtonElement;
+      btn.hidden = !cmd.available;
+      if (cmd.available) {
+        btn.title = cmd.blocked
+          ? `更新があります（${cmd.behind}件）— ただし${cmd.blocked}`
+          : `更新があります（${cmd.behind}件）。押すと取得して入れ替えます`;
+      }
+      // Sessions are news; a release is news too — surface it once, the same
+      // way, instead of waiting for the user to happen to open the panel.
+      if (cmd.available && !panelOpen) setPanelOpen(true);
     } else if (cmd.type === 'connections') {
       renderConnections(cmd.agents, cmd.active);
     } else if (cmd.type === 'speech') {

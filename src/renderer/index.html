@@ -321,6 +321,17 @@
     #panel-actions button.on .i-slash {
       display: inline;
     }
+    /* 更新の入口は「あるときだけ」出す。常設すると平常時の情報がひとつ増える。 */
+    #panel-update[hidden] {
+      display: none;
+    }
+    #panel-update {
+      color: #4e5bb5;
+      margin-left: auto;
+    }
+    #panel-update + button[data-action='quit'] {
+      margin-left: 4px;
+    }
     /* 終了だけは押し間違えると困るので、右端に離して置く。 */
     #panel-actions button[data-action='quit'] {
       margin-left: auto;
@@ -373,6 +384,14 @@
               <path d="M3.4 9.3L10 3.6l6.6 5.7" />
               <path d="M5.2 8.4v7.4h9.6V8.4" />
               <path d="M8.4 15.8v-4.1h3.2v4.1" />
+            </svg>
+          </button>
+          <button type="button" data-action="update" id="panel-update" title="更新があります（取得して入れ替える）" aria-label="更新" hidden>
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <!-- 下向き矢印＋受け皿。更新があるときだけ現れる6つ目。 -->
+              <path d="M10 3.4v8.4" />
+              <path d="M6.6 8.6L10 12l3.4-3.4" />
+              <path d="M4.2 14.2v1.4a1 1 0 0 0 1 1h9.6a1 1 0 0 0 1-1v-1.4" />
             </svg>
           </button>
           <button type="button" data-action="quit" title="おやすみ（終了。次に呼ばれても起きない）" aria-label="おやすみ">

@@ -61,5 +61,9 @@
     "docs",
     "README.md",
     "CUE_CATALOG.md"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Uncle-Peke/ui-chan-mcp.git"
+  }
 }
