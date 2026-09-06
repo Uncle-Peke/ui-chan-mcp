@@ -285,6 +285,24 @@ what actually advances the sequence — never a second, independently-guessed
 timer. `holdMs` still fully controls steps with no `text` (there's nothing to
 wait for otherwise).
 
+### FidgetCue: being touched
+
+Clicking her actual pixels fires a FidgetCue from `interactions.poke`, which
+preempts whatever is playing. Two rules learned by getting them wrong:
+
+- **Every entry says something.** Silent "just change the face" entries read as
+  her blinking at you in confusion — a reaction to being touched has to be a
+  *reply*, so 「え、なに？」 rather than a wordless surprised face.
+- **The cold lines were unreachable.** Affinity starts at 35 (`normal`), and
+  the 「触んないで」 entries were gated `maxAffinity: 34`, so the one reaction
+  people actually poke her to see could never fire. Being prodded *repeatedly*
+  is annoying at any temperature, and it is the one irritation the user creates
+  on purpose — so `interactions.spam` (default: 3 pokes within 4s) swaps in its
+  own pool, with the flavour still following affinity. Reacting resets the
+  tally, so she snaps once rather than once per poke. Every poke counts toward
+  it, including ones the cooldown swallows: the cooldown exists to stop
+  *reactions* piling up, not to forgive the prodding.
+
 ### EventCue: reactions to what happens in the session
 
 Per VISION.md, an **EventCue** is a CueSequence fired by something that happened

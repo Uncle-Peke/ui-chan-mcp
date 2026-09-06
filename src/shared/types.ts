@@ -81,6 +81,22 @@ export interface InteractionsConfig {
   /** Minimum gap between reactions, ms. Default 600. Stops mashing from
    *  spamming interruptions. */
   cooldownMs?: number;
+  /** Reactions to being poked *repeatedly*. The plain `poke` pool is gated on
+   *  affinity, so a cold "触んないで" is unreachable once she likes you — but
+   *  being prodded over and over is annoying at any temperature, and that is
+   *  the one irritation the user creates on purpose. */
+  spam?: SpamInteractionConfig;
+}
+
+export interface SpamInteractionConfig {
+  /** How many pokes inside `withinMs` count as "being pestered". Default 3. */
+  count?: number;
+  /** The window those pokes have to fall in, ms. Default 4000. */
+  withinMs?: number;
+  /** Pool used instead of `poke` once the threshold is crossed. Same shape as
+   *  `poke` (weights + affinity gates), so the *flavour* of the irritation can
+   *  still follow the relationship. */
+  pool?: FidgetCue[];
 }
 
 /** Timing for the speech bubble/queue when `set_cue`'s `duration_ms` is

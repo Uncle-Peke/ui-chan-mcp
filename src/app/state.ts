@@ -140,6 +140,8 @@ export class UiChanState {
   // while one is actually playing (see effectivePriority()).
   private activePriority: number = PRIORITY.idle;
   private lastInteractionAt = 0;
+  /** Timestamps of recent pokes, for the "stop poking me" reaction. */
+  private recentPokes: number[] = [];
   private speechTimer: NodeJS.Timeout | null = null;
   private idleTimer: NodeJS.Timeout | null = null;
   private idlingCueTimer: NodeJS.Timeout | null = null;
@@ -544,9 +546,23 @@ export class UiChanState {
     if (PRIORITY.fidget < this.effectivePriority()) return;
     const cfg = this.config.interactions;
     const now = Date.now();
+    // Every poke is remembered, including the ones swallowed by the cooldown —
+    // mashing is exactly what we want to notice, and the cooldown is there to
+    // stop the *reactions* piling up, not to forgive the prodding.
+    const spam = cfg?.spam;
+    const window = spam?.withinMs ?? 4000;
+    this.recentPokes = this.recentPokes.filter((t) => now - t <= window);
+    this.recentPokes.push(now);
     if (now - this.lastInteractionAt < (cfg?.cooldownMs ?? 600)) return;
-    const item = weightedPick(this.eligible(cfg?.poke ?? []));
+
+    const pestered = this.recentPokes.length >= (spam?.count ?? 3);
+    const pool = pestered ? (spam?.pool ?? []) : [];
+    const item =
+      weightedPick(this.eligible(pool)) ?? weightedPick(this.eligible(cfg?.poke ?? []));
     if (!item?.steps?.length) return;
+    // Reacting to the pestering resets the tally, so she snaps once and then
+    // has to be pestered again — not once per poke forever.
+    if (pestered) this.recentPokes = [];
     this.lastInteractionAt = now;
     this.preempt();
     this.performSequence(item, 'interaction');

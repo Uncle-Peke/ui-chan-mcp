@@ -24,18 +24,41 @@
         "awayCue": {
           "name": "away_doze",
           "steps": [
-            { "cue": "sys_sleepy", "text": "……もう、いないの？", "reading": "……もう、いないの？" },
-            { "cue": "idling_doze_1", "holdMs": 1200 },
-            { "cue": "idling_doze_2", "holdMs": 1500 },
-            { "cue": "idling_doze_3", "holdMs": 2000 }
+            {
+              "cue": "sys_sleepy",
+              "text": "……もう、いないの？",
+              "reading": "……もう、いないの？"
+            },
+            {
+              "cue": "idling_doze_1",
+              "holdMs": 1200
+            },
+            {
+              "cue": "idling_doze_2",
+              "holdMs": 1500
+            },
+            {
+              "cue": "idling_doze_3",
+              "holdMs": 2000
+            }
           ]
         },
         "wakeCue": {
           "name": "wake_up",
           "steps": [
-            { "cue": "idling_doze_1", "holdMs": 400 },
-            { "cue": "emo_surprise_lo", "holdMs": 600 },
-            { "cue": "emo_joy_lo", "text": "……ん、おかえり。", "reading": "……ん、おかえり。" }
+            {
+              "cue": "idling_doze_1",
+              "holdMs": 400
+            },
+            {
+              "cue": "emo_surprise_lo",
+              "holdMs": 600
+            },
+            {
+              "cue": "emo_joy_lo",
+              "text": "……ん、おかえり。",
+              "reading": "……ん、おかえり。"
+            }
           ]
         }
       },
@@ -488,7 +511,7 @@
     "cueFadeMs": 170
   },
   "interactions": {
-    "$comment": "触れる反応（フィジット）。キャラの実ピクセルをクリック（ポーク）すると発火し、再生中のCue/発話を中断して最優先（debug操作を除く）で反応し、終わるとdefaultに戻る。cooldownMsで連打を抑制（短めにするとパカパカ反応してフィジットとして楽しい）。hoverプールはidlingCuesと同じ形＋好感度ゲートで、好感度に応じて塩対応〜照れが出る",
+    "$comment": "触れる反応（フィジット）。キャラの実ピクセルをクリック（ポーク）すると発火し、再生中のCue/発話を中断して最優先（debug操作を除く）で反応し、終わるとdefaultに戻る。cooldownMsで連打を抑制。プールは好感度ゲート付きで、塩対応〜照れが温度に応じて出る。**無言の表情だけの項目は置かない**：つつかれて黙って表情だけ変えるのは反応として意味が通らず（キョトンとするだけに見える）、触られたら何か言う",
     "cooldownMs": 600,
     "poke": [
       {
@@ -498,19 +521,32 @@
         "steps": [
           {
             "cue": "mix_disgust_anger",
-            "holdMs": 1200
+            "text": "……え、なに？",
+            "reading": "……え、なに？"
           }
         ]
       },
       {
         "name": "poke_cold_line",
-        "weight": 3,
+        "weight": 5,
         "maxAffinity": 34,
         "steps": [
           {
             "cue": "emo_anger_lo",
             "text": "……何？触んないで。",
             "reading": "……なに？さわんないで。"
+          }
+        ]
+      },
+      {
+        "name": "poke_cold_glare",
+        "weight": 3,
+        "maxAffinity": 34,
+        "steps": [
+          {
+            "cue": "sys_refuse",
+            "text": "やめてって言ってるでしょ。",
+            "reading": "やめてっていってるでしょ。"
           }
         ]
       },
@@ -522,13 +558,14 @@
         "steps": [
           {
             "cue": "emo_surprise_lo",
-            "holdMs": 1200
+            "text": "え、なに？",
+            "reading": "え、なに？"
           }
         ]
       },
       {
         "name": "poke_surprise",
-        "weight": 3,
+        "weight": 4,
         "minAffinity": 35,
         "maxAffinity": 69,
         "steps": [
@@ -540,19 +577,33 @@
         ]
       },
       {
+        "name": "poke_normal_annoyed",
+        "weight": 3,
+        "minAffinity": 35,
+        "maxAffinity": 69,
+        "steps": [
+          {
+            "cue": "emo_anger_lo",
+            "text": "ちょっと、なんなの。",
+            "reading": "ちょっと、なんなの。"
+          }
+        ]
+      },
+      {
         "name": "poke_shy",
-        "weight": 6,
+        "weight": 5,
         "minAffinity": 50,
         "steps": [
           {
             "cue": "self_shy",
-            "holdMs": 1400
+            "text": "ひゃっ……なに、急に。",
+            "reading": "ひゃっ……なに、きゅうに。"
           }
         ]
       },
       {
         "name": "poke_ticklish",
-        "weight": 3,
+        "weight": 4,
         "minAffinity": 50,
         "steps": [
           {
@@ -564,7 +615,7 @@
       },
       {
         "name": "poke_dere",
-        "weight": 2,
+        "weight": 3,
         "minAffinity": 70,
         "steps": [
           {
@@ -574,7 +625,63 @@
           }
         ]
       }
-    ]
+    ],
+    "spam": {
+      "$comment": "しつこく触られたときの反応。withinMs 内に count 回つつかれると poke プールの代わりにこちらから選ぶ。poke は好感度ゲートで塩対応が高好感度だと出なくなるが、連打のうっとうしさは温度に関係なく成立する（＝ユーザが意図的に作れる唯一の苛立ち）。反応するとカウントはリセットされ、また連打しない限り出ない",
+      "count": 3,
+      "withinMs": 4000,
+      "pool": [
+        {
+          "name": "spam_stop_cold",
+          "weight": 5,
+          "maxAffinity": 49,
+          "steps": [
+            {
+              "cue": "emo_anger",
+              "text": "ちょっと。触んないでって。",
+              "reading": "ちょっと。さわんないでって。"
+            }
+          ]
+        },
+        {
+          "name": "spam_glare_cold",
+          "weight": 4,
+          "maxAffinity": 49,
+          "steps": [
+            {
+              "cue": "sys_refuse",
+              "text": "しつこいってば。",
+              "reading": "しつこいってば。"
+            }
+          ]
+        },
+        {
+          "name": "spam_stop_normal",
+          "weight": 5,
+          "minAffinity": 50,
+          "maxAffinity": 69,
+          "steps": [
+            {
+              "cue": "emo_anger_lo",
+              "text": "もー、しつこい。",
+              "reading": "もー、しつこい。"
+            }
+          ]
+        },
+        {
+          "name": "spam_pout_dere",
+          "weight": 5,
+          "minAffinity": 70,
+          "steps": [
+            {
+              "cue": "emo_anger_lo",
+              "text": "つつきすぎ。怒るよ？",
+              "reading": "つつきすぎ。おこるよ？"
+            }
+          ]
+        }
+      ]
+    }
   },
   "cuesDir": "cues",
   "personaFile": "persona/ui-chan.md",
