@@ -366,8 +366,16 @@ if (!gotLock) {
   /** The panel's buttons. Deliberately few and all reversible-or-obvious:
    *  anything destructive belongs in the CLI, not in a window that pops open
    *  on its own. */
-  ipcMain.handle('ui-chan:panel-action', (_ev, kind: string) => {
+  ipcMain.handle('ui-chan:panel-action', (_ev, kind: string, value?: number) => {
     switch (kind) {
+      case 'affinity':
+        // The panel is the only place a human can move affinity directly; the
+        // agent's own adjust_affinity stays direction+magnitude, so this can't
+        // be used to sneak past the asymmetric curve on her behalf.
+        if (typeof value === 'number') state.setAffinity(value);
+        return state.affinitySnapshot();
+      case 'affinity:get':
+        return state.affinitySnapshot();
       case 'mute':
         muted = true;
         return { muted };

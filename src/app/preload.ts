@@ -8,7 +8,8 @@ contextBridge.exposeInMainWorld('uiChan', {
   onCommand: (cb: (cmd: unknown) => void) =>
     ipcRenderer.on('ui-chan:command', (_ev, cmd) => cb(cmd)),
   interaction: (kind: string) => ipcRenderer.send('ui-chan:interaction', kind),
-  panelAction: (kind: string) => ipcRenderer.invoke('ui-chan:panel-action', kind),
+  panelAction: (kind: string, value?: number) =>
+    ipcRenderer.invoke('ui-chan:panel-action', kind, value),
   dragStart: () => ipcRenderer.send('ui-chan:drag-start'),
   dragEnd: () => ipcRenderer.send('ui-chan:drag-end'),
 });

@@ -77,15 +77,19 @@ npm run dump-psd -- ~/.ui-chan/assets/ui_sozai.psd   # dump PSD layer tree
 There is **no test runner**. End-to-end checks are manual scripts:
 
 ```bash
-node tools/debug.mjs                                 # interactive REPL for Cue/IdlingCue verification
-node tools/debug.mjs cue happy こんにちは こんにちは         # one-shot direct WebSocket call
-node tools/debug.mjs idle                            # force-run a random IdlingCue
-node tools/debug.mjs --launch                        # auto-launch the app, then enter REPL
 node tools/ws-test.mjs set_cue '{"cue":"happy","text":"テスト","reading":"てすと"}'   # minimal one-shot WebSocket test
 node tools/mcp-test.mjs                              # drive the MCP server over stdio (E2E)
 ```
 
-`tools/debug.mjs` bypasses the MCP server entirely and talks to the app's WebSocket. It is useful for manually checking Cues, forcing IdlingCues/chatter, and inspecting state without an MCP-capable agent. The commands it exposes (REPL or one-shot) are: `cue`, `state`, `clear`, `affinity`, `restart`, `idle [name]`, `poke [hover]` (fire a fidget interaction), `list`, `preview <cue>`, `refresh`, and `watch`. It reads TTS credentials from `.env` in the project root (copy `.env.example`) and forwards them to the app on connect.
+The interactive debug console (`tools/debug.mjs`) is **gone**. It existed so a
+human could drive the mascot without an MCP client; an AI agent working on this
+repo has the MCP tools and reproduces anything it needs through them, which left
+the console as a second, drifting surface to maintain. The app's WebSocket
+`debug` actions (`trigger_idle`, `trigger_event`, `preview_cue`, `set_affinity`,
+`interact`) are still there and are three lines of `new WebSocket(...)` away —
+that is the layer to reach for when something can't be triggered over MCP
+(IdlingCues and EventCues have no MCP tool), and affinity now also has a slider
+in the panel's gear.
 
 Always `npm run build` before running — both entry points execute compiled
 `dist/`, not the TypeScript sources.

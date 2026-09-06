@@ -557,8 +557,7 @@ export class UiChanState {
 
     const pestered = this.recentPokes.length >= (spam?.count ?? 3);
     const pool = pestered ? (spam?.pool ?? []) : [];
-    const item =
-      weightedPick(this.eligible(pool)) ?? weightedPick(this.eligible(cfg?.poke ?? []));
+    const item = weightedPick(this.eligible(pool)) ?? weightedPick(this.eligible(cfg?.poke ?? []));
     if (!item?.steps?.length) return;
     // Reacting to the pestering resets the tally, so she snaps once and then
     // has to be pestered again — not once per poke forever.

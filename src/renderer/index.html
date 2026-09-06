@@ -238,6 +238,37 @@
     /* 操作はアイコン1行。文字を置かないぶん最も「アプリのUI」に見えにくく、
        高さも1行で固定なので、接続が増えて縦に伸びる見え方を邪魔しない。
        意味はすべて title（ツールチップ）で補う。 */
+    /* 好感度スライダー。歯車で開くまで存在しない（普段のパネルは「誰がいるか」
+       だけを答える場所で、設定はそのついでに触れればいい）。 */
+    #panel-affinity {
+      margin-top: 6px;
+      border-top: 1px solid rgba(78, 91, 181, 0.2);
+      padding: 6px 4px 2px;
+    }
+    #panel-affinity[hidden] {
+      display: none;
+    }
+    .aff-head {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      color: #6b6577;
+      font-size: 11px;
+    }
+    .aff-head b {
+      color: #2e2a35;
+      font-size: 13px;
+      margin-left: auto;
+    }
+    .aff-head small {
+      font-size: 10.5px;
+      color: #4e5bb5;
+    }
+    #aff-range {
+      width: 100%;
+      margin: 4px 0 0;
+      accent-color: #4e5bb5;
+    }
     #panel-actions {
       display: flex;
       align-items: center;
@@ -304,6 +335,10 @@
       <button id="panel-tab" type="button" title="接続中のセッション"><span id="panel-count"></span></button>
       <div id="panel-body">
         <div id="panel-list"></div>
+        <div id="panel-affinity" hidden>
+          <div class="aff-head"><span>好感度</span><b id="aff-value">–</b><small id="aff-band"></small></div>
+          <input id="aff-range" type="range" min="0" max="100" step="1" value="0" />
+        </div>
         <div id="panel-actions">
           <button type="button" data-action="mute" title="しずかに（声だけ止める）" aria-label="しずかに">
             <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -318,6 +353,22 @@
                    見えず、単独ではただの四角になるため。 -->
               <circle cx="10" cy="10" r="6.4" />
               <path d="M5.5 14.5L14.5 5.5" />
+            </svg>
+          </button>
+          <button type="button" id="panel-gear" type="button" title="設定（好感度）" aria-label="設定">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <!-- 歯車。放射状の線だけだと太陽に見えるので、歯は「面」で描き、
+                   外周のリングと中心の穴で歯車の構造を出す。 -->
+              <rect class="i-fill" x="9" y="1.6" width="2" height="3.1" rx="0.6" transform="rotate(0 10 10)" />
+              <rect class="i-fill" x="9" y="1.6" width="2" height="3.1" rx="0.6" transform="rotate(45 10 10)" />
+              <rect class="i-fill" x="9" y="1.6" width="2" height="3.1" rx="0.6" transform="rotate(90 10 10)" />
+              <rect class="i-fill" x="9" y="1.6" width="2" height="3.1" rx="0.6" transform="rotate(135 10 10)" />
+              <rect class="i-fill" x="9" y="1.6" width="2" height="3.1" rx="0.6" transform="rotate(180 10 10)" />
+              <rect class="i-fill" x="9" y="1.6" width="2" height="3.1" rx="0.6" transform="rotate(225 10 10)" />
+              <rect class="i-fill" x="9" y="1.6" width="2" height="3.1" rx="0.6" transform="rotate(270 10 10)" />
+              <rect class="i-fill" x="9" y="1.6" width="2" height="3.1" rx="0.6" transform="rotate(315 10 10)" />
+              <circle cx="10" cy="10" r="5.1" />
+              <circle cx="10" cy="10" r="1.9" />
             </svg>
           </button>
           <button type="button" data-action="restart" title="起きなおす（再起動）" aria-label="起きなおす">

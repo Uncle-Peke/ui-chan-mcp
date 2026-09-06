@@ -17,7 +17,7 @@ interface UiChanApi {
   reportWarnings(warnings: string[]): void;
   onCommand(cb: (cmd: RenderCommand) => void): void;
   interaction(kind: string): void;
-  panelAction(kind: string): Promise<unknown>;
+  panelAction(kind: string, value?: number): Promise<unknown>;
   dragStart(): void;
   dragEnd(): void;
 }
@@ -462,7 +462,49 @@ function renderConnections(agents: PanelAgent[], active: number | null): void {
   lastCrowdKey = crowded ? key : '';
 }
 
+/** The affinity control behind the gear. Reading it is a fetch (the panel is
+ *  transient, so there's no state to keep in sync); writing is immediate — this
+ *  is a debug/tuning affordance, not something to confirm. */
+const affEl = document.getElementById('panel-affinity') as HTMLDivElement;
+const affRange = document.getElementById('aff-range') as HTMLInputElement;
+const affValue = document.getElementById('aff-value') as HTMLElement;
+const affBand = document.getElementById('aff-band') as HTMLElement;
+
+function showAffinity(a: { value: number; band: string } | null): void {
+  if (!a) return;
+  affRange.value = String(Math.round(a.value));
+  affValue.textContent = String(Math.round(a.value));
+  affBand.textContent = a.band;
+}
+
+async function refreshAffinity(): Promise<void> {
+  showAffinity(
+    (await window.uiChan.panelAction('affinity:get')) as { value: number; band: string },
+  );
+}
+
 function wirePanel(): void {
+  const gear = document.getElementById('panel-gear') as HTMLButtonElement;
+  gear.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const open = affEl.hidden;
+    affEl.hidden = !open;
+    gear.classList.toggle('on', open);
+    if (open) await refreshAffinity();
+  });
+  affRange.addEventListener('input', () => {
+    affValue.textContent = affRange.value;
+  });
+  // 'change' (not 'input') so dragging doesn't fire an IPC call per pixel.
+  affRange.addEventListener('change', async () => {
+    showAffinity(
+      (await window.uiChan.panelAction('affinity', Number(affRange.value))) as {
+        value: number;
+        band: string;
+      },
+    );
+  });
+
   panelTab.addEventListener('click', (e) => {
     e.stopPropagation();
     setPanelOpen(!panelOpen, true);

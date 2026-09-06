@@ -212,9 +212,6 @@ Cue の一覧は `persona` プロンプト（と SessionStart フック）が `c
 | `npm run app` / `stop` / `restart` | Electron アプリの起動／終了／再起動 |
 | `npm run build` | `src/` を `dist/` にビルド（`npm install` 時に自動実行） |
 | `npm run editor` | Cue エディタ「雨衣ちゃんのデバッグルーム」 |
-| `npm run debug` | 対話型デバッグコンソール（MCP 不要・WebSocket 直叩き） |
-| `npm run debug:launch` / `debug:restart` | アプリ起動込みのデバッグコンソール |
-| `npm run debug:state` / `debug:list` | 状態の取得／Cue・IdlingCue・EventCue 一覧 |
 | `npm run dump-psd -- assets/foo.psd` | PSD レイヤー構造のダンプ |
 | `npm run validate-cues` | `cues/*.json` のスキーマ検証 |
 | `npm run lint` / `lint:fix` / `format` | Biome |
