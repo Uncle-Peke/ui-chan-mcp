@@ -420,7 +420,7 @@ function renderConnections(agents: PanelAgent[], active: number | null): void {
   if (agents.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'panel-empty';
-    empty.textContent = 'だれもいない';
+    empty.textContent = 'だれもいない…';
     panelList.append(empty);
   }
   for (const a of agents) {
