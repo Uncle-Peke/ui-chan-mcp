@@ -394,10 +394,21 @@ matching on `name` would light up two rows when the same client is connected
 twice. The list is pushed as an ordinary `RenderCommand` (`connections`) on
 connect/disconnect/tool call, so the panel can never show a stale session.
 
-Its buttons (`ui-chan:panel-action`) are deliberately few and all
-reversible-or-obvious — しずかに (mute the *voice* only; the bubble stays, because a
-fully blank mascot reads as broken), ひっこめる (`clear`), 再起動, おやすみ. Anything
-destructive belongs in the CLI, not in a window that can open on its own.
+Its buttons (`ui-chan:panel-action`) are icon-only in one row — text there
+looked like an app toolbar, and icons keep the height fixed so the panel only
+ever grows downward with sessions. Left to right: しずかに (mutes the *voice*
+only; the bubble stays, because a fully blank mascot reads as broken), ひっこめる
+(`clear`), 起きなおす (relaunch), and — pushed to the right edge, away from the
+rest — おやすみ.
+
+**おやすみ has to be more than `app.quit()`**: the bridge relaunches the app on
+the next tool call (`ensureConnected` → `launchApp`), so quitting alone means
+she pops back up seconds later. The button therefore writes an `asleep` flag
+into the user data dir; `launchApp()` refuses to start while it exists and
+tool calls fail fast with "おやすみ中です" instead of burning the 20s connect
+timeout. Any explicit launch (`ui-chan start`, `npm run app`) clears it — being
+started *is* waking up. The flag lives in `~/.ui-chan` rather than the package
+so it survives an update, and so the CLI can see it.
 
 ### Rejected designs (do not reintroduce)
 

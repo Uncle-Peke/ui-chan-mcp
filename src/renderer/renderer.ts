@@ -484,8 +484,10 @@ function wirePanel(): void {
       const res = (await window.uiChan.panelAction(kind as string)) as { muted?: boolean };
       if (typeof res?.muted === 'boolean') {
         muted = res.muted;
-        btn.textContent = muted ? '声をもどす' : 'しずかに';
+        // Icon-only, so the state has to live in the icon: `.on` swaps the
+        // sound wave for a slash and tints the button.
         btn.classList.toggle('on', muted);
+        btn.title = muted ? '声をもどす' : 'しずかに（声だけ止める）';
       }
     });
   }

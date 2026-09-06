@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -148,7 +149,21 @@ function tryConnect(): Promise<WebSocket> {
   });
 }
 
+/** She was told to sleep (the panel's おやすみ). Respect it: the whole point of
+ *  that button is that the next tool call must not drag her back up. */
+function isAsleep(): boolean {
+  try {
+    return fs.existsSync(path.join(paths.home, 'asleep'));
+  } catch {
+    return false;
+  }
+}
+
 function launchApp(): void {
+  if (isAsleep()) {
+    log('ui-chan is asleep (おやすみ) — not launching. Wake her with `ui-chan start`.');
+    return;
+  }
   const now = Date.now();
   if (now - lastLaunchAt < 10_000) return;
   lastLaunchAt = now;
@@ -230,10 +245,18 @@ async function doConnect(): Promise<WebSocket> {
         }
         launched = true;
       }
+      if (isAsleep()) {
+        // Fail fast and say why, instead of spending the full timeout waiting
+        // for an app that was deliberately put to bed.
+        throw new Error(
+          'ういちゃんはおやすみ中です（パネルの「おやすみ」で終了しました）。' +
+            '`ui-chan start` で起こせます。',
+        );
+      }
       if (Date.now() > deadline) {
         throw new Error(
           `could not reach the ui-chan display app at ${wsUrl}. ` +
-            `Start it manually with \`npm run app\` in ${projectRoot}`,
+            `Start it manually with \`ui-chan start\` (${projectRoot})`,
         );
       }
       await new Promise((r) => setTimeout(r, 400));

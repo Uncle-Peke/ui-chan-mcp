@@ -72,6 +72,26 @@ function sendConnections(): void {
 }
 
 const tts = config.tts?.enabled ? new VoiSonaTalkClient(config.tts) : null;
+/** "おやすみ" marker, read by the MCP bridge before it launches the app. Kept
+ *  in the user data dir so it survives the app it belongs to, and so `ui-chan
+ *  start` (or any explicit launch) can clear it. */
+function asleepFlagPath(): string {
+  return path.join(paths.home, 'asleep');
+}
+
+function markAsleep(asleep: boolean): void {
+  try {
+    if (asleep) {
+      fs.mkdirSync(paths.home, { recursive: true });
+      fs.writeFileSync(asleepFlagPath(), `${new Date().toISOString()}\n`, 'utf-8');
+    } else {
+      fs.rmSync(asleepFlagPath(), { force: true });
+    }
+  } catch {
+    /* a mascot that can't write a flag still runs — worst case she wakes up */
+  }
+}
+
 /** Voice can be muted from the panel. This silences the *voice* only — the
  *  bubble still appears, because a mascot that goes completely blank looks
  *  broken rather than quiet. */
@@ -352,6 +372,8 @@ if (!gotLock) {
   app.quit();
 } else {
   app.whenReady().then(() => {
+    // Being launched at all means she's awake again.
+    markAsleep(false);
     startWsServer();
     createWindow();
     watchCues(cuesDir, () => {
@@ -382,6 +404,11 @@ if (!gotLock) {
         app.quit();
         return { ok: true };
       case 'quit':
+        // Quitting alone does nothing: the MCP bridge relaunches the app on the
+        // next tool call (ensureConnected → launchApp), so she would pop back up
+        // seconds later. "おやすみ" therefore leaves a flag the bridge checks
+        // before launching — the button means *stay* asleep.
+        markAsleep(true);
         app.quit();
         return { ok: true };
       default:
