@@ -12,7 +12,10 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # macos-latest である必要がある：package.json の os が darwin 限定なので、
+    # Linux ランナーでは npm ci が EBADPLATFORM で落ちる。ui-chan が macOS 専用で
+    # ある以上、検証も公開も macOS でやるのが筋でもある。
+    runs-on: macos-latest
     env:
       # Electron のバイナリ（200MB超）は CI では要らない。アプリを起動する
       # テストは無く、tsc も esbuild も型と JS しか見ないため。

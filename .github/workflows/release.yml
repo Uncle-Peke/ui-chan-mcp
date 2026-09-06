@@ -18,7 +18,10 @@ on:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    # macos-latest である必要がある：package.json の os が darwin 限定なので、
+    # Linux ランナーでは npm ci が EBADPLATFORM で落ちる。ui-chan が macOS 専用で
+    # ある以上、検証も公開も macOS でやるのが筋でもある。
+    runs-on: macos-latest
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
     permissions:
