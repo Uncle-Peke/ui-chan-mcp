@@ -275,6 +275,44 @@ async function main() {
       say(dim('\nクライアントを再起動すると反映されます。'));
       return;
     }
+    case 'shot': {
+      // 透過ウィンドウのままだと、撮った画像は白以外の背景に置けない。
+      // 撮る瞬間だけ背景を敷いて撮る。
+      const [file = 'ui-chan-shot.png', bg = 'light'] = argv.filter((a) => !a.startsWith('-'));
+      const port = Number(process.env.UI_CHAN_PORT ?? 8123);
+      await new Promise((resolve) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+        let settled = false;
+        const done = (msg) => {
+          if (settled) return; // 成功後にタイムアウトが二重に鳴らないように
+          settled = true;
+          say(msg);
+          try {
+            ws.close();
+          } catch {
+            /* already closed */
+          }
+          resolve();
+        };
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ id: 1, type: 'hello', agent: 'ui-chan-cli' }));
+          setTimeout(
+            () =>
+              ws.send(
+                JSON.stringify({ id: 2, type: 'screenshot', args: { path: file, background: bg } }),
+              ),
+            300,
+          );
+        };
+        ws.onmessage = (e) => {
+          const r = JSON.parse(e.data);
+          if (r.id === 2) done(r.ok ? `✅ ${r.result.path}` : `❌ ${r.error}`);
+        };
+        ws.onerror = () => done('❌ ういちゃんが起動していません（`ui-chan start`）');
+        setTimeout(() => done('❌ タイムアウト'), 8000);
+      });
+      return;
+    }
     case 'home':
       return say(homeDir());
     case 'start':
@@ -298,6 +336,7 @@ async function main() {
   ui-chan update           最新版を取得して再ビルド（--check で確認のみ、
                            --branch <名前> で追従先を指定＝gh 経路のみ）
   ui-chan use              登録済みクライアントの参照先を「このコピー」に切り替える
+  ui-chan shot [file] [背景]  スクリーンショット（背景: light/dark/desk/white/CSS値）
   ui-chan home             ユーザーデータの場所
   ui-chan start | stop     マスコットの起動 / 停止
 

@@ -452,7 +452,11 @@ export type RenderCommand =
   | { type: 'connections'; agents: ConnectedAgent[]; active: number | null }
   /** Whether a newer ui-chan is waiting upstream. The panel shows its update
    *  entry only when this is true — nothing to announce, nothing on screen. */
-  | { type: 'update'; available: boolean; behind?: number; blocked?: string | null };
+  | { type: 'update'; available: boolean; behind?: number; blocked?: string | null }
+  /** Paint a backdrop behind her, for screenshots. The window is transparent by
+   *  design, which makes a capture unusable anywhere that isn't white — so the
+   *  backdrop is applied just long enough to take the picture. */
+  | { type: 'backdrop'; style: string | null };
 
 // ---- Explicit per-tool result types (replaces the loose ToolResultInfo
 // index signature; each tool's actual return shape is now checked by tsc). ----

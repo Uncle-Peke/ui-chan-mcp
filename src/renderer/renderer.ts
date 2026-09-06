@@ -548,6 +548,18 @@ async function init(): Promise<void> {
       reportWarnings();
       lipCurrentMouth = null; // let the next lip tick re-assert its mouth
       draw();
+    } else if (cmd.type === 'backdrop') {
+      // Named presets keep the common cases short; anything else is passed to
+      // CSS as-is, so a caller can hand over a gradient or an image.
+      const PRESETS: Record<string, string> = {
+        white: '#ffffff',
+        light: 'linear-gradient(160deg, #f7f4f8 0%, #e9e6f2 100%)',
+        dark: 'linear-gradient(160deg, #262435 0%, #1a1926 100%)',
+        desk: 'linear-gradient(180deg, #2b2a3d 0%, #3a3550 55%, #4e5bb5 100%)',
+      };
+      document.body.style.background = cmd.style
+        ? (PRESETS[cmd.style] ?? cmd.style)
+        : 'transparent';
     } else if (cmd.type === 'update') {
       const btn = document.getElementById('panel-update') as HTMLButtonElement;
       btn.hidden = !cmd.available;

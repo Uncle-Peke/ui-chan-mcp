@@ -269,6 +269,15 @@ function handleRequest(ws: WebSocket, req: WsRequest): WsResponse {
   }
 }
 
+/** Ask the renderer to paint a backdrop and wait for it to have painted.
+ *  Two frames is enough (one to apply, one to render) and is far more reliable
+ *  than a fixed sleep. */
+async function setBackdrop(style: string | null): Promise<void> {
+  if (!win || !rendererReady) return;
+  sendToRenderer({ type: 'backdrop', style });
+  await new Promise((r) => setTimeout(r, 120));
+}
+
 async function handleScreenshot(req: WsRequest): Promise<WsResponse> {
   try {
     if (!win) return { id: req.id, ok: false, error: 'no window' };
@@ -285,8 +294,17 @@ async function handleScreenshot(req: WsRequest): Promise<WsResponse> {
     if (out !== shotRoot && !out.startsWith(shotRoot + path.sep)) {
       return { id: req.id, ok: false, error: `path must stay within ${shotRoot}` };
     }
-    const image = await win.webContents.capturePage();
-    fs.writeFileSync(out, image.toPNG());
+    // `background` is any CSS background value ('#fff', a gradient, …) or the
+    // named presets in the renderer.透過のままだと、白以外の場所に貼った
+    // 瞬間に破綻するので、撮る間だけ背景を敷く。
+    const background = typeof req.args?.background === 'string' ? req.args.background : null;
+    if (background) await setBackdrop(background);
+    try {
+      const image = await win.webContents.capturePage();
+      fs.writeFileSync(out, image.toPNG());
+    } finally {
+      if (background) await setBackdrop(null);
+    }
     return { id: req.id, ok: true, result: { path: out } };
   } catch (e) {
     return { id: req.id, ok: false, error: String(e) };
