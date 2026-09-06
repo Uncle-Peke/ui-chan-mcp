@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 使いかたの質問
+    url: https://github.com/Uncle-Peke/ui-chan-mcp/tree/main/docs
+    about: まず docs/ を見てください。TROUBLESHOOTING.md によくある症状をまとめています
+  - name: 立ち絵素材について
+    url: https://www.ui-roid.com/guidelines/
+    about: 素材そのものやキャラクターの利用条件は、雨衣キャラクターガイドラインをご確認ください

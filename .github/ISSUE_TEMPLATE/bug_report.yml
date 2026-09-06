@@ -1,0 +1,39 @@
+name: バグ報告
+description: 動かない・思った通りにならない
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        報告ありがとうございます。まず `ui-chan doctor` の出力を貼っていただけると、切り分けが一気に進みます。
+  - type: textarea
+    id: doctor
+    attributes:
+      label: ui-chan doctor の出力
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 何が起きましたか
+      description: 期待した動作と、実際の動作を書いてください
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      placeholder: |
+        1. ...
+        2. ...
+  - type: input
+    id: client
+    attributes:
+      label: 使っているクライアント
+      placeholder: Claude Code / Claude Desktop / OpenCode / Cursor / VS Code / Hermes
+  - type: input
+    id: version
+    attributes:
+      label: バージョン
+      placeholder: ui-chan-mcp のバージョンと macOS のバージョン

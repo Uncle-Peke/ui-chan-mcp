@@ -1,0 +1,20 @@
+name: 提案
+description: こういうことができるといい
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提案の前に [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md) の「設計上、再提案をお断りしているもの」に
+        目を通していただけると助かります。
+  - type: textarea
+    id: problem
+    attributes:
+      label: どういうときに困っていますか
+      description: 解決策ではなく、まず困りごとを書いてください
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: こうなるといい（あれば）
