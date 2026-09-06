@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/faces.png" alt="ういちゃんの表情いろいろ" width="760">
+  <img src="docs/images/faces.png" alt="ういちゃんの表情いろいろ" width="820">
 </p>
 
 <h1 align="center">ui-chan-mcp</h1>
