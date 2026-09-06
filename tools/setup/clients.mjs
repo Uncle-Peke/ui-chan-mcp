@@ -1,0 +1,269 @@
+// The client registry: everything that differs between MCP hosts, in one table.
+//
+// Adding support for a new agent (Hermes, another editor, …) should be adding
+// one entry here — never a new install script. Every entry answers the same
+// four questions: where is its config, how does an stdio server look in it, how
+// do I put ui-chan in, how do I take it out.
+//
+// The server command itself is client-independent: an absolute path to
+// `bin/ui-chan-node` (which finds a node even under launchd's minimal PATH)
+// plus `dist/mcp-server.js`. That keeps GUI-launched clients working without
+// each entry re-solving the PATH problem.
+import { execFileSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
+export const SERVER_NAME = 'ui-chan';
+
+export function serverCommand(pkgRoot) {
+  return {
+    command: path.join(pkgRoot, 'bin', 'ui-chan-node'),
+    args: [path.join(pkgRoot, 'dist', 'mcp-server.js')],
+  };
+}
+
+const home = os.homedir();
+const XDG = process.env.XDG_CONFIG_HOME ?? path.join(home, '.config');
+
+function desktopConfigPath() {
+  if (process.platform === 'darwin')
+    return path.join(
+      home,
+      'Library',
+      'Application Support',
+      'Claude',
+      'claude_desktop_config.json',
+    );
+  if (process.platform === 'win32')
+    return path.join(process.env.APPDATA ?? home, 'Claude', 'claude_desktop_config.json');
+  return path.join(XDG, 'Claude', 'claude_desktop_config.json');
+}
+
+function vscodeConfigPath() {
+  if (process.platform === 'darwin')
+    return path.join(home, 'Library', 'Application Support', 'Code', 'User', 'mcp.json');
+  if (process.platform === 'win32')
+    return path.join(process.env.APPDATA ?? home, 'Code', 'User', 'mcp.json');
+  return path.join(XDG, 'Code', 'User', 'mcp.json');
+}
+
+function readJson(file) {
+  try {
+    const raw = fs.readFileSync(file, 'utf-8').trim();
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    if (e.code === 'ENOENT') return {};
+    throw new Error(`${file} を読めません（JSONが壊れている可能性）: ${e.message}`);
+  }
+}
+
+function writeJson(file, data) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  if (fs.existsSync(file)) fs.copyFileSync(file, `${file}.bak`);
+  fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`, 'utf-8');
+}
+
+/** A host whose MCP servers live under one key of one JSON file. */
+function jsonClient({ id, label, file, key, entry, seed, note, unverified }) {
+  return {
+    id,
+    label,
+    note,
+    unverified,
+    configPath: () => file(),
+    status() {
+      const f = file();
+      if (!fs.existsSync(f)) return { installed: false, detail: `未作成: ${f}` };
+      const cur = readJson(f)[key]?.[SERVER_NAME];
+      return { installed: Boolean(cur), detail: f };
+    },
+    snippet(cmd) {
+      return JSON.stringify({ [key]: { [SERVER_NAME]: entry(cmd) } }, null, 2);
+    },
+    install(cmd) {
+      const f = file();
+      const data = { ...seed, ...readJson(f) };
+      data[key] = { ...(data[key] ?? {}), [SERVER_NAME]: entry(cmd) };
+      writeJson(f, data);
+      return f;
+    },
+    uninstall() {
+      const f = file();
+      if (!fs.existsSync(f)) return null;
+      const data = readJson(f);
+      if (!data[key]?.[SERVER_NAME]) return null;
+      delete data[key][SERVER_NAME];
+      writeJson(f, data);
+      return f;
+    },
+  };
+}
+
+function hasClaudeCli() {
+  try {
+    execFileSync('claude', ['--version'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Claude Code: driven through its own CLI so the registration lands wherever
+ *  the current version keeps user-scoped servers, instead of us guessing a file. */
+const claudeCode = {
+  id: 'claude-code',
+  label: 'Claude Code (MCPサーバ)',
+  configPath: () => 'claude mcp（user スコープ）',
+  status() {
+    if (!hasClaudeCli()) return { installed: false, detail: 'claude CLI が見つかりません' };
+    try {
+      const out = execFileSync('claude', ['mcp', 'get', SERVER_NAME], {
+        encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      });
+      return { installed: out.includes(SERVER_NAME), detail: 'claude mcp' };
+    } catch {
+      return { installed: false, detail: 'claude mcp' };
+    }
+  },
+  snippet(cmd) {
+    return `claude mcp add ${SERVER_NAME} -s user -- ${cmd.command} ${cmd.args.join(' ')}`;
+  },
+  install(cmd) {
+    if (!hasClaudeCli()) throw new Error('claude CLI が見つかりません');
+    try {
+      execFileSync('claude', ['mcp', 'remove', SERVER_NAME, '-s', 'user'], { stdio: 'ignore' });
+    } catch {
+      /* not registered yet */
+    }
+    execFileSync(
+      'claude',
+      ['mcp', 'add', SERVER_NAME, '-s', 'user', '--', cmd.command, ...cmd.args],
+      { stdio: 'ignore' },
+    );
+    return 'claude mcp (user)';
+  },
+  uninstall() {
+    if (!hasClaudeCli()) return null;
+    try {
+      execFileSync('claude', ['mcp', 'remove', SERVER_NAME, '-s', 'user'], { stdio: 'ignore' });
+      return 'claude mcp (user)';
+    } catch {
+      return null;
+    }
+  },
+};
+
+/** Claude Code plugin: skills / subagents / EventCue hooks. Separate from the
+ *  MCP registration above because they are genuinely separate features — the
+ *  plugin without the connector still gives Desktop its skills, and the
+ *  connector without the plugin still gives any client the tools + persona. */
+const claudeCodePlugin = {
+  id: 'claude-code-plugin',
+  label: 'Claude Code プラグイン（/talk /mode などのスキル・フック）',
+  configPath: () => '~/.claude/plugins',
+  status() {
+    const file = path.join(home, '.claude', 'plugins', 'installed_plugins.json');
+    if (!fs.existsSync(file)) return { installed: false, detail: '未インストール' };
+    const data = readJson(file);
+    return { installed: Boolean(data.plugins?.['ui-chan@ui-chan']), detail: file };
+  },
+  snippet(_cmd, pkgRoot) {
+    return [
+      `claude plugin marketplace add ${pkgRoot}`,
+      'claude plugin install ui-chan@ui-chan',
+    ].join('\n');
+  },
+  install(_cmd, pkgRoot) {
+    if (!hasClaudeCli()) throw new Error('claude CLI が見つかりません');
+    execFileSync('claude', ['plugin', 'marketplace', 'add', pkgRoot], { stdio: 'ignore' });
+    execFileSync('claude', ['plugin', 'install', `${SERVER_NAME}@${SERVER_NAME}`], {
+      stdio: 'ignore',
+    });
+    // `plugin install` copies the plugin into the cache; replace that copy with
+    // a link to this install so an update here is an update there too.
+    const cacheDir = path.join(home, '.claude', 'plugins', 'cache', SERVER_NAME, SERVER_NAME);
+    try {
+      for (const v of fs.readdirSync(cacheDir)) {
+        const p = path.join(cacheDir, v);
+        if (fs.lstatSync(p).isSymbolicLink()) continue;
+        fs.rmSync(p, { recursive: true, force: true });
+        fs.symlinkSync(pkgRoot, p);
+      }
+    } catch {
+      /* cache layout changed — the copy still works, it just won't auto-update */
+    }
+    return '~/.claude/plugins';
+  },
+  uninstall() {
+    if (!hasClaudeCli()) return null;
+    let touched = null;
+    for (const argv of [
+      ['plugin', 'uninstall', `${SERVER_NAME}@${SERVER_NAME}`],
+      ['plugin', 'marketplace', 'remove', SERVER_NAME],
+    ]) {
+      try {
+        execFileSync('claude', argv, { stdio: 'ignore' });
+        touched = '~/.claude/plugins';
+      } catch {
+        /* not installed */
+      }
+    }
+    fs.rmSync(path.join(home, '.claude', 'plugins', 'cache', SERVER_NAME), {
+      recursive: true,
+      force: true,
+    });
+    return touched;
+  },
+};
+
+export const CLIENTS = [
+  claudeCode,
+  claudeCodePlugin,
+  jsonClient({
+    id: 'claude-desktop',
+    label: 'Claude Desktop',
+    file: desktopConfigPath,
+    key: 'mcpServers',
+    entry: (c) => ({ command: c.command, args: c.args }),
+    note: '登録後は ⌘Q で完全終了してから再起動してください。',
+  }),
+  jsonClient({
+    id: 'opencode',
+    label: 'OpenCode',
+    file: () => process.env.UI_CHAN_OPENCODE_CONFIG ?? path.join(XDG, 'opencode', 'opencode.json'),
+    key: 'mcp',
+    seed: { $schema: 'https://opencode.ai/config.json' },
+    entry: (c) => ({ type: 'local', command: [c.command, ...c.args], enabled: true }),
+  }),
+  jsonClient({
+    id: 'cursor',
+    label: 'Cursor',
+    file: () => path.join(home, '.cursor', 'mcp.json'),
+    key: 'mcpServers',
+    entry: (c) => ({ command: c.command, args: c.args }),
+  }),
+  jsonClient({
+    id: 'vscode',
+    label: 'VS Code (Copilot Chat)',
+    file: vscodeConfigPath,
+    key: 'servers',
+    entry: (c) => ({ type: 'stdio', command: c.command, args: c.args }),
+  }),
+  jsonClient({
+    id: 'hermes',
+    label: 'Hermes',
+    // Path unverified against a Hermes release — override with the env var if
+    // yours differs, and `ui-chan print hermes` always gives the raw snippet.
+    file: () => process.env.UI_CHAN_HERMES_CONFIG ?? path.join(home, '.hermes', 'mcp.json'),
+    key: 'mcpServers',
+    entry: (c) => ({ command: c.command, args: c.args }),
+    unverified: true,
+    note: '設定ファイルの場所は UI_CHAN_HERMES_CONFIG で上書きできます。',
+  }),
+];
+
+export function findClient(id) {
+  return CLIENTS.find((c) => c.id === id) ?? null;
+}

@@ -11,12 +11,39 @@ voice. The repo is *also* a Claude Code plugin/marketplace that ships the MCP
 server plus the "ういちゃん" persona.
 
 The mascot art (PSD) is **not** in the repo (licensed). Without a `.psd` in
-`assets/`, the app shows a placeholder but still runs.
+`~/.ui-chan/assets/` (or the clone's `assets/`), the app shows a placeholder but
+still runs.
+
+## Install layout (package vs. user data)
+
+`src/shared/paths.ts` is the single answer to "package or user?". The package
+(clone or `node_modules`) holds code, the packaged cue catalog, persona/context
+and the **default** config; `~/.ui-chan` (`UI_CHAN_HOME`) holds the user's PSD,
+`.env`, `config.json` overrides and hand-authored cues. An update replaces the
+first and never touches the second — before this split, a `claude plugin
+install` copy owned the user's PSD and credentials, and they died with the
+cache. Resolution is per-resource: config deep-merges over the packaged
+default, `cues/` and `context/` load from both (home wins on the same
+filename), persona/assets take the first hit, `.env` loads from both with real
+env vars still winning. `loadCues`/`findPsd`/`watchCues` therefore take an
+**array of dirs**, and the editor writes to `paths.cueWriteDir` (home when it
+exists, the repo in a bare clone).
+
+Installation is one CLI, `bin/ui-chan.mjs` (`ui-chan`), with everything
+client-specific in `tools/setup/clients.mjs` — a new MCP host is one entry in
+that table (config path, entry shape, install, uninstall), never a new script.
+The registered command is always
+`<pkg>/bin/ui-chan-node <pkg>/dist/mcp-server.js`, so GUI-launched clients get a
+node that exists. The repo-root `.mcp.json` is **gone**: `${CLAUDE_PLUGIN_ROOT}`
+only expands inside a plugin context, so it broke every other host (and the repo
+opened directly in Claude Code). The plugin now ships skills/agents/hooks only.
 
 ## Commands
 
 ```bash
 npm install
+npx ui-chan        # interactive setup TUI (home dir, PSD, credentials, clients)
+npx ui-chan doctor
 npm run build      # tsc (src → dist) + esbuild-bundle the renderer + copy index.html
 npm run app        # build, then launch the Electron display app
 npm run stop       # kill a running ui-chan Electron app
@@ -29,7 +56,7 @@ npm run debug:restart   # stop a running app, then launch the app and drop into 
 npm run debug:state     # one-shot get_state over direct WebSocket
 npm run debug:list      # list cues + configured IdlingCues/chatter
 npm run lint       # biome check .   (lint:fix / format to autofix)
-npm run dump-psd -- assets/ui_sozai.psd   # dump PSD layer tree (for adapting config to a new PSD)
+npm run dump-psd -- ~/.ui-chan/assets/ui_sozai.psd   # dump PSD layer tree
 ```
 
 There is **no test runner**. End-to-end checks are manual scripts:
@@ -428,9 +455,10 @@ plugin's skills and subagents (all four of ours show up in its chat), but does
 installed has the skills and no `set_cue`, no persona — the MCP servers it lists
 are the account's other connectors and nothing of ours, restart included. So
 **Desktop wants both**: the plugin for skills, and its own
-`claude_desktop_config.json` entry (`npm run install-desktop`) for tools and
-persona. The "installing the plugin makes a hand-written entry redundant" rule
-holds for Claude Code only.
+`claude_desktop_config.json` entry (`ui-chan install claude-desktop`) for tools
+and persona. Since the repo-root `.mcp.json` was dropped, this is true of
+**every** client including Claude Code: the plugin is skills/agents/hooks, the
+connector is tools+persona, and `ui-chan install` writes the connector.
 
 Two more things GUI-launched clients get wrong, both fixed in-repo:
 
@@ -438,15 +466,16 @@ Two more things GUI-launched clients get wrong, both fixed in-repo:
   `"command": "node"` resolves in a terminal and silently fails there. Every
   entry point goes through `bin/ui-chan-node`, which finds node itself
   (PATH → Homebrew → `~/.local` → volta → asdf → fnm → nvm) and execs it.
-  `.mcp.json`, all seven hooks in `hooks/hooks.json`, and what
-  `tools/install-desktop.mjs` writes all use it.
+  All seven hooks in `hooks/hooks.json` and every client entry written by
+  `ui-chan install` use it.
 - `claude plugin install` *copies* the plugin into
   `~/.claude/plugins/cache/…`, so the repo stops being the single source of
-  truth the moment you edit anything. `npm run link-plugin`
-  (`tools/link-plugin.mjs`) replaces that copy with a symlink to the working
-  tree; the connector already points straight at `dist/`. With both done,
-  `npm run build` is the only step that propagates a change to either client.
-  Re-running `claude plugin install` restores the copy — re-run link-plugin.
+  truth the moment you edit anything. The `claude-code-plugin` client entry
+  replaces that copy with a symlink to the package right after installing; the
+  connector already points straight at `dist/`. With both done, `npm run build`
+  is the only step that propagates a change to either client. Re-running
+  `claude plugin install` by hand restores the copy — re-run
+  `ui-chan install claude-code-plugin`.
 
 `agents/` (talk, mode) and `skills/` (talk, mode, beam, eli14) are the plugin's
 subagents and slash commands. To retarget a different character, rewrite

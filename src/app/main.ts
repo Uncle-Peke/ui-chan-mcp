@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { app, BrowserWindow, ipcMain, powerMonitor, screen } from 'electron';
 import { type WebSocket, WebSocketServer } from 'ws';
+import { loadEnvFiles, resolvePaths } from '../shared/paths';
 import { setCueArgsSchema } from '../shared/set-cue-schema';
 import type {
   Cue,
@@ -20,17 +21,14 @@ const projectRoot = path.resolve(__dirname, '..', '..');
 
 // TTS credentials live in .env / env vars (never in the config). The MCP bridge
 // also forwards them on connect; this covers a manually launched `npm run app`.
-try {
-  process.loadEnvFile(path.join(projectRoot, '.env'));
-} catch {
-  /* no .env — credentials just come from the environment, or TTS stays off */
-}
+loadEnvFiles(projectRoot);
 
-const configPath = path.join(projectRoot, 'ui-chan.config.json');
-const config: MascotConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+// Packaged defaults + the user's ~/.ui-chan overrides (see shared/paths.ts).
+const paths = resolvePaths(projectRoot);
+const config: MascotConfig = paths.config;
 const port = Number(process.env.UI_CHAN_PORT ?? config.port ?? 8123);
-const cuesDir = path.join(projectRoot, config.cuesDir ?? 'cues');
-const cueSchemaPath = path.join(projectRoot, 'cue.schema.json');
+const cuesDir = paths.cueDirs;
+const cueSchemaPath = paths.cueSchemaFile;
 
 let cueErrors: string[] = [];
 function loadCurrentCues(): Record<string, Cue> {
@@ -49,7 +47,7 @@ const agents = new Map<WebSocket, { name: string; connectedAt: string }>();
 const pendingCommands: RenderCommand[] = [];
 
 function findPsd(): string | null {
-  return findPsdIn(path.join(projectRoot, config.assetsDir));
+  return findPsdIn(paths.assetsDirs);
 }
 
 function sendToRenderer(cmd: RenderCommand): void {
@@ -78,13 +76,13 @@ function setupWarnings(psdFile: string | null): string[] {
   const out: string[] = [];
   if (!psdFile) {
     out.push(
-      `立ち絵PSDが見つかりません: ${path.join(projectRoot, 'assets')} に PSD を置いてください`,
+      `立ち絵PSDが見つかりません: ${path.join(paths.home, 'assets')} に PSD を置いてください`,
     );
   }
   const t = tts?.status();
   if (t?.enabled && !t.hasCredentials) {
     out.push(
-      'TTSの資格情報がありません: .env（または環境変数）に UI_CHAN_TTS_USERNAME / UI_CHAN_TTS_PASSWORD を設定してください',
+      `TTSの資格情報がありません: ${path.join(paths.home, '.env')}（または環境変数）に UI_CHAN_TTS_USERNAME / UI_CHAN_TTS_PASSWORD を設定してください`,
     );
   }
   if (t?.enabled && t.hasCredentials && t.engineUnreachable) {
@@ -211,14 +209,17 @@ async function handleScreenshot(req: WsRequest): Promise<WsResponse> {
   try {
     if (!win) return { id: req.id, ok: false, error: 'no window' };
     const requested = req.args?.path;
+    // Installed globally the package dir is not a sane place to write, so
+    // screenshots land in the user's home dir whenever there is one.
+    const shotRoot = paths.homeExists ? paths.home : projectRoot;
     const out = path.resolve(
-      projectRoot,
+      shotRoot,
       typeof requested === 'string' && requested.length > 0 ? requested : 'ui-chan-shot.png',
     );
     // The WS server only binds 127.0.0.1, but a caller-supplied path could
     // still try to escape via `..` — keep screenshot writes inside the project.
-    if (out !== projectRoot && !out.startsWith(projectRoot + path.sep)) {
-      return { id: req.id, ok: false, error: `path must stay within ${projectRoot}` };
+    if (out !== shotRoot && !out.startsWith(shotRoot + path.sep)) {
+      return { id: req.id, ok: false, error: `path must stay within ${shotRoot}` };
     }
     const image = await win.webContents.capturePage();
     fs.writeFileSync(out, image.toPNG());

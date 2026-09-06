@@ -11,125 +11,117 @@ Claude Code や任意の MCP 対応エージェントから、マスコットの
 - 発話キュー・複数エージェント同時接続に対応
 
 > **立ち絵 PSD はリポジトリに含まれていません**（著作権保護された素材のため）。
-> `assets/` に PSDTool 対応の PSD を置くと動きます。無い場合はプレースホルダで起動します。
+> `~/.ui-chan/assets/` に PSDTool 対応の PSD を置くと動きます（`ui-chan` の対話セットアップが
+> コピーしてくれます）。無い場合はプレースホルダで起動します。
 > 同梱の `ui-chan.config.json` と `cues/*.json` は
 > [雨衣（うい）立ち絵素材（坂本アヒル様）](https://ui-roid.booth.pm/items/8593427) のレイヤー構成向けです。
 > 利用は[雨衣キャラクターガイドライン](https://www.ui-roid.com/guidelines/)の範囲でどうぞ。
 
 ## セットアップ
 
-**→ [図解セットアップ手順](https://claude.ai/code/artifact/7baf161a-20a2-435d-ac9a-9da363be8be7)**
-（クローンから画面に出るまで。人が読んでも AI が読んでも分かる粒度で書いてあります。
-同じ内容が [docs/setup-page.html](docs/setup-page.html) にも入っています）
-
-急ぐ人向けの要約：
+インストールは **`ui-chan` コマンド1本**です。クライアントごとの JSON を手で書く必要はありません。
 
 ```bash
 git clone https://github.com/Uncle-Peke/ui-chan-mcp.git && cd ui-chan-mcp
-npm install                     # 依存の取得 + ビルド（prepare で dist/ まで作られる）
-cp .env.example .env            # VoiSona Talk の資格情報（音声を使わないなら不要）
-# 立ち絵 PSD を assets/ に配置
-npm run doctor                  # ビルド・PSD・資格情報・エンジン起動をまとめて確認
+npm install          # 依存の取得 + ビルド（prepare で dist/ まで作られる）
+npx ui-chan          # 対話セットアップ（TUI）
 ```
 
-### つなぐ
+`npx ui-chan` が順に面倒を見ます。
 
-**どの繋ぎ方でも、繋いだ時点で完了**です。マスコットのアプリと VoiSona Talk は接続時に自動起動し、
-人格は MCP のハンドシェイク（`instructions`）に乗って渡ります。人格ファイルを貼る作業はありません。
+1. **ユーザーデータ `~/.ui-chan/` を作る** — 立ち絵PSD・資格情報・自作Cueの置き場
+2. **立ち絵PSD の取り込み** — パスを聞いて `~/.ui-chan/assets/` にコピー（省略可。無ければプレースホルダ）
+3. **VoiSona Talk の資格情報** — `~/.ui-chan/.env` に保存（省略可。音声なしで動きます）
+4. **クライアント選択** — ↑↓ と Space で選んで Enter。選んだ設定ファイルに書き込みます（`.bak` を残します）
+5. **doctor** — ビルド・PSD・資格情報・エンジン・各クライアントの登録状況を一覧表示
 
-**プラグインとして入れる（Claude Code / Claude Desktop 共通）**
-
-プラグインの台帳は Claude Code と Claude Desktop で共有されます。Claude Code で一度登録すれば、
-Desktop 側の「設定 → プラグイン」にも同じものが現れます（逆に Desktop の追加 UI は GitHub からの
-追加のみで、ローカルのフォルダは指定できません）。スキルとサブエージェントは Desktop でも
-そのまま使えますが、**Desktop はプラグイン同梱の MCP サーバを起動しません**。ツールと人格は
-次項のコネクタ登録で入れてください。
-
-```
-/plugin marketplace add /path/to/ui-chan-mcp      # ローカルのクローンから
-/plugin install ui-chan@ui-chan
-```
+グローバルに入れておくと、どのディレクトリからでも `ui-chan` で呼べます。
 
 ```bash
-npm run link-plugin       # ★ クローンを SSOT にする（下記）
+npm install -g .        # または npm link
+ui-chan doctor
 ```
 
-`claude plugin install` はプラグインを `~/.claude/plugins/cache/` に**コピー**するので、そのままだと
-リポジトリを直しても Claude Code 側は古いコピーを読み続けます（直すたびに marketplace update →
-再インストールが必要）。`npm run link-plugin` はそのコピーを**クローンへの symlink に置き換え**、
-リポジトリを唯一の実体にします。以後は `npm run build` だけで両クライアントに反映されます。
+### パッケージとユーザーデータは分かれています
 
-- 効くのは次のセッションから。解除は `npm run link-plugin -- --remove`
-- `claude plugin install` を実行し直すとコピーが戻るので、そのときは `npm run link-plugin` をもう一度
+これが**アップデートで壊れない**理由です。
 
-GitHub から入れる場合は `Uncle-Peke/ui-chan-mcp` を指定します（ただし `dist/` はコミットされていないため、
-別途クローンして `npm install` した実体が必要です）。
+| | 場所 | 中身 | 更新時 |
+|---|---|---|---|
+| パッケージ | クローン／`node_modules` | コード・同梱Cue・人格・設定の既定値 | **まるごと入れ替わる** |
+| ユーザーデータ | `~/.ui-chan/`（`UI_CHAN_HOME` で変更可） | PSD・`.env`・`config.json`・自作Cue・人格の上書き | **触られない** |
 
-プラグインを入れると、**コネクタ（MCP サーバ）も一緒に登録されます**（`.mcp.json`）。
-手動でのコネクタ登録は不要で、両方やると同じサーバが二重に起動します。
+解決はリソースごとで、上書きしたいものだけ書けば済みます。
 
-**MCP サーバだけを使う（コネクタのみ）**
+- `config.json` … 同梱の `ui-chan.config.json` に**深いマージで上書き**。3行だけ書いても、後から増えた設定は継承されます
+- `cues/` … 同梱Cueと**両方読み込み**、同名はユーザー側が勝つ。1つ足すのにカタログを複製する必要はありません
+- `context/` … 同じくファイル名単位で上書き。`persona/ui-chan.md` は置けば置いた方が使われます
+- `assets/` … PSD はライセンス上パッケージに入れられないので、実質ここだけ
+- `.env` … 環境変数があればそちらが優先
 
-スキルやフックは要らず、ツールと人格だけあればいい場合。Claude Desktop なら
-**設定 → 開発者 → 設定を編集** で `claude_desktop_config.json` を開き、次を書き足して
-アプリを完全に終了（⌘Q）してから起動し直します。`command` には `which node` の結果を入れてください
-（Claude Desktop はターミナルと環境が違うため、`node` とだけ書くと見つからないことがあります）。
+### 対応クライアント
 
-```json
-{
-  "mcpServers": {
-    "ui-chan": {
-      "command": "/usr/local/bin/node",
-      "args": ["/path/to/ui-chan-mcp/dist/mcp-server.js"]
-    }
-  }
-}
-```
-
-同じことを1コマンドでやる場合（既存の設定は保持し、`.bak` を残します）：
-
-```bash
-npm run install-desktop        # 解除は npm run install-desktop -- --remove
-```
-
-登録されるのは `bin/ui-chan-node`（node を自力で探して exec するランチャ）と、クローン内の
-`dist/mcp-server.js` です。**コネクタは最初からクローンを直接指す**ので、こちら側は
-`npm run build` するだけで常に最新になります。GUI から起動される Desktop は launchd の最小 PATH
-（`/usr/bin:/bin:/usr/sbin:/sbin`）しか持たず、Homebrew や nvm で入れた `node` が見えないため、
-`"command": "node"` と書くと黙って起動失敗します。ランチャはそれを吸収します。
-
-Claude Code で手動登録する場合は次のとおりです。認証情報は `.env` から読まれるので `env` は不要です。
-
-```bash
-claude mcp add ui-chan -- /path/to/ui-chan-mcp/bin/ui-chan-node /path/to/ui-chan-mcp/dist/mcp-server.js
-```
-
-### 入れ方による違い
-
-| | コネクタのみ | プラグイン |
+| id | クライアント | 書き込み先 |
 |---|---|---|
-| ツール（`set_cue` ほか） | ○ | ○ |
-| 人格（ハンドシェイクで注入） | ○ | ○ |
+| `claude-code` | Claude Code（MCPサーバ） | `claude mcp add -s user` |
+| `claude-code-plugin` | Claude Code プラグイン（`/talk` `/mode` 等のスキル・サブエージェント・EventCueフック） | `~/.claude/plugins`（インストール後にクローンへ symlink 化） |
+| `claude-desktop` | Claude Desktop | `claude_desktop_config.json` |
+| `opencode` | OpenCode | `~/.config/opencode/opencode.json` |
+| `cursor` | Cursor | `~/.cursor/mcp.json` |
+| `vscode` | VS Code (Copilot Chat) | `User/mcp.json` |
+| `hermes` | Hermes | `~/.hermes/mcp.json`（`UI_CHAN_HERMES_CONFIG` で変更可・パス未検証） |
+
+一覧に無いクライアントには `ui-chan print <id>`（引数なしで汎用 stdio 設定）が貼り付け用の
+スニペットを出します。**新しいホストへの対応は `tools/setup/clients.mjs` に1エントリ足すだけ**で、
+インストーラを書き足す必要はありません。
+
+登録される起動コマンドはどのクライアントでも同じです。
+
+```
+<パッケージ>/bin/ui-chan-node  <パッケージ>/dist/mcp-server.js
+```
+
+`bin/ui-chan-node` は node を自力で探して exec するランチャです。GUI から起動されるクライアント
+（Claude Desktop など）は launchd の最小 PATH（`/usr/bin:/bin:/usr/sbin:/sbin`）しか持たず、
+Homebrew や nvm の `node` が見えないため、`"command": "node"` と書くと黙って起動失敗します。
+
+### 使い方
+
+```bash
+ui-chan                      # 対話セットアップ
+ui-chan install claude-desktop opencode   # 指定クライアントへ登録（--all で全部）
+ui-chan uninstall --all      # 全クライアントから解除（ユーザーデータは残る）
+ui-chan uninstall --all --purge           # ~/.ui-chan ごと消す
+ui-chan doctor               # 状態チェック
+ui-chan print opencode       # 設定スニペットだけ表示
+ui-chan home                 # ユーザーデータの場所
+ui-chan start / stop         # マスコットの起動・停止
+```
+
+**繋いだ時点で完了**です。マスコットのアプリと VoiSona Talk は接続時に自動起動し、人格は MCP の
+ハンドシェイク（`instructions`）に乗って渡ります。人格ファイルを貼る作業はありません。
+
+### プラグインとコネクタの違い
+
+| | MCPサーバ（コネクタ） | プラグイン |
+|---|---|---|
+| ツール（`set_cue` ほか） | ○ | ✕ |
+| 人格（ハンドシェイクで注入） | ○ | ○（SessionStart フック） |
 | アプリ・音声エンジンの自動起動 | ○ | ○ |
 | `/talk` `/mode` `/beam` `/eli14` | ✕ | ○ |
 | サブエージェント（talk / mode） | ✕ | ○ |
 | 作業への自動リアクション（EventCue） | ✕ | ○ |
 
-### どちらをどこに入れるか
+以前はプラグインが `.mcp.json` で MCP サーバも兼ねていましたが、`${CLAUDE_PLUGIN_ROOT}` は
+プラグイン文脈の外（Claude Desktop、リポジトリを直接開いた Claude Code、他のホスト）では展開されず
+**必ず起動に失敗する**ため、役割を分けました。MCP サーバの登録は全クライアント共通で
+`ui-chan install <id>` が行います。Claude Code で全部入りにするなら
+`ui-chan install claude-code claude-code-plugin`（対話セットアップの既定）です。
 
-| | Claude Code | Claude Desktop |
-|---|---|---|
-| プラグイン | ○ フル機能 | ○ スキル・サブエージェントは出る。ただし **MCP サーバは起動しない** |
-| コネクタ | 不要（入れると二重起動） | ○ **ツールと人格はこれで入れる** |
+Claude Desktop はプラグイン台帳を Claude Code と共有しますが、**プラグイン同梱の MCP サーバは
+起動しません**（実測）。スキルはプラグインから、ツールと人格はコネクタから、という組み合わせになります。
 
-つまり Desktop は **両方入れる**のが正解です。スキル（`/talk` ほか）はプラグインから、
-ツール（`set_cue`）と人格はコネクタから来ます。Claude Code はプラグイン1つで足ります。
-
-実測メモ：プラグインだけ入れた Desktop セッションは、スキルは4つとも出るのに `set_cue` も人格も
-無く、繋がっている MCP は他のコネクタだけ、という状態になりました（再起動後も同じ）。
-Desktop は一覧に出しても、プラグイン同梱の `.mcp.json` を起動していません。
-
-どちらも `npm run link-plugin` / `npm run install-desktop` を済ませればクローンを直接読むので、
+プラグインはインストール後にキャッシュのコピーをクローンへの symlink に置き換えるので、
 **リポジトリが唯一の実体**です。直したら `npm run build`、それだけ。
 
 ## アーキテクチャ
@@ -196,9 +188,8 @@ Cue の一覧は `persona` プロンプト（と SessionStart フック）が `c
 
 | コマンド | 説明 |
 |---|---|
-| `npm run doctor` | セットアップの事前チェック（ビルド・PSD・資格情報・エンジン） |
-| `npm run install-desktop` | Claude Desktop に MCP サーバを登録（`-- --remove` で解除） |
-| `npm run link-plugin` | プラグインのコピーをクローンへの symlink に置換＝SSOT化（`-- --remove` で解除） |
+| `npx ui-chan` | 対話セットアップ（TUI） |
+| `npm run doctor` | セットアップの事前チェック（＝`ui-chan doctor`） |
 | `npm run app` / `stop` / `restart` | Electron アプリの起動／終了／再起動 |
 | `npm run build` | `src/` を `dist/` にビルド（`npm install` 時に自動実行） |
 | `npm run editor` | Cue エディタ「雨衣ちゃんのデバッグルーム」 |
@@ -226,8 +217,8 @@ JSON なのでビルド不要です（Cue は保存すると即リロード）�
 <details>
 <summary><b>声が出ない</b></summary>
 
-`npm run doctor` を実行してください。よくある原因は、VoiSona Talk が未起動、
-`.env` に資格情報が無い、VoiSona 側で REST API が有効になっていない、のどれかです。
+`ui-chan doctor` を実行してください。よくある原因は、VoiSona Talk が未起動、
+`~/.ui-chan/.env` に資格情報が無い、VoiSona 側で REST API が有効になっていない、のどれかです。
 
 声が出ない状態でも吹き出しは出ますし、口パクも `reading` のかなから動きます。
 VoiSona は `set_cue` のたびに起こし直され（30秒に1回まで）、REST が応答するまで最大20秒待ちます。
@@ -239,13 +230,13 @@ VoiSona は `set_cue` のたびに起こし直され（30秒に1回まで）、R
 
 まず `npm run app` で単体起動を試すと切り分けられます。プラグイン導入時は
 SessionStart フックが起動を試みるので、通常はセッションを開くだけで出てきます。
-PSD が `assets/` に無い場合はプレースホルダ表示になります。
+PSD が `~/.ui-chan/assets/` に無い場合はプレースホルダ表示になります。
 </details>
 
 <details>
 <summary><b>新しい表情（Cue）を追加したい</b></summary>
 
-`cues/<名前>.json` を1ファイル作るだけです。継承なし・完全に自己完結で、保存すると即リロードされます。
+`~/.ui-chan/cues/<名前>.json`（開発中のクローンなら `cues/<名前>.json`）を1ファイル作るだけです。同名なら同梱Cueを上書きします。継承なし・完全に自己完結で、保存すると即リロードされます。
 ビジュアルに作るなら `npm run editor`。書式とレイヤー指定は
 [docs/CUES_AND_CONFIG.md](docs/CUES_AND_CONFIG.md)、PSD レイヤー名の早見表は
 [docs/CUES.md](docs/CUES.md)。

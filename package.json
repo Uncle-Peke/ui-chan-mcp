@@ -1,16 +1,14 @@
 {
   "name": "ui-chan-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Desktop mascot MCP server — control a PSD-based mascot (speech bubble, Cue-driven look + voice) from any MCP-capable agent",
   "main": "dist/app/main.js",
-  "private": true,
+  "private": false,
   "type": "commonjs",
   "scripts": {
     "build": "tsc -p tsconfig.json && esbuild src/renderer/renderer.ts --bundle --platform=browser --format=iife --outfile=dist/renderer/bundle.js && esbuild src/renderer/editor.ts --bundle --platform=browser --format=iife --outfile=dist/renderer/editor.js && node -e \"const fs=require('fs');fs.copyFileSync('src/renderer/index.html','dist/renderer/index.html');fs.copyFileSync('src/renderer/editor.html','dist/renderer/editor.html')\"",
     "prepare": "npm run build",
-    "doctor": "node tools/doctor.mjs",
-    "install-desktop": "node tools/install-desktop.mjs",
-    "link-plugin": "node tools/link-plugin.mjs",
+    "doctor": "node bin/ui-chan.mjs doctor",
     "app": "npm run build && electron .",
     "editor": "npm run build && electron dist/app/editor-main.js",
     "stop": "node tools/stop-app.mjs",
@@ -22,15 +20,19 @@
     "debug:state": "node tools/debug.mjs state",
     "debug:list": "node tools/debug.mjs list",
     "dump-psd": "node tools/dump-psd.mjs",
-    "validate-cues": "node -e \"const {loadCues}=require('./dist/app/cues');const r=loadCues('cues','cue.schema.json');console.log(JSON.stringify(r.errors,null,2));process.exit(r.errors.length?1:0)\"",
+    "validate-cues": "node -e \"const{resolvePaths}=require('./dist/shared/paths');const{loadCues}=require('./dist/app/cues');const p=resolvePaths(process.cwd());const r=loadCues(p.cueDirs,p.cueSchemaFile);console.log(JSON.stringify(r.errors,null,2));process.exit(r.errors.length?1:0)\"",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "prepublishOnly": "npm run build",
+    "setup": "node bin/ui-chan.mjs setup",
+    "uninstall-all": "node bin/ui-chan.mjs uninstall --all"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "ag-psd": "^31.0.2",
     "ajv": "^8.17.1",
+    "electron": "^43.1.1",
     "ws": "^8.21.1",
     "zod": "^4.4.3"
   },
@@ -38,8 +40,29 @@
     "@biomejs/biome": "2.5.4",
     "@types/node": "^26.1.1",
     "@types/ws": "^8.18.1",
-    "electron": "^43.1.1",
     "esbuild": "^0.28.1",
     "typescript": "^7.0.2"
-  }
+  },
+  "license": "MIT",
+  "bin": {
+    "ui-chan": "bin/ui-chan.mjs",
+    "ui-chan-mcp": "bin/ui-chan-mcp.mjs"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "cues",
+    "persona",
+    "context",
+    "agents",
+    "skills",
+    "hooks",
+    ".claude-plugin",
+    "ui-chan.config.json",
+    "cue.schema.json",
+    ".env.example",
+    "docs",
+    "README.md",
+    "CUE_CATALOG.md"
+  ]
 }

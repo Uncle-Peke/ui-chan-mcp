@@ -23,13 +23,20 @@ function getValidator(schemaPath: string): ValidateFunction {
  *  fully self-contained and validated against cue.schema.json — the schema
  *  file itself is the source of truth, not a hand-duplicated set of TS
  *  constraints. No inheritance, no bundling. */
-export function loadCues(dir: string, schemaPath: string): CueSet {
+export function loadCues(dirs: string | string[], schemaPath: string): CueSet {
   const set: CueSet = { cues: {}, errors: [] };
   const validate = getValidator(schemaPath);
+  // Several dirs may contribute (packaged cues + the user's `~/.ui-chan/cues`).
+  // Later dirs win on a shared name, so a user override never has to fork the
+  // whole catalog — see src/shared/paths.ts.
+  const list = Array.isArray(dirs) ? dirs : [dirs];
 
-  if (!fs.existsSync(dir)) {
-    set.errors.push(`cues directory not found: ${dir}`);
-  } else {
+  if (list.length === 0) set.errors.push('no cues directory configured');
+  for (const dir of list) {
+    if (!fs.existsSync(dir)) {
+      set.errors.push(`cues directory not found: ${dir}`);
+      continue;
+    }
     for (const file of fs
       .readdirSync(dir)
       .filter((f) => f.endsWith('.json'))
@@ -53,7 +60,7 @@ export function loadCues(dir: string, schemaPath: string): CueSet {
 
   if (!set.cues[DEFAULT_CUE_NAME]) {
     set.errors.push(
-      `no "${DEFAULT_CUE_NAME}" cue found in ${dir} — falling back to an empty default (no select/show/hide, blink off)`,
+      `no "${DEFAULT_CUE_NAME}" cue found in ${list.join(', ')} — falling back to an empty default (no select/show/hide, blink off)`,
     );
     set.cues[DEFAULT_CUE_NAME] = {};
   }
@@ -69,16 +76,18 @@ export function validateCueObject(obj: unknown, schemaPath: string): string | nu
   return (validate.errors ?? []).map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ');
 }
 
-export function watchCues(dir: string, onChange: () => void): void {
-  if (!fs.existsSync(dir)) return;
+export function watchCues(dirs: string | string[], onChange: () => void): void {
   let timer: NodeJS.Timeout | null = null;
-  fs.watch(dir, () => {
+  const fire = () => {
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
       onChange();
     }, 300);
-  });
+  };
+  for (const dir of Array.isArray(dirs) ? dirs : [dirs]) {
+    if (fs.existsSync(dir)) fs.watch(dir, fire);
+  }
 }
 
 export function extractCueVoice(set: CueSet): Record<string, CueVoice> {

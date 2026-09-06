@@ -1,27 +1,22 @@
 import { spawn } from 'node:child_process';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import WebSocket from 'ws';
 import { z } from 'zod';
 import { buildPersonaText as buildPersona } from './app/persona';
+import { loadEnvFiles, resolvePaths } from './shared/paths';
 import { setCueShape } from './shared/set-cue-schema';
 import type { MascotConfig, WsResponse } from './shared/types';
 
 const projectRoot = path.resolve(__dirname, '..');
 
-// TTS credentials may live in a .env next to the config instead of the shell
-// environment (env vars still win — loadEnvFile does not overwrite them).
-try {
-  process.loadEnvFile(path.join(projectRoot, '.env'));
-} catch {
-  /* no .env — credentials just come from the environment, or TTS stays off */
-}
+// TTS credentials may live in a .env (package dir or ~/.ui-chan) instead of the
+// shell environment (env vars still win — loadEnvFile does not overwrite them).
+loadEnvFiles(projectRoot);
 
-const config: MascotConfig = JSON.parse(
-  fs.readFileSync(path.join(projectRoot, 'ui-chan.config.json'), 'utf-8'),
-);
+const paths = resolvePaths(projectRoot);
+const config: MascotConfig = paths.config;
 const port = Number(process.env.UI_CHAN_PORT ?? config.port ?? 8123);
 const wsUrl = `ws://127.0.0.1:${port}`;
 
@@ -42,7 +37,7 @@ const log = (msg: string) => process.stderr.write(`[ui-chan-mcp] ${msg}\n`);
 function personaInstructions(): string | undefined {
   if (process.env.UI_CHAN_NO_PERSONA_INSTRUCTIONS === '1') return undefined;
   try {
-    return buildPersona(projectRoot, config);
+    return buildPersona(paths);
   } catch {
     return undefined;
   }
@@ -374,7 +369,7 @@ server.registerPrompt(
     messages: [
       {
         role: 'user' as const,
-        content: { type: 'text' as const, text: buildPersona(projectRoot, config) },
+        content: { type: 'text' as const, text: buildPersona(paths) },
       },
     ],
   }),

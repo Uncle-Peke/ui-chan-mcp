@@ -14,7 +14,8 @@
 // behaves differently depending on which door the persona came through.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Cue, MascotConfig } from '../shared/types';
+import type { UiChanPaths } from '../shared/paths';
+import type { Cue } from '../shared/types';
 import { DEFAULT_CUE_NAME } from '../shared/types';
 import { loadCues } from './cues';
 
@@ -32,10 +33,8 @@ const CUE_GROUP_TITLE: Record<string, string> = {
  *  adding a Cue file can never leave a hand-written list out of date. Cues
  *  marked `internal: true` are excluded: they're IdlingCue building blocks
  *  (state.ts), not expressions to pick with set_cue. */
-export function buildCueCatalog(projectRoot: string, config: MascotConfig): string {
-  const cuesDir = path.join(projectRoot, config.cuesDir ?? 'cues');
-  const cueSchemaPath = path.join(projectRoot, 'cue.schema.json');
-  const { cues, errors } = loadCues(cuesDir, cueSchemaPath);
+export function buildCueCatalog(paths: UiChanPaths): string {
+  const { cues, errors } = loadCues(paths.cueDirs, paths.cueSchemaFile);
 
   const groups = new Map<string, [string, Cue][]>();
   for (const [name, cue] of Object.entries(cues)) {
@@ -70,10 +69,10 @@ export function buildCueCatalog(projectRoot: string, config: MascotConfig): stri
 /** persona file + every `context/*.md` in filename order + the Cue catalog.
  *  Missing pieces degrade to a note rather than throwing: a half-formed persona
  *  is far better than a mascot that refuses to start. */
-export function buildPersonaText(projectRoot: string, config: MascotConfig): string {
+export function buildPersonaText(paths: UiChanPaths): string {
   const parts: string[] = [];
 
-  const personaPath = path.join(projectRoot, config.personaFile ?? 'persona/ui-chan.md');
+  const personaPath = paths.personaFile;
   try {
     parts.push(fs.readFileSync(personaPath, 'utf-8'));
   } catch {
@@ -82,20 +81,28 @@ export function buildPersonaText(projectRoot: string, config: MascotConfig): str
     );
   }
 
-  const contextDir = path.join(projectRoot, 'context');
-  try {
-    for (const file of fs
-      .readdirSync(contextDir)
-      .filter((f) => f.endsWith('.md'))
-      .sort()) {
-      parts.push(fs.readFileSync(path.join(contextDir, file), 'utf-8'));
+  // Filename-keyed across dirs: a `~/.ui-chan/context/SOUL.md` replaces the
+  // packaged one, anything else is appended in filename order.
+  const contextFiles = new Map<string, string>();
+  for (const dir of paths.contextDirs) {
+    try {
+      for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.md'))) {
+        contextFiles.set(file, path.join(dir, file));
+      }
+    } catch {
+      /* unreadable context dir — persona file alone still works */
     }
-  } catch {
-    /* no context dir — persona file alone still works */
+  }
+  for (const file of [...contextFiles.keys()].sort()) {
+    try {
+      parts.push(fs.readFileSync(contextFiles.get(file) as string, 'utf-8'));
+    } catch {
+      /* skip a file that vanished mid-build */
+    }
   }
 
   try {
-    parts.push(buildCueCatalog(projectRoot, config));
+    parts.push(buildCueCatalog(paths));
   } catch (e) {
     parts.push(`Cue一覧の生成に失敗しました: ${e instanceof Error ? e.message : e}`);
   }

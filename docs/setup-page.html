@@ -367,7 +367,7 @@
         </g>
         <g font-family="Roboto Mono, monospace" font-size="11" fill="var(--ink-faint)" text-anchor="middle">
           <text x="107" y="132">npm が使えれば OK</text>
-          <text x="310" y="132">BOOTH で入手 → assets/ へ</text>
+          <text x="310" y="132">BOOTH で入手 → ういが取り込む</text>
           <text x="513" y="132">voisona.com で入手（任意）</text>
         </g>
         <text x="310" y="156" text-anchor="middle" font-family="Zen Kaku Gothic New, sans-serif" font-size="12" fill="var(--accent)">ここだけ自分で用意</text>
@@ -406,33 +406,32 @@ cd ui-chan-mcp</pre>
       <div class="step">
         <div class="no">03</div>
         <div class="body">
-          <h3>絵と、声のカギを置く</h3>
+          <h3>セットアップに答える</h3>
           <p>
-            PSD を <code>assets/</code> に置く。素材は
+            対話形式。<b>PSD のパスと、声のカギを聞かれるだけ</b>。どっちも Enter で飛ばせる
+            （あとから <code>npx ui-chan</code> をもう一度打てばいい）。PSD は
             <a href="https://ui-roid.booth.pm/items/8593427" target="_blank" rel="noopener">ui-roid.booth.pm</a>
             から。声を使うなら
             <a href="https://voisona.com/talk/download/" target="_blank" rel="noopener">VoiSona Talk</a>
-            の「編集 &gt; 環境設定 &gt; API」で REST API を有効にして、そこで決めたパスワードを
-            <code>.env</code> に書く。
+            の「編集 &gt; 環境設定 &gt; API」で REST API を有効にして、そこで決めたパスワードを答える。
+            最後に、どのアプリに入れるかを ↑↓ と Space で選ぶ。
           </p>
-          <pre>cp .env.example .env
-# .env を開いて
-#   UI_CHAN_TTS_USERNAME=you@example.com
-#   UI_CHAN_TTS_PASSWORD=api-password</pre>
+          <pre>npx ui-chan</pre>
         </div>
       </div>
       <div class="step">
         <div class="no">04</div>
         <div class="body">
           <h3>足りてるか見る</h3>
-          <p>4項目まとめて確認してくれる。⚠️ は「無くても動く」って意味。</p>
-          <pre>npm run doctor</pre>
+          <p>まとめて確認してくれる。⚠️ は「無くても動く」って意味。</p>
+          <pre>npx ui-chan doctor</pre>
         </div>
       </div>
     </div>
     <p class="cap">
-      <code>.env</code> は <code>.gitignore</code> 済み。シェルに <code>export</code> してもいいけど、
-      その場合は<b>環境変数のほうが勝つ</b>。
+      答えた内容は<b>クローンの外</b>、<code>~/.ui-chan/</code> に入る（PSD・声のカギ・自分で足した表情）。
+      だから<b>アップデートしても消えない</b>し、クローンごと捨ててもここは残る。
+      シェルに <code>export</code> してもよくて、その場合は<b>環境変数のほうが勝つ</b>。
     </p>
   </section>
 
@@ -440,8 +439,8 @@ cd ui-chan-mcp</pre>
     <h2><span class="n">03</span>入れ方は2つ。Desktop は両方いる</h2>
     <p class="lede">
       入れ方は「プラグイン」と「コネクタ」の2つ。<b>プラグインは道具箱、コネクタは電源コード</b>って
-      思っとくといい。Claude Code はプラグインだけで足りるけど、
-      <b>Claude Desktop はプラグインを置いてくれるのに電源を挿してくれない</b>から、両方いる。
+      思っとくといい。<b>電源コードはどのアプリでもいる。</b>道具箱（<code>/talk</code> などのコマンド）は
+      Claude Code 専用。上の <code>npx ui-chan</code> は、選んだぶんを両方やってくれる。
     </p>
     <div class="fig">
       <svg viewBox="0 0 620 240" role="img" aria-label="Claude Code と Claude Desktop で、プラグインとコネクタのどちらが必要かの表">
@@ -478,52 +477,38 @@ cd ui-chan-mcp</pre>
           <text x="500" y="106">コマンドは使える</text>
           <text x="500" y="200">これが無いと喋らない</text>
         </g>
-        <text x="330" y="180" text-anchor="middle" font-family="Zen Maru Gothic, sans-serif" font-size="15" fill="var(--ink-faint)">いらない</text>
-        <text x="330" y="200" text-anchor="middle" font-family="Zen Kaku Gothic New, sans-serif" font-size="11" fill="var(--ink-faint)">入れると二重に動く</text>
+        <text x="330" y="180" text-anchor="middle" font-family="Zen Maru Gothic, sans-serif" font-size="15" fill="var(--accent)">いる</text>
+        <text x="330" y="200" text-anchor="middle" font-family="Zen Kaku Gothic New, sans-serif" font-size="11" fill="var(--ink-faint)">これが無いと喋らない</text>
       </svg>
     </div>
     <div class="callout">
-      <b>Claude Desktop はプラグインの一覧に出しはするけど、中の MCP サーバを起動しない。</b>
-      だから Desktop だけコネクタも登録する。Claude Code は逆に、プラグインが自分で起動するので
-      コネクタを足すと同じものが二重に動く（壊れはしないけど無駄）。
+      <b>プラグインは MCP サーバを持っていない。</b>昔は持たせていたけど、プラグインの外
+      （Claude Desktop、OpenCode、ほかのエージェント）では設定の中の
+      <code>${CLAUDE_PLUGIN_ROOT}</code> が展開されず<b>必ず起動に失敗する</b>ので、役割を分けた。
+      コネクタの登録は全部 <code>ui-chan install</code> がやる。
     </div>
   </section>
 
   <section>
     <h2><span class="n">04</span>プラグインを入れる（Code / Desktop 共通）</h2>
     <p class="lede">
-      Claude Code から3行。<b>入れた内容は Claude Desktop にも共有される</b>ので、
-      プラグインの登録はこの1回だけでいい。
+      <code>npx ui-chan</code> で <b>claude-code-plugin</b> を選んでいれば、もう終わってる。
+      あとから足すならこの1行。<b>入れた内容は Claude Desktop にも共有される。</b>
     </p>
     <div class="steps">
       <div class="step">
         <div class="no">01</div>
         <div class="body">
-          <h3>置き場所を教える</h3>
-          <p>Claude Code の中で打つ。パスは 02 で置いた場所。</p>
-          <pre>/plugin marketplace add /path/to/ui-chan-mcp</pre>
+          <h3>入れる</h3>
+          <p>
+            置き場所の登録・インストール・クローンとの紐づけまで、これ1行。
+            <b>紐づけまでやるから、あとでリポジトリを直しても Claude Code が古いままにならない。</b>
+          </p>
+          <pre>npx ui-chan install claude-code-plugin</pre>
         </div>
       </div>
       <div class="step">
         <div class="no">02</div>
-        <div class="body">
-          <h3>入れる</h3>
-          <pre>/plugin install ui-chan@ui-chan</pre>
-        </div>
-      </div>
-      <div class="step">
-        <div class="no">03</div>
-        <div class="body">
-          <h3>クローンとつなぐ（大事）</h3>
-          <p>
-            ターミナルで、クローンした場所で打つ。<b>これを忘れると、あとでリポジトリを直しても
-            Claude Code だけ昔のままになる。</b>
-          </p>
-          <pre>npm run link-plugin</pre>
-        </div>
-      </div>
-      <div class="step">
-        <div class="no">04</div>
         <div class="body">
           <h3>開き直す</h3>
           <p>
@@ -535,27 +520,28 @@ cd ui-chan-mcp</pre>
       </div>
     </div>
     <p class="cap">
-      <code>/plugin install</code> は、リポジトリを
-      <code>~/.claude/plugins/cache/</code> に<b>コピー</b>して使う。つまりコピーが増えて、
-      直す場所が2つになる。<code>npm run link-plugin</code> はそのコピーを消して、クローンへの
+      Claude Code のプラグイン機能は、リポジトリを <code>~/.claude/plugins/cache/</code> に
+      <b>コピー</b>して使う。つまりコピーが増えて、直す場所が2つになる。
+      <code>ui-chan install claude-code-plugin</code> はそのコピーを消して、クローンへの
       ショートカット（symlink）に置き換える。これで<b>本物はクローンだけ</b>になる。
-      Desktop 側の追加ボタンは GitHub からの追加しかできないので、登録は Claude Code からやる。
+      Desktop 側の追加ボタンは GitHub からの追加しかできないので、登録は Claude Code 側からやる。
     </p>
   </section>
 
   <section>
-    <h2><span class="n">05</span>コネクタを入れる（Desktop に必要）</h2>
+    <h2><span class="n">05</span>コネクタを入れる（どのアプリでも必要）</h2>
     <p class="lede">
-      Claude Desktop で喋らせるにはこれが必要。<b>1コマンドで終わる。</b>
-      Claude Code しか使わないなら、ここは飛ばしていい。
+      喋らせるにはこれが必要。<b>アプリの名前を書くだけ。</b>設定ファイルの場所も書式も、
+      ういが知ってる。対応してるのは <code>claude-code</code> / <code>claude-desktop</code> /
+      <code>opencode</code> / <code>cursor</code> / <code>vscode</code> / <code>hermes</code>。
     </p>
     <div class="steps">
       <div class="step">
         <div class="no">01</div>
         <div class="body">
           <h3>登録する</h3>
-          <p>クローンした場所で打つ。元の設定は <code>.bak</code> に残る。</p>
-          <pre>npm run install-desktop</pre>
+          <p>元の設定は <code>.bak</code> に残る。いくつでも並べて書ける。</p>
+          <pre>npx ui-chan install claude-desktop opencode</pre>
         </div>
       </div>
       <div class="step">
@@ -572,7 +558,9 @@ cd ui-chan-mcp</pre>
     <p class="cap">
       手で書きたいなら、<b>設定</b>（⌘ + カンマ）→ <b>開発者</b> → <b>設定を編集</b> で
       <code>claude_desktop_config.json</code> を開いて、<code>"mcpServers"</code> の中にこれを足す。
-      外すのは <code>npm run install-desktop -- --remove</code>。
+      外すのは <code>npx ui-chan uninstall claude-desktop</code>（<code>--all</code> で全部、
+      <code>--purge</code> を足すと <code>~/.ui-chan</code> ごと消える）。一覧にないアプリには
+      <code>npx ui-chan print</code> が貼り付け用の設定を出す。
     </p>
     <div class="fig">
       <pre>{
@@ -618,12 +606,12 @@ cd ui-chan-mcp</pre>
         </g>
         <g font-family="Roboto Mono, monospace" font-size="11" fill="var(--ink-faint)" text-anchor="middle">
           <text x="124" y="68">自動</text>
-          <text x="124" y="134">npm run app</text>
+          <text x="124" y="134">npx ui-chan start</text>
         </g>
       </svg>
     </div>
     <div class="callout">
-      うんともすんとも言わないときは <code>npm run doctor</code> に戻る。
+      うんともすんとも言わないときは <code>npx ui-chan doctor</code> に戻る。
       ❌ が出るのは「ビルドされてない」ときだけで、それ以外は動くはず。
     </div>
   </section>
@@ -646,9 +634,9 @@ cd ui-chan-mcp</pre>
       <div class="step">
         <div class="no">02</div>
         <div class="body">
-          <h3>もし <code>/plugin install</code> をやり直したら</h3>
+          <h3>もし <code>/plugin install</code> を手で打ち直したら</h3>
           <p>コピーが復活してつながりが切れるので、もう一度これを打つ。</p>
-          <pre>npm run link-plugin</pre>
+          <pre>npx ui-chan install claude-code-plugin</pre>
         </div>
       </div>
     </div>

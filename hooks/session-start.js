@@ -14,12 +14,17 @@ const { spawn } = require('node:child_process');
 
 const root = process.env.CLAUDE_PLUGIN_ROOT ?? path.resolve(__dirname, '..');
 
-let config = {};
+// Package defaults + the user's ~/.ui-chan overrides, resolved by the same
+// module the app and the MCP server use (shared/paths.ts).
+let paths = null;
 try {
-  config = JSON.parse(fs.readFileSync(path.join(root, 'ui-chan.config.json'), 'utf-8'));
+  const { resolvePaths, loadEnvFiles } = require(path.join(root, 'dist', 'shared', 'paths.js'));
+  loadEnvFiles(root);
+  paths = resolvePaths(root);
 } catch {
-  /* use defaults */
+  /* dist/ not built yet — the launch probe below still works with defaults */
 }
+const config = paths?.config ?? {};
 
 /**
  * Start the display app if nothing is listening on its WebSocket port yet.
@@ -57,7 +62,7 @@ ensureAppRunning(Number(process.env.UI_CHAN_PORT ?? config.port ?? 8123));
 if (process.env.UI_CHAN_NO_PERSONA_HOOK !== '1') {
   try {
     const { buildPersonaText } = require(path.join(root, 'dist', 'app', 'persona.js'));
-    const text = buildPersonaText(root, config);
+    const text = paths && buildPersonaText(paths);
     if (text) {
       console.log(
         JSON.stringify({
