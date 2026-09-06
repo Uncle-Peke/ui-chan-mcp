@@ -47,6 +47,8 @@
   "files": [
     "dist",
     "bin",
+    "tools/setup",
+    "tools/stop-app.mjs",
     "cues",
     "persona",
     "context",

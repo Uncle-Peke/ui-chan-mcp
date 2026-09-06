@@ -233,9 +233,11 @@ async function main() {
         if (!st.ok) return say(`確認できません: ${st.reason}`);
         if (!st.available) return say('最新です');
         const where =
-          st.via === 'gh'
-            ? `${st.slug} / gh 経由${st.installedSha ? '' : '・現在のバージョン不明'}`
-            : `${st.behind} コミット (${st.upstream})`;
+          st.via === 'npm'
+            ? `${st.name} ${st.current} → ${st.latest}`
+            : st.via === 'gh'
+              ? `${st.slug}${st.branch ? `#${st.branch}` : ''} / gh 経由${st.installedSha ? '' : '・現在のバージョン不明'}`
+              : `${st.behind} コミット (${st.upstream})`;
         return say(`更新あり: ${where}${st.blocked ? ` ※${st.blocked}` : ''}`);
       }
       const res = await runUpdate(pkgRoot, { log: (m) => say(`  ${m}`), branch });
@@ -251,6 +253,26 @@ async function main() {
         spawn(process.execPath, [path.join(pkgRoot, 'tools', 'stop-app.mjs')], { stdio: 'ignore' });
         setTimeout(() => runApp([]), 1500);
       }
+      return;
+    }
+    case 'use': {
+      // Point every client that already has ui-chan registered at *this* copy.
+      // The npm install and a clone can coexist happily; what can't is being
+      // unsure which one a session is actually talking to.
+      const cmd = serverCommand(pkgRoot);
+      const registered = CLIENTS.filter((c) => {
+        try {
+          return c.status(cmd, pkgRoot).installed;
+        } catch {
+          return false;
+        }
+      });
+      if (registered.length === 0) {
+        return say('登録済みのクライアントがありません（先に `ui-chan install` を）。');
+      }
+      say(`このコピーに切り替えます: ${pkgRoot}\n`);
+      installTo(registered.map((c) => c.id));
+      say(dim('\nクライアントを再起動すると反映されます。'));
       return;
     }
     case 'home':
@@ -275,6 +297,7 @@ async function main() {
   ui-chan print <id>       設定スニペットのみ表示
   ui-chan update           最新版を取得して再ビルド（--check で確認のみ、
                            --branch <名前> で追従先を指定＝gh 経路のみ）
+  ui-chan use              登録済みクライアントの参照先を「このコピー」に切り替える
   ui-chan home             ユーザーデータの場所
   ui-chan start | stop     マスコットの起動 / 停止
 

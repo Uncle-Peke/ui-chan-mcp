@@ -29,7 +29,13 @@ export async function doctor(pkgRoot, { quiet = false } = {}) {
   if (!paths) {
     bad('dist/ がありません — `npm install`（または `npm run build`）を実行してください');
   } else {
-    ok(`ビルド済み: ${path.join(pkgRoot, 'dist')}`);
+    const KIND_LABEL = {
+      git: 'git クローン',
+      'npm-global': 'npm グローバル',
+      'npm-local': 'npm（プロジェクト依存）',
+      copy: 'コピー配置',
+    };
+    ok(`このコピー: ${pkgRoot}（${KIND_LABEL[paths.kind] ?? paths.kind}）`);
   }
 
   const home = homeDir();
@@ -70,9 +76,19 @@ export async function doctor(pkgRoot, { quiet = false } = {}) {
     } catch (e) {
       st = { installed: false, detail: e.message };
     }
-    (st.installed ? ok : warn)(
-      `${c.label}: ${st.installed ? '登録済み' : '未登録'} (${st.detail})`,
-    );
+    // A machine can hold several copies of ui-chan (an npm install plus a
+    // clone). Whichever one a client's entry points at is the one that runs, so
+    // a registration aimed elsewhere is the single most confusing state there
+    // is — you edit the clone and the npm copy answers.
+    const elsewhere =
+      st.installed && st.target && !String(st.target).startsWith(pkgRoot) ? st.target : null;
+    if (elsewhere) {
+      warn(`${c.label}: 別のコピーを指しています → ${elsewhere}（\`ui-chan use\` でこちらに切替）`);
+    } else {
+      (st.installed ? ok : warn)(
+        `${c.label}: ${st.installed ? '登録済み' : '未登録'} (${st.detail})`,
+      );
+    }
   }
 
   if (!quiet) {

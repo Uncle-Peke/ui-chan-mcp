@@ -25,6 +25,8 @@ import type { MascotConfig } from './types';
 export interface UiChanPaths {
   /** Root of the installed package (or the git clone in dev). Read-only. */
   pkgRoot: string;
+  /** How it was installed — see InstallKind. */
+  kind: InstallKind;
   /** User data dir. May not exist — every lookup degrades to the package. */
   home: string;
   homeExists: boolean;
@@ -40,6 +42,35 @@ export interface UiChanPaths {
   assetsDirs: string[];
   personaFile: string;
   contextDirs: string[];
+}
+
+/**
+ * How this copy of ui-chan got here. Everything that differs between the git
+ * and npm distributions keys off this, in one place, so the differences can be
+ * reasoned about instead of discovered:
+ *
+ *   git     a clone — writable, updated by fast-forward, `dist/` is built here
+ *   npm     installed from the registry (global or as a dependency) — the
+ *           package dir is npm's to replace, so nothing of the user's may live
+ *           in it, and updating means `npm install`, not `git pull`
+ *   copy    a hand-placed directory (ZIP, plugin cache) — updated via the gh
+ *           tarball, since there is no git and no registry entry to ask
+ */
+export type InstallKind = 'git' | 'npm-global' | 'npm-local' | 'copy';
+
+export function installKind(pkgRoot: string): InstallKind {
+  if (fs.existsSync(path.join(pkgRoot, '.git'))) return 'git';
+  // npm puts packages in `<prefix>/lib/node_modules/<name>` (global) or
+  // `<project>/node_modules/<name>` (local). Both end in node_modules/<name>,
+  // which a clone never does.
+  const parent = path.basename(path.dirname(pkgRoot));
+  if (parent === 'node_modules' || path.basename(path.dirname(path.dirname(pkgRoot))) === 'node_modules') {
+    return pkgRoot.includes(`${path.sep}lib${path.sep}node_modules${path.sep}`) ||
+      !fs.existsSync(path.join(pkgRoot, '..', '..', 'package.json'))
+      ? 'npm-global'
+      : 'npm-local';
+  }
+  return 'copy';
 }
 
 export function uiChanHome(): string {
@@ -97,6 +128,7 @@ function existingDirs(dirs: string[]): string[] {
 export function resolvePaths(pkgRoot: string): UiChanPaths {
   const home = uiChanHome();
   const homeExists = fs.existsSync(home);
+  const kind = installKind(pkgRoot);
 
   const packaged = (readJson(path.join(pkgRoot, 'ui-chan.config.json')) ?? {}) as MascotConfig;
   const configFile = path.join(home, 'config.json');
@@ -111,6 +143,7 @@ export function resolvePaths(pkgRoot: string): UiChanPaths {
 
   return {
     pkgRoot,
+    kind,
     home,
     homeExists,
     config,
@@ -119,7 +152,14 @@ export function resolvePaths(pkgRoot: string): UiChanPaths {
     // Last existing dir wins: with a home dir set up, edits land in the user's
     // data; in a bare git clone (no home), they land in the repo where the
     // author expects them.
-    cueWriteDir: cueDirs[cueDirs.length - 1] ?? path.join(pkgRoot, config.cuesDir ?? 'cues'),
+    // Where a saved cue goes. In a clone that's the repo (the author is editing
+    // the catalog itself); anywhere else the package dir belongs to npm or to
+    // whoever unpacked it and will be replaced wholesale on the next update, so
+    // the user's cue has to live in their home dir even if it doesn't exist yet.
+    cueWriteDir:
+      kind === 'git'
+        ? (cueDirs[cueDirs.length - 1] ?? path.join(pkgRoot, config.cuesDir ?? 'cues'))
+        : path.join(home, 'cues'),
     cueSchemaFile: path.join(pkgRoot, 'cue.schema.json'),
     assetsDirs: existingDirs([
       path.join(home, config.assetsDir ?? 'assets'),

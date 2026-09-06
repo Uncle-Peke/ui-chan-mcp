@@ -15,11 +15,45 @@
 // edits is not.
 import { execFile, execFileSync, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
 
 const run = promisify(execFile);
+
+/** How this copy was installed — the compiled `installKind` is the single
+ *  definition; falling back to a local guess only when dist/ is missing (a
+ *  clone that hasn't been built yet, which is a clone by definition). */
+export function kindOf(pkgRoot) {
+  try {
+    // `require` does not exist in an ES module — calling it here is what made
+    // a global npm install fall through to the gh path and unpack a tarball
+    // over npm's own package directory.
+    const req = createRequire(import.meta.url);
+    return req(path.join(pkgRoot, 'dist', 'shared', 'paths.js')).installKind(pkgRoot);
+  } catch {
+    return fs.existsSync(path.join(pkgRoot, '.git')) ? 'git' : 'copy';
+  }
+}
+
+/** The published package name, from package.json — never hardcoded, so a fork
+ *  updates itself and not us. */
+function pkgName(pkgRoot) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'), 'utf-8')).name;
+  } catch {
+    return null;
+  }
+}
+
+function pkgVersion(pkgRoot) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(pkgRoot, 'package.json'), 'utf-8')).version;
+  } catch {
+    return null;
+  }
+}
 
 function hasCmd(cmd) {
   return spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
@@ -92,6 +126,8 @@ function git(pkgRoot, args, opts = {}) {
  * connection, so callers on a timer should use a timeout).
  */
 export function checkUpdate(pkgRoot, { fetch = false, branch } = {}) {
+  const kind = kindOf(pkgRoot);
+  if (kind === 'npm-global' || kind === 'npm-local') return checkUpdateViaNpm(pkgRoot, kind);
   const isRepo = fs.existsSync(path.join(pkgRoot, '.git'));
   if (!isRepo || !hasCmd('git')) return checkUpdateViaGh(pkgRoot, { isRepo, branch });
   try {
@@ -126,6 +162,44 @@ export function checkUpdate(pkgRoot, { fetch = false, branch } = {}) {
     };
   } catch (e) {
     return { ok: false, reason: e.message?.split('\n')[0] ?? String(e), available: false };
+  }
+}
+
+/** Installed from the registry: npm already knows what "latest" is, and npm is
+ *  the only thing allowed to rewrite its own package dir — pulling a tarball
+ *  over it would leave npm's metadata lying about what's installed. */
+function checkUpdateViaNpm(pkgRoot, kind) {
+  const name = pkgName(pkgRoot);
+  const current = pkgVersion(pkgRoot);
+  if (!name) return { ok: false, available: false, reason: 'package.json が読めません' };
+  try {
+    const latest = execFileSync('npm', ['view', name, 'version'], {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 30_000,
+    }).trim();
+    return {
+      ok: true,
+      via: 'npm',
+      kind,
+      name,
+      current,
+      latest,
+      available: Boolean(latest) && latest !== current,
+      blocked:
+        kind === 'npm-local'
+          ? 'このプロジェクトの依存として入っています（そのプロジェクト側で更新してください）'
+          : null,
+    };
+  } catch (e) {
+    const msg = `${e.stderr ?? ''}${e.message ?? ''}`;
+    return {
+      ok: false,
+      available: false,
+      reason: msg.includes('404')
+        ? `${name} はまだ npm に公開されていません`
+        : `npm registry を参照できません: ${e.message?.split('\n')[0] ?? e}`,
+    };
   }
 }
 
@@ -227,6 +301,17 @@ async function runUpdateViaGh(pkgRoot, log, branch) {
  * Returns { ok, updated, from, to, reason? }.
  */
 export async function runUpdate(pkgRoot, { log = () => {}, branch } = {}) {
+  const kind = kindOf(pkgRoot);
+  if (kind === 'npm-global' || kind === 'npm-local') {
+    const status = checkUpdateViaNpm(pkgRoot, kind);
+    if (!status.ok) return { ok: false, reason: status.reason };
+    if (kind === 'npm-local') return { ok: false, reason: status.blocked };
+    if (!status.available) return { ok: true, updated: false, reason: '最新です' };
+    if (branch) return { ok: false, reason: '--branch は npm 版では使えません（公開版のみ）' };
+    log(`npm から更新: ${status.name} ${status.current} → ${status.latest}`);
+    await run('npm', ['install', '-g', `${status.name}@latest`], { timeout: 900_000 });
+    return { ok: true, updated: true, from: status.current, to: status.latest };
+  }
   // git if this is a clone and git exists; otherwise gh. Either one is enough.
   if (!fs.existsSync(path.join(pkgRoot, '.git')) || !hasCmd('git')) {
     return runUpdateViaGh(pkgRoot, log, branch);

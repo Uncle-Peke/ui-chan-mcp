@@ -454,6 +454,33 @@ flag file, then a `goodnight` broadcast before `app.quit()`) are gone with it;
 if she is genuinely down, the tool call fails in ~1.5s saying how to start her,
 and starting her stays a person's choice.
 
+### git 版 / npm 版 / コピー — 何が変わるか
+
+`installKind(pkgRoot)` (`src/shared/paths.ts`) is the single definition, and
+everything that differs keys off it. The differences are small but each one has
+bitten:
+
+| | git クローン | npm（グローバル） | npm（プロジェクト依存） | コピー（ZIP・プラグインキャッシュ） |
+|---|---|---|---|---|
+| 更新 | `git merge --ff-only` | `npm install -g <name>@latest` | 拒否（そのプロジェクト側の仕事） | `gh api …/tarball` を展開 |
+| ブランチ指定 | 現在のブランチの追跡先（`--branch` は拒否＝checkout はユーザの仕事） | 不可（公開版のみ） | — | `--branch`、スタンプに記録して追従 |
+| Cue の保存先 | クローンの `cues/`（カタログ本体を編集している） | `~/.ui-chan/cues`（node_modules は npm のもの） | 同左 | 同左 |
+| `dist/` | 自分でビルド | 同梱 | 同梱 | 同梱 |
+
+Two traps worth stating out loud:
+
+- **npm のパッケージディレクトリに書いてはいけない。** npm はそこを丸ごと
+  置き換えるし、metadata が「入っているもの」を嘘つきになる。だから
+  `cueWriteDir` は git 以外では常にホーム、更新も `npm install` に委ねる。
+  実際、`kindOf()` が ESM で `require()` を呼んで落ち、npm グローバル導入が
+  gh 経路にフォールバックして tarball を npm の管理下へ展開した — テストで
+  見つかった実バグで、この表の一行目がなぜ必要かの実例。
+- **同じマシンに複数のコピーが同居しうる。** npm で入れて後からクローンする、
+  はごく普通の流れで、そのとき「どのコピーが動いているか」はクライアントの
+  設定に書かれたパスだけが決める。`ui-chan use` が登録済みクライアントを
+  すべて *このコピー* に向け直し、`doctor` は別コピーを指している登録を
+  警告する（クローンを直したのに npm 版が応答する、が一番分かりにくい）。
+
 ### Updating the tool itself
 
 `ui-chan update` (and the panel's download icon) fast-forwards the install and

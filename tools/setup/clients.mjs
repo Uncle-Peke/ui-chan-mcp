@@ -78,7 +78,11 @@ function jsonClient({ id, label, file, key, entry, seed, note, unverified, extra
       const f = file();
       if (!fs.existsSync(f)) return { installed: false, detail: `未作成: ${f}` };
       const cur = readJson(f)[key]?.[SERVER_NAME];
-      return { installed: Boolean(cur), detail: f };
+      // `target` is which copy of ui-chan the entry points at. With an npm
+      // install and a clone on the same machine, that is the only thing that
+      // says which one actually runs.
+      const cmd = Array.isArray(cur?.command) ? cur.command[0] : cur?.command;
+      return { installed: Boolean(cur), detail: f, target: cmd ?? null };
     },
     snippet(cmd, pkgRoot) {
       const doc = { [key]: { [SERVER_NAME]: entry(cmd) } };
@@ -153,7 +157,8 @@ const claudeCode = {
         encoding: 'utf-8',
         stdio: ['ignore', 'pipe', 'ignore'],
       });
-      return { installed: out.includes(SERVER_NAME), detail: 'claude mcp' };
+      const m = out.match(/Command:\s*(\S+)/);
+      return { installed: out.includes(SERVER_NAME), detail: 'claude mcp', target: m?.[1] ?? null };
     } catch {
       return { installed: false, detail: 'claude mcp' };
     }
@@ -198,7 +203,15 @@ const claudeCodePlugin = {
     const file = path.join(home, '.claude', 'plugins', 'installed_plugins.json');
     if (!fs.existsSync(file)) return { installed: false, detail: '未インストール' };
     const data = readJson(file);
-    return { installed: Boolean(data.plugins?.['ui-chan@ui-chan']), detail: file };
+    const entry = data.plugins?.['ui-chan@ui-chan']?.[0];
+    let target = entry?.installPath ?? null;
+    try {
+      // The install path is a symlink to the copy that owns the plugin.
+      if (target && fs.lstatSync(target).isSymbolicLink()) target = fs.realpathSync(target);
+    } catch {
+      /* stale entry */
+    }
+    return { installed: Boolean(entry), detail: file, target };
   },
   snippet(_cmd, pkgRoot) {
     return [
@@ -300,8 +313,10 @@ const hermes = {
   status() {
     const f = hermesConfigFile();
     if (!fs.existsSync(f)) return { installed: false, detail: `未作成: ${f}` };
-    const installed = fs.readFileSync(f, 'utf-8').includes(`  ${SERVER_NAME}:`);
-    return { installed, detail: f };
+    const text = fs.readFileSync(f, 'utf-8');
+    const installed = text.includes(`  ${SERVER_NAME}:`);
+    const m = text.match(/^\s*command:\s*"?([^"\n]+)"?/m);
+    return { installed, detail: f, target: installed ? (m?.[1] ?? null) : null };
   },
   snippet(cmd) {
     return `# ${hermesConfigFile()}\nmcp_servers:\n${hermesBlock(cmd)}`;

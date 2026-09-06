@@ -209,6 +209,7 @@ Cue の一覧は `persona` プロンプト（と SessionStart フック）が `c
 |---|---|
 | `npx ui-chan` | 対話セットアップ（TUI） |
 | `npx ui-chan update` | 本体を最新にして再ビルド（`--check` で確認のみ、`--branch <名前>` で追従先指定） |
+| `npx ui-chan use` | 登録済みクライアントの参照先を「このコピー」に切り替える |
 | `npm run doctor` | セットアップの事前チェック（＝`ui-chan doctor`） |
 | `npm run app` / `stop` / `restart` | Electron アプリの起動／終了／再起動 |
 | `npm run build` | `src/` を `dist/` にビルド（`npm install` 時に自動実行） |
