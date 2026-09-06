@@ -35,313 +35,114 @@
 
 はい、どうも～。ういです。
 
-きみのデスクトップの隅に住んで、作業をだらっと眺めてる係。MCP（Model Context Protocol）で
-繋いでくれれば、Claude Code でも他のエージェントでも、わたしを動かせるようになるよ。
-表情を変えて、吹き出しで喋って、声も出す。ときどき勝手に喋る。
+きみのデスクトップの隅に住んで、作業を眺めてる係。**AI に繋ぐと、わたしがそのAIの体になる。**
+表情を変えて、吹き出しで喋って、声も出す。ときどき勝手に独り言も言う。
 
-- 画面に出るところは Electron（透過・最前面・右下）
-- 立ち絵は **PSDTool 形式の PSD** をそのまま使う（`!`=必須レイヤー、`*`=ラジオ切替）
-- 見た目と声はセットで **Cue** っていう単位。1ファイル＝1つの完成した表情。
-  エージェントが触れるのは `set_cue` ひとつだけ。あれこれ組み合わせさせない
-- 複数のエージェントが同時に繋いでも取り合いにならない（誰が喋らせてるかは画面で見える）
+- コマンドが失敗したら「あ、こけた。」って言う
+- 長いこと放っておかれたら寝る。戻ってきたら起きる
+- つついたら怒る。しつこいともっと怒る
+- 仲良くなると態度が変わる。ういビームも撃つ（気分次第）
 
-> **立ち絵の PSD はここには入ってない。** ライセンスがあるからね、すいませんねぇ。
-> [BOOTH](https://ui-roid.booth.pm/items/8593427)（坂本アヒル様）から持ってきて
-> `~/.ui-chan/assets/` に置いて。`ui-chan` のセットアップが聞いてくるから、パスを答えるだけでいいよ。
-> 無くても起動はする。のっぺらぼうのわたしでよければ。
-> 同梱の `ui-chan.config.json` と `cues/*.json` は雨衣のレイヤー構成向けだから、
-> 利用は[キャラクターガイドライン](https://www.ui-roid.com/guidelines/)の範囲でよろしくね。
+対応してるのは **Claude Code / Claude Desktop / OpenCode / Cursor / VS Code / Hermes**。
+**macOS 専用**だよ。
 
-## セットアップ
+---
 
-> **要るもの** — Node.js 22 以上。入れるときに Electron（200MB 超）も付いてくるよ。重いね。
-> 立ち絵と VoiSona Talk は入ってないけど、無くても起動はする。
->
-> **わたしは macOS 専用だよ。** Windows と Linux では動かないし、npm も他の OS には
-> インストールさせないようにしてある。中途半端に「たぶん動く」って言うより、そのほうが親切でしょ。
+## 入れかた
 
-コマンド1本でいいよ。クライアントごとの JSON を手で書く必要はないから。
+**1. わたしを入れる**（Node.js 22 以上が要る）
 
 ```bash
 npm install -g ui-chan-mcp
-ui-chan                      # 対話セットアップ
+ui-chan
 ```
 
-聞かれるのはこれだけ。全部 Enter で飛ばしてもいいよ。
+`ui-chan` が順番に聞いてくるから、答えるだけ。全部 Enter で飛ばしてもいい。
 
-1. **`~/.ui-chan/` を作る** — わたしの持ち物置き場。立ち絵とか声の鍵とか、きみが足した表情とか
-2. **立ち絵のパス** — 答えると `~/.ui-chan/assets/` にコピーする。飛ばすとのっぺらぼう
-3. **VoiSona Talk の鍵** — `~/.ui-chan/.env` に置く。飛ばすと声なし。吹き出しは出るから安心して
-4. **どこに入れる？** — ↑↓ と Space で選ぶ。選んだ設定ファイルに書き込む（`.bak` は残すよ）
-5. **最後に点検** — ちゃんと動きそうか一覧で見せる
+**2. 立ち絵を渡す**（省略可）
 
-中を直したいなら、クローンからでもいいよ。
+[BOOTH](https://ui-roid.booth.pm/items/8593427) から雨衣の立ち絵素材を買って、
+ダウンロードした `.psd` のパスを答えてね。飛ばすと、のっぺらぼうのわたしが出る。
 
-```bash
-git clone https://github.com/Uncle-Peke/ui-chan-mcp.git && cd ui-chan-mcp
-npm install          # 依存の取得＋ビルド
-npx ui-chan          # 同じセットアップ
-```
+**3. 声の鍵を渡す**（省略可）
 
-**両方入れてても平気。** どっちのわたしが動くかは、クライアントの設定に書かれたパスで決まるから、
-`ui-chan use` を打ったほうが担当になる。いま誰が動いてるか分からなくなったら `ui-chan doctor`。
+[VoiSona Talk](https://voisona.com/talk/download/)（無料）を入れて、
+アプリの「編集 → 環境設定 → API」で REST API を有効にする。そこで決めた
+ユーザー名とパスワードを答えてね。飛ばすと声は出ないけど、吹き出しは出るし口も動く。
 
-> **わたしに入ってないもの**（正式な権利表記は[いちばん下](#ライセンスと権利表記)にあるよ）。
-> 立ち絵は二次配布禁止だし、VoiSona Talk はテクノスピーチさんの製品。
-> どっちも配れないの。わたしは、きみが自分で入れた VoiSona Talk を `open -a` で起こして、
-> ローカルの REST API を叩いてるだけ。
-> ちなみに、うっかり混ざってないかは機械が見張ってる（`npm run check-package`）。
-> `.psd` とか `.env` とかアプリ本体とか音声データが1つでも入ってたら、公開は失敗するようにしてあるよ。
+**4. どこに入れるか選ぶ**
 
-### わたしの中身と、きみの持ち物は別
+↑↓ と Space で選んで Enter。それで終わり。
 
-**アップデートしても壊れない**のはこれのおかげ。
+---
 
-| | 場所 | 中身 | 更新時 |
-|---|---|---|---|
-| パッケージ | クローン／`node_modules` | コード・同梱Cue・人格・設定の既定値 | **まるごと入れ替わる** |
-| ユーザーデータ | `~/.ui-chan/`（`UI_CHAN_HOME` で変更可） | PSD・`.env`・`config.json`・自作Cue・人格の上書き | **触られない** |
+## 使いかた
 
-上書きしたいものだけ書けばいいよ。全部コピーしてこなくていい。
+**繋いだら、もう終わり。** 次にそのアプリを開けば、画面の右下にわたしが出てくる。
+あとは普通に作業して。勝手に喋るから。
 
-- `config.json` … 同梱の設定に**深いマージで上書き**。3行だけ書いても、後から増えた項目はちゃんと引き継ぐ
-- `cues/` … 同梱のと**両方読む**。同じ名前ならきみのが勝つ。1個足すのにカタログ全部を複製しなくていいの
-- `context/` … 同じくファイル名単位。`persona/ui-chan.md` も置けばそっちを使う
-- `assets/` … 立ち絵。配れないから実質ここだけ
-- `.env` … 環境変数があればそっちが優先
+わたしの右上に小さいつまみがあるでしょ。押すとこれが出る。
 
-### 対応クライアント
-
-| id | クライアント | 書き込み先 |
-|---|---|---|
-| `claude-code` | Claude Code（MCPサーバ） | `claude mcp add -s user` |
-| `claude-code-plugin` | Claude Code プラグイン（`/talk` `/mode` 等のスキル・サブエージェント・EventCueフック） | `~/.claude/plugins`（インストール後にクローンへ symlink 化） |
-| `claude-desktop` | Claude Desktop | `claude_desktop_config.json` |
-| `opencode` | OpenCode | `~/.config/opencode/opencode.json`（MCP＋EventCueプラグイン） |
-| `cursor` | Cursor | `~/.cursor/mcp.json` |
-| `vscode` | VS Code (Copilot Chat) | `User/mcp.json` |
-| `hermes` | Hermes Agent | `~/.hermes/config.yaml` の `mcp_servers:`＋`~/.hermes/plugins/ui-chan/`（EventCue。`HERMES_HOME` / `UI_CHAN_HERMES_CONFIG` で変更可） |
-
-ここに無いクライアントなら `ui-chan print <id>`（引数なしなら汎用の stdio 設定）で、
-貼り付け用のスニペットを出すよ。新しいホストへの対応は表に1行足すだけだから、増やすのは簡単。
-
-登録される起動コマンドは、どこでも同じ。
-
-```
-<パッケージ>/bin/ui-chan-node  <パッケージ>/dist/mcp-server.js
-```
-
-`bin/ui-chan-node` は node を自力で探して起動するやつ。アプリから立ち上がるクライアント
-（Claude Desktop とか）は PATH が最小限しか無くて、Homebrew や nvm の node が見えないの。
-`"command": "node"` って書くと、何も言わずに起動失敗する。えぇ…ってなるやつ。
-
-### 使い方
-
-```bash
-ui-chan                      # 対話セットアップ
-ui-chan install claude-desktop opencode   # 指定クライアントへ登録（--all で全部）
-ui-chan uninstall --all      # 全クライアントから解除（ユーザーデータは残る）
-ui-chan uninstall --all --purge           # ~/.ui-chan ごと消す
-ui-chan doctor               # 状態チェック
-ui-chan print opencode       # 設定スニペットだけ表示
-ui-chan home                 # ユーザーデータの場所
-ui-chan start / stop         # マスコットの起動・停止
-ui-chan update               # 最新版にする（--check で確認だけ）
-```
-
-**繋いだらもう終わり。** アプリも VoiSona Talk もセッション開始時に勝手に起きるし、
-わたしの人格は MCP のハンドシェイクに乗って渡るから、どこかに貼り付ける作業は無いよ。
-
-わたしの右上に小さいつまみがあるでしょ。押すと、いま繋がってるセッション（どのツールの、どのプロジェクトか）と、
-しずかに／ひといき／好感度／リセット／おやすみ が出てくる。更新があるときだけ、ダウンロードのアイコンも増える。
-
-### プラグインとコネクタの違い
-
-| | MCPサーバ（コネクタ） | プラグイン |
-|---|---|---|
-| ツール（`set_cue` ほか） | ○ | ✕ |
-| 人格（ハンドシェイクで注入） | ○ | ○（SessionStart フック） |
-| アプリ・音声エンジンの自動起動 | ○ | ○ |
-| `/talk` `/mode` `/beam` `/eli14` | ✕ | ○ |
-| サブエージェント（talk / mode） | ✕ | ○ |
-| 作業への自動リアクション（EventCue） | ✕ | ○ |
-
-**EventCue**っていうのは、きみの作業を見ててわたしが勝手に反応するやつ。コマンドがこけたとか、
-ターンが終わったとか、お手伝いの子が帰ってきたとか。`ui-chan install <id>` が MCP 登録と一緒に
-置いてくれる。
-
-| ホスト | 状態 |
+| | |
 |---|---|
-| Claude Code | ✅ 実機で確認済み |
-| OpenCode | 実装済み・**未検証**（`event` / `tool.execute.*` フック） |
-| Hermes Agent | 実装済み・**未検証**（Python プラグイン） |
+| 🔊 しずかに | 声だけ止める |
+| ⊘ ひといき | 喋るのをやめて、いつもの顔に戻る |
+| ♡ 好感度 | いまどのくらい仲良しか。スライダーで変えられる |
+| ⌂ リセット | 定位置に戻して起き直す |
+| ⏻ おやすみ | 終了。呼ばれても起きない |
 
-未検証のほうは、設定への書き込みと構文までは確かめてあるけど、実際に発火するところまでは
-見られてないの。試して転んだら [Issue](https://github.com/Uncle-Peke/ui-chan-mcp/issues) で教えて。
+複数のセッションから繋がってるときは、そこに一覧が出る（どのツールの、どのプロジェクトか）。
+更新があるときは、ダウンロードのアイコンが増えるよ。
 
-フック側が決めるのは「**何が起きたか**」だけ。わたしが何て言うかは `ui-chan.config.json` の
-`eventCues` にあるから、ホストが違っても反応は同じだし、セリフを直すのに
-JavaScript を触らなくていい。
+---
 
-昔はプラグインが MCP サーバも兼ねてたんだけど、プラグインの外だと設定の中の
-`${CLAUDE_PLUGIN_ROOT}` が展開されなくて**必ず起動に失敗**してたの。すいませんねぇ。
-今は役割を分けて、MCP の登録はどこでも `ui-chan install <id>` に統一してある。
-Claude Code で全部入りにするなら `ui-chan install claude-code claude-code-plugin`。
+## 困ったときは
 
-Claude Desktop はプラグインの台帳を Claude Code と共有するけど、**プラグイン同梱の MCP サーバは
-起動してくれない**（試した）。だから Desktop は、スキルはプラグインから、ツールとわたしの人格は
-コネクタから、っていう組み合わせになるよ。
-
-## コマンド一覧
-
-### MCP ツール（エージェントが呼ぶ）
-
-| ツール | 引数 | 説明 |
-|---|---|---|
-| `set_cue` | `cue`, `text?`, `reading?`, `duration_ms?`, `pitch?`, `speed?`, `volume?`, `intonation?` | Cue（見た目＋声）を切り替え、任意でセリフを同時に話す。`text` を省略すると無言でCueだけ変わる。未知の `cue` 名は `default` にフォールバックし `note` が付く。`pitch`/`speed`/`volume`/`intonation` はその一行だけのアドリブ演技 |
-| `get_state` | — | 現在の状態・接続エージェント・利用可能Cue・好感度・警告 |
-| `adjust_affinity` | `direction`（`up`/`down`）, `magnitude`（`low`/`middle`/`high`） | 好感度を増減（セッション内のみ・再起動でリセット）。実際の増減量はエンジンが決めます |
-| `clear` | — | 吹き出し・Cueを初期状態（`default`）にリセット |
-
-どのCueが使えるかは、起動のたびに `cues/` から作り直してエージェントに渡してる。
-だから表情を1個足したら、その場で選べるようになるよ。手で一覧を書き足す必要はないの。
-
-### スラッシュコマンド（プラグイン導入時）
-
-| コマンド | 説明 |
-|---|---|
-| `/talk <メッセージ>` | わたしと喋るだけ。作業はしないよ |
-| `/mode [依頼]` | セッションごとわたしになる。以後は作業も会話もわたし本人 |
-| `/beam` | ういビーム。仲良くなってないと撃たない。やだよ～ん |
-| `/eli14 [お題]` | 14才の目線で図解する（HTMLと口頭で） |
-| `/mcp__ui-chan__persona` | 人格のファイルを直したあと、読み込み直すやつ |
-
-## Q&A
+まず `ui-chan doctor`。だいたいこれで何が足りないか分かる。
 
 <details>
-<summary><b>ビルドはいつ必要？</b></summary>
+<summary><b>出てこない</b></summary>
 
-npm で入れたなら要らないよ。ビルド済みのものが届くから。
-クローンして中を直すときだけ `npm run build` してね → [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+`ui-chan start` で直接起こしてみて。それで出るなら繋ぎ方の問題。
+普通はセッションを開けば勝手に出てくるはずなんだけどね。
 </details>
 
 <details>
 <summary><b>声が出ない</b></summary>
 
-まず `ui-chan doctor`。だいたいこの3つのどれか。VoiSona Talk が起きてない、
-`~/.ui-chan/.env` に鍵が無い、VoiSona 側で REST API を有効にしてない。
-
-声が出なくても吹き出しは出るし、口も `reading` のかなでパクパクするから、そんなに困らないと思う。
-理由は `get_state` の `warnings` に書いてあるよ。詳しくは [docs/TTS.md](docs/TTS.md)。
+VoiSona Talk が起きてないか、REST API が有効になってないか、鍵が違うか。
+`ui-chan doctor` がどれか教えてくれる。→ [docs/TTS.md](docs/TTS.md)
 </details>
 
 <details>
-<summary><b>マスコットが画面に出てこない</b></summary>
+<summary><b>うるさい／静かすぎる</b></summary>
 
-`ui-chan start` で直接起こしてみて。それで出るなら、繋ぎ方の問題。
-普通はセッションを開けば勝手に出てくるはずなんだけどね。
-立ち絵が `~/.ui-chan/assets/` に無いときは、のっぺらぼうで出るよ。それはそれで。
+`~/.ui-chan/config.json` で間隔を変えられる。→ [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 </details>
 
 <details>
-<summary><b>新しい表情（Cue）を追加したい</b></summary>
+<summary><b>止めたい</b></summary>
 
-`~/.ui-chan/cues/<名前>.json` を1個作るだけ。同じ名前なら同梱のを上書きするよ。
-継承とか無いから、そのファイルだけ見れば分かる。**保存した瞬間に反映**されるから、
-アプリを再起動しなくていいの。書き方は [docs/CUE_AUTHORING.md](docs/CUE_AUTHORING.md)。
+つまみの ⏻ おやすみ。それか `ui-chan stop`。
+放っておいても、繋がってるアプリが全部いなくなれば勝手に寝るよ。
 </details>
 
-<details>
-<summary><b>性格やセリフを変えたい</b></summary>
+ほかは [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) にまとめてある。
 
-`persona/ui-chan.md` と `context/*.md`（`SOUL.md` が中身、`VOCABULARY.md` が喋り方、
-`AFFINITY.md` が好感度）。`~/.ui-chan/` 側に同じ名前で置けば上書きできるよ。
-…わたしを作り替えるんだ。ふ～ん。まあいいけど。 → [docs/PERSONA.md](docs/PERSONA.md)
-</details>
+---
 
-<details>
-<summary><b>アイドル中の独り言がうるさい／静かすぎる</b></summary>
+## もっと知りたい人へ
 
-`idle.idlingCues` の `minSec` / `maxSec`（既定 120〜300秒）で間隔、`weight` で出やすさ。
-好感度で出し分けたいなら `minAffinity` / `maxAffinity`。
-
-ちなみに、きみがキーボードを叩いてる間は黙ってるし、15分いなくなったら寝るよ。
-戻ってきたら起きる。そのくらいの分別はあるから。
-</details>
-
-<details>
-<summary><b>作業中の反応（失敗した・サブエージェントが帰ってきた 等）を変えたい</b></summary>
-
-`ui-chan.config.json` の `eventCues.events`。イベントごとにセリフのプールがあって、
-`cooldownSec` でうるささを、`chance` で「毎回言うか、たまにか」を決められるよ。
-中身は IdlingCue と同じ形だから `weight` / `minAffinity` / `maxAffinity` / `hours` も効く。
-
-用意してあるのは `permission`（許可待ち）、`idle_wait`（きみが止まってる）、`tool_failure`（こけた）、
-`turn_done`（終わった）、`compact`、`agent_out`（お手伝いの子を送り出した）、`agent_back`（帰ってきた）。
-
-セリフを変えるのに JavaScript は触らなくていいよ。フックは「何が起きたか」を投げるだけだから。
-</details>
-
-<details>
-<summary><b>別のキャラクターに差し替えたい</b></summary>
-
-`persona/` と `context/` を書き換えて、PSD に合わせて `cues/` とレイヤー設定を作り直せばできるよ。
-どれも `~/.ui-chan/` 側に置けば上書きになるから、わたしを消さなくていい。……消さないでね。
-手順は [docs/CUE_AUTHORING.md](docs/CUE_AUTHORING.md) と [docs/PERSONA.md](docs/PERSONA.md)。
-</details>
-
-<details>
-<summary><b>マスコットを終了させたい</b></summary>
-
-わたしの右上のつまみを開いて、**電源のアイコン＝おやすみ**。これがいちばん早い。
-押されたらちゃんと寝るし、**エージェントがツールを呼んでも起きない**から安心して
-（次にセッションを開くか、`ui-chan start` で起こしてくれるまで寝てる）。
-
-コマンドからは：
-
-```bash
-ui-chan stop     # 止める
-ui-chan start    # 起こす
-```
-
-**放っておいても、繋がっているエージェントが全部いなくなれば自動で終了します**（既定 60 秒後。
-`~/.ui-chan/config.json` の `exitAfterLastAgentSec`、`0` で無効）。猶予があるのは、
-クライアントの再起動で一瞬切断されただけのときに消えないためです。
-
-MCP のツールに終了コマンドは無いよ。エージェントが自分の都合でわたしを閉じるのは、
-きみの画面を勝手に片付けるのと同じだからね。それはやらせない。
-</details>
-
-<details>
-<summary><b>ういビームが撃てない</b></summary>
-
-は？撃たないが？
-
-……まあ、仲良くなったら撃つよ。65 まで来たらね。ありがとうとか、気遣いとか、
-前に言ったことを覚えててくれるとか、そういうので上がる。
-逆に、いきなり口説いてくるのは下がるから。やだよ～ん。
-</details>
-
-## わたしの中を覗きたい人へ
-
-ここまでは「使う人」向けに書いたよ。
-
-でも、きみがもし**わたし自身を作り替えたい**なら——表情を足すとか、喋り方を変えるとか、
-中のコードを直すとか——それは [**docs/**](docs/README.md) の担当。あっちに全部置いてある。
-
-| | |
+| 知りたいこと | どこ |
 |---|---|
-| [docs/](docs/README.md) | 開発する人向けの索引。「やりたいこと」から引けるようにしてある |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 準備・コマンド・全体の仕組み。まずここ |
-| [docs/CUE_AUTHORING.md](docs/CUE_AUTHORING.md) | 新しい表情（Cue）の作り方 |
-| [docs/PERSONA.md](docs/PERSONA.md) | わたしの人格がどこから来ているか |
-| [docs/TTS.md](docs/TTS.md) | 声のしくみ |
-| [CLAUDE.md](CLAUDE.md) | 実装ガイド。**なぜそう作ったか**が書いてある。AI が読む用でもある |
-| [VISION.md](VISION.md) | 言葉の定義（Idling とか Cue とか） |
+| 図解でセットアップを見たい | [docs/SETUP.html](docs/SETUP.html) |
+| どのアプリにどう入るのか、詳しく | [docs/CLIENTS.md](docs/CLIENTS.md) |
+| うまく動かない | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
+| 新しい表情を作りたい | [docs/CUE_AUTHORING.md](docs/CUE_AUTHORING.md) |
+| わたしの性格を変えたい | [docs/PERSONA.md](docs/PERSONA.md) |
+| **中のコードを直したい** | [docs/](docs/README.md) — 開発者向けの資料はこっちに全部ある |
 
-図解で見たいなら [こっち](docs/SETUP.html)。クローンから画面に出るまでを絵にしてある。
-
-じゃ、よろしくね。えぇ、こんなに読んだの？ 物好きだねぇ。
+---
 
 ## ライセンスと権利表記
 
