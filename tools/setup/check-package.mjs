@@ -29,8 +29,31 @@ const FORBIDDEN = [
   { re: /voisona/i, why: 'VoiSona Talk 由来のファイル' },
 ];
 
-const out = execFileSync('npm', ['pack', '--dry-run', '--json'], { encoding: 'utf-8' });
-const files = JSON.parse(out)[0].files.map((f) => f.path);
+// `npm pack` は `prepare`（＝ビルド）を走らせるので、その出力が JSON の前に
+// 混ざることがある（npm のバージョンによって stdout か stderr かが変わる）。
+// 素直に JSON.parse すると、環境によってだけ落ちる検査になってしまうので、
+// 最初の `[` から最後の `]` までを取り出す。
+function parsePackJson(raw) {
+  const start = raw.indexOf('[');
+  const end = raw.lastIndexOf(']');
+  if (start < 0 || end < start) {
+    throw new Error(`npm pack --json の出力を解釈できません:\n${raw.slice(0, 400)}`);
+  }
+  return JSON.parse(raw.slice(start, end + 1));
+}
+
+const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
+  encoding: 'utf-8',
+  maxBuffer: 32 * 1024 * 1024,
+});
+const parsed = parsePackJson(out);
+if (!Array.isArray(parsed) || !parsed[0]?.files) {
+  console.error(
+    '❌ npm pack の結果にファイル一覧がありません。npm のバージョンを確認してください。',
+  );
+  process.exit(1);
+}
+const files = parsed[0].files.map((f) => f.path);
 
 const hits = files.flatMap((path) => {
   const rule = FORBIDDEN.find((r) => r.re.test(path));
