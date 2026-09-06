@@ -442,18 +442,25 @@ function panelAction(kind: string, value?: number): unknown {
       child.on('close', (code) => {
         // 更新できた場合、子が stop → start するのでこの行には来ない
         // （来たとしても、そのときは何も起きていない）。
-        if (out.includes('最新です')) {
+        // 理由は言わない。git が汚れているとか追跡先が無いとかは、使う人には
+        // 意味の無い話で、npm で入れた人には git の概念すら無い。**結果だけ**
+        // 言い、詳細は stderr へ落とす。
+        if (code === 0) {
           state.setCue(
-            { cue: 'emo_joy_lo', text: 'もう最新だって。', reading: 'もうさいしんだって。' },
+            {
+              cue: 'emo_joy_lo',
+              text: '更新するものなかったよ。',
+              reading: 'こうしんするものなかったよ。',
+            },
             'panel',
           );
-        } else if (code !== 0) {
-          const why = out.split('\n').find((l) => l.includes('❌')) ?? '';
+        } else {
+          console.error(`[ui-chan] update failed:\n${out}`);
           state.setCue(
             {
               cue: 'sys_awkward',
-              text: `更新できなかった。${why.replace('❌ 更新できません: ', '')}`,
-              reading: 'こうしんできなかった。',
+              text: 'うまく更新できなかった。',
+              reading: 'うまくこうしんできなかった。',
             },
             'panel',
           );
