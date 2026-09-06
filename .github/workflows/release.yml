@@ -34,6 +34,9 @@ jobs:
           node-version: '24'
           cache: npm
           registry-url: https://registry.npmjs.org
+      # Trusted Publishing (OIDC) は npm 11.5.1 以降。setup-node が入れる npm が
+      # それより古い環境で落ちないよう、明示的に上げる。
+      - run: npm install -g npm@latest
       - run: npm ci
       - name: 型チェック
         run: npx tsc -p tsconfig.json --noEmit
@@ -44,9 +47,12 @@ jobs:
       - name: 中身の確認
         run: npm pack --dry-run
       # ここまで（型・Cue・配布物検査）が全部通ったものだけが世界に出る。
-      # NPM_TOKEN が未設定なら、ここで落ちる＝公開されない。
+      #
+      # 認証は npm の Trusted Publishing（OIDC）。npm 側にこのリポジトリと
+      # release.yml が登録してあり、GitHub が発行する id-token をそのまま
+      # 身元証明に使う。**トークンは存在しない** ——盗まれるものが無いし、
+      # 期限切れで publish が止まることもない。
+      # （必要な権限は job の permissions: id-token: write）
       - name: 公開
         if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
