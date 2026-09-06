@@ -469,9 +469,18 @@ cache has no `.git` at all. So `checkUpdate`/`runUpdate` fall back to gh:
 `gh api repos/<slug>/tarball` piped to `tar --strip-components=1 -C <pkgRoot>`,
 which overwrites tracked files and leaves node_modules — and everything the
 user added — alone. Since there is no git history to compare against, that path
-records the commit it installed in `.ui-chan-install.json`; with no stamp yet,
-it reports "update available" rather than guessing, the update being idempotent.
-The repo slug comes from the git remote, else `package.json`'s `repository`.
+records the commit **and branch** it installed in `.ui-chan-install.json`; with
+no stamp yet, it reports "update available" rather than guessing, the update
+being idempotent. The repo slug comes from the git remote, else
+`package.json`'s `repository`.
+
+**Neither path is main-only.** git follows whatever the current branch tracks
+(`@{u}`), so checking out a feature branch is how you follow it — which is why
+`--branch` is refused on a clone: switching branches is a checkout, the user's
+call, not an updater's. The gh path had no branch at all until it was given
+one; it now takes `--branch`, remembers it in the stamp, and keeps following it
+on later updates (a branch switch counts as an update even when its commit is
+"older", because the install is no longer what was asked for).
 
 The app checks 8s after start and every 6h, in a **child process** (`git fetch`
 touches the network; a hang must be a hung child, not a hung mascot). The

@@ -226,8 +226,10 @@ async function main() {
       return say(c.snippet(serverCommand(pkgRoot), pkgRoot));
     }
     case 'update': {
+      const bi = argv.indexOf('--branch');
+      const branch = bi >= 0 ? argv[bi + 1] : undefined;
       if (argv.includes('--check')) {
-        const st = checkUpdate(pkgRoot, { fetch: true });
+        const st = checkUpdate(pkgRoot, { fetch: true, branch });
         if (!st.ok) return say(`確認できません: ${st.reason}`);
         if (!st.available) return say('最新です');
         const where =
@@ -236,7 +238,7 @@ async function main() {
             : `${st.behind} コミット (${st.upstream})`;
         return say(`更新あり: ${where}${st.blocked ? ` ※${st.blocked}` : ''}`);
       }
-      const res = await runUpdate(pkgRoot, { log: (m) => say(`  ${m}`) });
+      const res = await runUpdate(pkgRoot, { log: (m) => say(`  ${m}`), branch });
       if (!res.ok) {
         say(`❌ 更新できません: ${res.reason}`);
         process.exitCode = 1;
@@ -271,7 +273,8 @@ async function main() {
   ui-chan uninstall [...]  解除（--all / --purge でユーザーデータも削除）
   ui-chan doctor           状態チェック
   ui-chan print <id>       設定スニペットのみ表示
-  ui-chan update           最新版を取得して再ビルド（--check で確認のみ）
+  ui-chan update           最新版を取得して再ビルド（--check で確認のみ、
+                           --branch <名前> で追従先を指定＝gh 経路のみ）
   ui-chan home             ユーザーデータの場所
   ui-chan start | stop     マスコットの起動 / 停止
 

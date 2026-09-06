@@ -56,11 +56,11 @@ function readStamp(pkgRoot) {
   }
 }
 
-function writeStamp(pkgRoot, sha) {
+function writeStamp(pkgRoot, sha, branch) {
   try {
     fs.writeFileSync(
       path.join(pkgRoot, STAMP),
-      `${JSON.stringify({ sha, at: new Date().toISOString() }, null, 2)}\n`,
+      `${JSON.stringify({ sha, branch, at: new Date().toISOString() }, null, 2)}\n`,
       'utf-8',
     );
   } catch {
@@ -68,7 +68,7 @@ function writeStamp(pkgRoot, sha) {
   }
 }
 
-function ghSha(slug, branch = 'HEAD') {
+function ghSha(slug, branch) {
   return execFileSync('gh', ['api', `repos/${slug}/commits/${branch}`, '--jq', '.sha'], {
     encoding: 'utf-8',
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -91,9 +91,9 @@ function git(pkgRoot, args, opts = {}) {
  * `fetch: true` talks to the network (a few hundred ms, or a hang on a bad
  * connection, so callers on a timer should use a timeout).
  */
-export function checkUpdate(pkgRoot, { fetch = false } = {}) {
+export function checkUpdate(pkgRoot, { fetch = false, branch } = {}) {
   const isRepo = fs.existsSync(path.join(pkgRoot, '.git'));
-  if (!isRepo || !hasCmd('git')) return checkUpdateViaGh(pkgRoot, { isRepo });
+  if (!isRepo || !hasCmd('git')) return checkUpdateViaGh(pkgRoot, { isRepo, branch });
   try {
     if (fetch) git(pkgRoot, ['fetch', '--quiet'], { timeout: 20_000 });
     const branch = git(pkgRoot, ['rev-parse', '--abbrev-ref', 'HEAD']);
@@ -132,7 +132,7 @@ export function checkUpdate(pkgRoot, { fetch = false } = {}) {
 /** The no-git path: ask GitHub what the newest commit is and compare it to the
  *  stamp we wrote last time. Without a stamp we cannot know, so we say so
  *  rather than claiming either answer. */
-function checkUpdateViaGh(pkgRoot, { isRepo }) {
+function checkUpdateViaGh(pkgRoot, { isRepo, branch }) {
   if (!hasCmd('gh')) {
     return {
       ok: false,
@@ -144,18 +144,28 @@ function checkUpdateViaGh(pkgRoot, { isRepo }) {
   }
   const slug = repoSlug(pkgRoot);
   if (!slug) return { ok: false, available: false, reason: 'リポジトリの場所が分かりません' };
+  const stampBefore = readStamp(pkgRoot);
+  // Which branch: what was asked for, else the one this install came from, else
+  // the repo's default. A git clone tracks whatever branch you're on, so the
+  // gh path has to be able to follow a feature branch too — the only reason it
+  // couldn't was that nothing remembered which branch that was.
+  const ref = branch ?? stampBefore?.branch ?? 'HEAD';
   try {
-    const remote = ghSha(slug);
-    const stamp = readStamp(pkgRoot);
+    const remote = ghSha(slug, ref);
+    const stamp = stampBefore;
     return {
       ok: true,
       via: 'gh',
       slug,
+      branch: ref === 'HEAD' ? (stamp?.branch ?? null) : ref,
+      ref,
       remoteSha: remote,
       installedSha: stamp?.sha ?? null,
       // No stamp = a hand-placed copy of unknown vintage. Offering the update
       // is the useful answer; it is idempotent anyway.
-      available: stamp?.sha !== remote,
+      // A branch switch is an update even when the commit is "older": the
+      // install is no longer what was asked for.
+      available: stamp?.sha !== remote || (branch != null && branch !== stamp?.branch),
       behind: stamp?.sha ? undefined : null,
       blocked: null,
     };
@@ -168,8 +178,11 @@ function checkUpdateViaGh(pkgRoot, { isRepo }) {
  *  the install. `tar --strip-components=1` overwrites tracked files and leaves
  *  everything else (node_modules, and anything the user added) alone — the
  *  user's real data lives in ~/.ui-chan and is nowhere near this. */
-async function runUpdateViaGh(pkgRoot, log) {
-  const status = checkUpdateViaGh(pkgRoot, { isRepo: fs.existsSync(path.join(pkgRoot, '.git')) });
+async function runUpdateViaGh(pkgRoot, log, branch) {
+  const status = checkUpdateViaGh(pkgRoot, {
+    isRepo: fs.existsSync(path.join(pkgRoot, '.git')),
+    branch,
+  });
   if (!status.ok) return { ok: false, reason: status.reason };
   if (!status.available) return { ok: true, updated: false, reason: '最新です' };
   if (!hasCmd('tar')) return { ok: false, reason: 'tar が見つかりません' };
@@ -177,9 +190,13 @@ async function runUpdateViaGh(pkgRoot, log) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ui-chan-update-'));
   const tgz = path.join(tmp, 'src.tar.gz');
   try {
-    log(`更新を取得: ${status.slug} (gh)`);
+    log(`更新を取得: ${status.slug}${status.branch ? `#${status.branch}` : ''} (gh)`);
     const out = fs.openSync(tgz, 'w');
-    const res = spawnSync('gh', ['api', `repos/${status.slug}/tarball`], {
+    const tarPath =
+      status.ref === 'HEAD'
+        ? `repos/${status.slug}/tarball`
+        : `repos/${status.slug}/tarball/${status.ref}`;
+    const res = spawnSync('gh', ['api', tarPath], {
       stdio: ['ignore', out, 'pipe'],
       timeout: 120_000,
     });
@@ -193,7 +210,7 @@ async function runUpdateViaGh(pkgRoot, log) {
     await run('npm', ['install', '--no-audit', '--no-fund'], { cwd: pkgRoot, timeout: 600_000 });
     log('ビルド中 (npm run build)');
     await run('npm', ['run', 'build'], { cwd: pkgRoot, timeout: 600_000 });
-    writeStamp(pkgRoot, status.remoteSha);
+    writeStamp(pkgRoot, status.remoteSha, status.branch ?? null);
     return {
       ok: true,
       updated: true,
@@ -209,10 +226,23 @@ async function runUpdateViaGh(pkgRoot, log) {
  * Fast-forward, install, build. `log` receives progress lines.
  * Returns { ok, updated, from, to, reason? }.
  */
-export async function runUpdate(pkgRoot, { log = () => {} } = {}) {
+export async function runUpdate(pkgRoot, { log = () => {}, branch } = {}) {
   // git if this is a clone and git exists; otherwise gh. Either one is enough.
   if (!fs.existsSync(path.join(pkgRoot, '.git')) || !hasCmd('git')) {
-    return runUpdateViaGh(pkgRoot, log);
+    return runUpdateViaGh(pkgRoot, log, branch);
+  }
+  // The git path never needed a branch argument: it fast-forwards whatever the
+  // current branch tracks, so checking out a feature branch is how you follow
+  // it. `--branch` on a clone would mean switching branches, which is a
+  // checkout — the user's call, not an updater's.
+  if (branch) {
+    const current = git(pkgRoot, ['rev-parse', '--abbrev-ref', 'HEAD']);
+    if (branch !== current) {
+      return {
+        ok: false,
+        reason: `いまは ${current} です。--branch は git クローンでは使えません（\`git switch ${branch}\` してから更新してください）`,
+      };
+    }
   }
   const status = checkUpdate(pkgRoot, { fetch: true });
   if (!status.ok) return { ok: false, reason: status.reason };
