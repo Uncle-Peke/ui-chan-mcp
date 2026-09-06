@@ -288,10 +288,15 @@ the user, the context is about to be compacted. It is the third user of the same
 `CueSequence` shape as IdlingCue and FidgetCue; only the trigger and priority
 differ (`PRIORITY.event` sits above idle filler and below the agent).
 
-The trigger lives outside the app: `hooks/reaction.js` and `hooks/notify.js` map
-a Claude Code hook payload to an **event name** and post
-`{tool: 'event_cue', args: {event}}` over the WebSocket. That is *all* the hooks
-decide. Everything else — which lines exist, weights, affinity/time gates, the
+The trigger lives outside the app, once per host: `hooks/reaction.js` and
+`hooks/notify.js` map a Claude Code hook payload to an **event name**, and
+`plugins/opencode/ui-chan.mjs` does the same for OpenCode's `event` /
+`tool.execute.before|after` hooks (`session.idle` → `turn_done`,
+`permission.asked` → `permission`, `session.compacted` → `compact`,
+`session.error` and a failed loud tool → `tool_failure`, the task tool →
+`agent_out`/`agent_back`). Both post
+`{tool: 'event_cue', args: {event}}` over the WebSocket. That is *all* a trigger
+decides — which is what keeps two hosts from drifting into different lines. Everything else — which lines exist, weights, affinity/time gates, the
 cooldown, and the chance roll — is `eventCues.events.<name>` in
 `ui-chan.config.json`, resolved by `state.ts`'s `fireEventCue()`.
 

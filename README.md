@@ -77,7 +77,7 @@ ui-chan doctor
 | `claude-code` | Claude Code（MCPサーバ） | `claude mcp add -s user` |
 | `claude-code-plugin` | Claude Code プラグイン（`/talk` `/mode` 等のスキル・サブエージェント・EventCueフック） | `~/.claude/plugins`（インストール後にクローンへ symlink 化） |
 | `claude-desktop` | Claude Desktop | `claude_desktop_config.json` |
-| `opencode` | OpenCode | `~/.config/opencode/opencode.json` |
+| `opencode` | OpenCode | `~/.config/opencode/opencode.json`（MCP＋EventCueプラグイン） |
 | `cursor` | Cursor | `~/.cursor/mcp.json` |
 | `vscode` | VS Code (Copilot Chat) | `User/mcp.json` |
 | `hermes` | Hermes | `~/.hermes/mcp.json`（`UI_CHAN_HERMES_CONFIG` で変更可・パス未検証） |
@@ -122,6 +122,13 @@ ui-chan start / stop         # マスコットの起動・停止
 | `/talk` `/mode` `/beam` `/eli14` | ✕ | ○ |
 | サブエージェント（talk / mode） | ✕ | ○ |
 | 作業への自動リアクション（EventCue） | ✕ | ○ |
+
+EventCue（作業の失敗・ターン終了・サブエージェントの往復などへの自動リアクション）は
+**Claude Code と OpenCode の両方**で動きます。前者は `hooks/`（Claude Code のフック）、後者は
+`plugins/opencode/ui-chan.mjs`（OpenCode の `event` / `tool.execute.*` フック）で、
+`ui-chan install opencode` が MCP 登録と一緒に `plugin` 配列へ入れます。どちらも
+**「どのイベントが起きたか」しか決めません** — セリフ・重み・クールダウン・好感度ゲートは
+`ui-chan.config.json` の `eventCues` にあり、ホストが違ってもういちゃんの反応は同じです。
 
 以前はプラグインが `.mcp.json` で MCP サーバも兼ねていましたが、`${CLAUDE_PLUGIN_ROOT}` は
 プラグイン文脈の外（Claude Desktop、リポジトリを直接開いた Claude Code、他のホスト）では展開されず

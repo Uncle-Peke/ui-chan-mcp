@@ -64,8 +64,10 @@ function writeJson(file, data) {
   fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`, 'utf-8');
 }
 
-/** A host whose MCP servers live under one key of one JSON file. */
-function jsonClient({ id, label, file, key, entry, seed, note, unverified }) {
+/** A host whose MCP servers live under one key of one JSON file.
+ *  `extras` lets an entry carry more than the server registration — OpenCode
+ *  also gets an EventCue plugin, in the same file and the same write. */
+function jsonClient({ id, label, file, key, entry, seed, note, unverified, extras }) {
   return {
     id,
     label,
@@ -78,27 +80,56 @@ function jsonClient({ id, label, file, key, entry, seed, note, unverified }) {
       const cur = readJson(f)[key]?.[SERVER_NAME];
       return { installed: Boolean(cur), detail: f };
     },
-    snippet(cmd) {
-      return JSON.stringify({ [key]: { [SERVER_NAME]: entry(cmd) } }, null, 2);
+    snippet(cmd, pkgRoot) {
+      const doc = { [key]: { [SERVER_NAME]: entry(cmd) } };
+      return JSON.stringify(extras ? extras.snippet(doc, pkgRoot) : doc, null, 2);
     },
-    install(cmd) {
+    install(cmd, pkgRoot) {
       const f = file();
       const data = { ...seed, ...readJson(f) };
       data[key] = { ...(data[key] ?? {}), [SERVER_NAME]: entry(cmd) };
+      extras?.install(data, pkgRoot);
       writeJson(f, data);
       return f;
     },
-    uninstall() {
+    uninstall(_cmd, pkgRoot) {
       const f = file();
       if (!fs.existsSync(f)) return null;
       const data = readJson(f);
-      if (!data[key]?.[SERVER_NAME]) return null;
-      delete data[key][SERVER_NAME];
+      const had = Boolean(data[key]?.[SERVER_NAME]);
+      const removedExtra = extras?.uninstall(data, pkgRoot) ?? false;
+      if (!had && !removedExtra) return null;
+      if (had) delete data[key][SERVER_NAME];
       writeJson(f, data);
       return f;
     },
   };
 }
+
+/** OpenCode's `plugin` array, carrying the EventCue plugin (plugins/opencode/
+ *  ui-chan.js) as a `file://` entry. This is what gives OpenCode the reactions
+ *  the Claude Code plugin's hooks provide — the plugin only names the event,
+ *  the app still owns every line. */
+const opencodePlugin = {
+  path: (pkgRoot) => `file://${path.join(pkgRoot, 'plugins', 'opencode', 'ui-chan.mjs')}`,
+  snippet(doc, pkgRoot) {
+    return { ...doc, plugin: [this.path(pkgRoot)] };
+  },
+  install(data, pkgRoot) {
+    const p = this.path(pkgRoot);
+    const list = (Array.isArray(data.plugin) ? data.plugin : []).filter(
+      (x) => !String(x).includes('/plugins/opencode/ui-chan.mjs'),
+    );
+    data.plugin = [...list, p];
+  },
+  uninstall(data) {
+    if (!Array.isArray(data.plugin)) return false;
+    const next = data.plugin.filter((x) => !String(x).includes('/plugins/opencode/ui-chan.mjs'));
+    const changed = next.length !== data.plugin.length;
+    data.plugin = next;
+    return changed;
+  },
+};
 
 function hasClaudeCli() {
   try {
@@ -236,6 +267,8 @@ export const CLIENTS = [
     key: 'mcp',
     seed: { $schema: 'https://opencode.ai/config.json' },
     entry: (c) => ({ type: 'local', command: [c.command, ...c.args], enabled: true }),
+    extras: opencodePlugin,
+    note: 'EventCue プラグイン（作業への自動リアクション）も同時に登録されます。',
   }),
   jsonClient({
     id: 'cursor',
