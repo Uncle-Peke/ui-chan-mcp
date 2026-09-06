@@ -59,7 +59,6 @@
     ".claude-plugin",
     "ui-chan.config.json",
     "cue.schema.json",
-    ".env.example",
     "docs",
     "README.md",
     "LICENSE",

@@ -75,7 +75,28 @@ README に載せている画像もこれで撮っています。
 
 ---
 
-## `05` 変更が反映されるタイミング
+## `05` 環境変数
+
+すべて省略可能です。設定ファイル（`~/.ui-chan/config.json`）より**環境変数が優先**されます。
+
+| 変数 | 効果 |
+|---|---|
+| `UI_CHAN_TTS_USERNAME` / `UI_CHAN_TTS_PASSWORD` | VoiSona Talk の資格情報。通常は `~/.ui-chan/.env` に置きます |
+| `UI_CHAN_HOME` | ユーザーデータの場所（既定 `~/.ui-chan`） |
+| `UI_CHAN_PORT` | アプリが待ち受ける WebSocket ポート（既定 8123） |
+| `UI_CHAN_AGENT_NAME` | `get_state` に出るエージェント名。既定は MCP クライアントが名乗る名前 |
+| `UI_CHAN_NO_PERSONA_INSTRUCTIONS` | `1` で、MCP ハンドシェイクでの人格注入をやめる |
+| `UI_CHAN_NO_PERSONA_HOOK` | `1` で、SessionStart フックでの人格注入をやめる（アプリ起動はする） |
+| `UI_CHAN_OPENCODE_CONFIG` / `UI_CHAN_HERMES_CONFIG` | それぞれの設定ファイルの場所を上書き |
+| `HERMES_HOME` | Hermes Agent のホーム（既定 `~/.hermes`） |
+| `UI_CHAN_ROOT` | Hermes プラグインが ui-chan の場所を見つけるための上書き |
+
+<sub>以前は `.env.example` を同梱していましたが、`ui-chan` の対話セットアップが
+`~/.ui-chan/.env` を作って中身も書くようになったため、削除しました。</sub>
+
+---
+
+## `06` 変更が反映されるタイミング
 
 | 直したもの | 反映 |
 |---|---|
@@ -88,7 +109,7 @@ README に載せている画像もこれで撮っています。
 
 ---
 
-## `06` アーキテクチャ
+## `07` アーキテクチャ
 
 MCP サーバは薄いブリッジで、**状態はすべて Electron アプリ側に一元化**されています。
 複数のエージェントが同時に繋いでも状態が食い違いません。

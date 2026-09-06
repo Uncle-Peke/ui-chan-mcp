@@ -70,8 +70,11 @@ let nextAgentId = 1;
  *  every failure — "can't tell" and "up to date" look the same on screen, and
  *  neither is worth a warning. */
 function checkForUpdate(): void {
+  // `process.execPath` は Electron 本体を指す（ここは Electron のメインプロセス）。
+  // それで .mjs を起動すると Electron がアプリとして立ち上がろうとして、
+  // 更新チェックは一度も成功しない。node を探すランチャ経由で起動する。
   const child = spawn(
-    process.execPath,
+    path.join(projectRoot, 'bin', 'ui-chan-node'),
     [path.join(projectRoot, 'tools', 'setup', 'update-check.mjs'), projectRoot],
     { stdio: ['ignore', 'pipe', 'ignore'] },
   );
@@ -388,7 +391,7 @@ function homePosition(): { x: number; y: number } {
 }
 
 function createWindow(): void {
-  const { width, height, margin } = config.window;
+  const { width, height } = config.window;
   const home = homePosition();
   win = new BrowserWindow({
     width,
