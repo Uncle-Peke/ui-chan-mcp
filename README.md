@@ -101,10 +101,15 @@ ui-chan doctor               # 状態チェック
 ui-chan print opencode       # 設定スニペットだけ表示
 ui-chan home                 # ユーザーデータの場所
 ui-chan start / stop         # マスコットの起動・停止
+ui-chan update               # 最新版にする（--check で確認だけ）
 ```
 
-**繋いだ時点で完了**です。マスコットのアプリと VoiSona Talk は接続時に自動起動し、人格は MCP の
-ハンドシェイク（`instructions`）に乗って渡ります。人格ファイルを貼る作業はありません。
+**繋いだ時点で完了**です。マスコットのアプリと VoiSona Talk はセッション開始時に自動起動し、
+人格は MCP のハンドシェイク（`instructions`）に乗って渡ります。人格ファイルを貼る作業はありません。
+
+画面のマスコット右上のつまみを開くと、いま繋がっているセッション（クライアント名とプロジェクト名）と、
+しずかに／ひといき／好感度／リセット／おやすみ の操作が出ます。更新があるときは、そこに
+ダウンロードのアイコンが増えます。
 
 ### プラグインとコネクタの違い
 
@@ -137,42 +142,6 @@ Claude Desktop はプラグイン台帳を Claude Code と共有しますが、*
 プラグインはインストール後にキャッシュのコピーをクローンへの symlink に置き換えるので、
 **リポジトリが唯一の実体**です。直したら `npm run build`、それだけ。
 
-## アーキテクチャ
-
-MCP サーバは薄いブリッジで、**状態はすべて Electron アプリ側に一元化**されています。
-複数のエージェントが同時に繋いでも状態が食い違いません。
-
-```mermaid
-flowchart LR
-  agent["エージェント<br/>(Claude Code 等)"]
-  mcp["dist/mcp-server.js<br/>ステートレスなブリッジ"]
-
-  subgraph app["Electron アプリ (dist/app/main.js)"]
-    direction TB
-    state["UiChanState<br/>発話キュー・好感度・アイドル"]
-    tts["VoiSonaTalkClient<br/>音声合成"]
-    renderer["レンダラ<br/>PSD合成・吹き出し・口パク"]
-  end
-
-  voisona["VoiSona Talk<br/>REST API :32766"]
-
-  agent -- "stdio (MCP)" --> mcp
-  mcp -- "WebSocket :8123" --> state
-  mcp -. "未起動なら自動起動" .-> app
-  mcp -. "未起動なら自動起動" .-> voisona
-  state --> tts
-  tts -- "WAV + 音素タイミング" --> renderer
-  tts <--> voisona
-  state -- "IPC (RenderCommand)" --> renderer
-```
-
-- **ポート** — `ui-chan.config.json` の `port`、または環境変数 `UI_CHAN_PORT`
-- **自動起動** — アプリはセッション開始時（SessionStart フック）と各ツール呼び出し時に、
-  VoiSona Talk は MCP 起動時と `set_cue` のたびに、落ちていれば起こし直されます
-- **エージェント名** — MCP クライアント情報から自動取得（`UI_CHAN_AGENT_NAME` で上書き可）
-
-より詳しい実装のガイドは [CLAUDE.md](CLAUDE.md) を参照。
-
 ## コマンド一覧
 
 ### MCP ツール（エージェントが呼ぶ）
@@ -197,33 +166,13 @@ Cue の一覧は `persona` プロンプト（と SessionStart フック）が `c
 | `/eli14 [お題]` | 14才目線の図解で説明する（HTMLアーティファクト＋口頭解説） |
 | `/mcp__ui-chan__persona` | 人格ファイルを編集したあとの読み込み直し |
 
-### npm スクリプト
-
-| コマンド | 説明 |
-|---|---|
-| `npx ui-chan` | 対話セットアップ（TUI） |
-| `npx ui-chan update` | 本体を最新にして再ビルド（`--check` で確認のみ、`--branch <名前>` で追従先指定） |
-| `npx ui-chan use` | 登録済みクライアントの参照先を「このコピー」に切り替える |
-| `npm run doctor` | セットアップの事前チェック（＝`ui-chan doctor`） |
-| `npm run app` / `stop` / `restart` | Electron アプリの起動／終了／再起動 |
-| `npm run build` | `src/` を `dist/` にビルド（`npm install` 時に自動実行） |
-| `npm run editor` | Cue エディタ「雨衣ちゃんのデバッグルーム」 |
-| `npm run dump-psd -- assets/foo.psd` | PSD レイヤー構造のダンプ |
-| `npm run validate-cues` | `cues/*.json` のスキーマ検証 |
-| `npm run lint` / `lint:fix` / `format` | Biome |
-| `node tools/mcp-test.mjs` | MCP stdio 経由の E2E テスト |
-
 ## Q&A
 
 <details>
 <summary><b>ビルドはいつ必要？</b></summary>
 
-`src/` の TypeScript を直したときだけ。`npm install` が `prepare` で1回ビルドするので、
-クローン直後も `npm run build` を打つ必要はありません。Cue や `ui-chan.config.json` は
-JSON なのでビルド不要です（Cue は保存すると即リロード）。
-
-ただし **MCP サーバはセッション開始時のコードを抱えたまま動き続けます**。ビルドし直しても
-そのセッションには反映されないので、MCP を繋ぎ直すかセッションを開き直してください。
+npm で入れた場合は**不要**です（ビルド済みのものが配られます）。開発用にクローンした場合だけ
+`npm run build` が要ります — 詳しくは [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 </details>
 
 <details>
@@ -248,10 +197,9 @@ PSD が `~/.ui-chan/assets/` に無い場合はプレースホルダ表示にな
 <details>
 <summary><b>新しい表情（Cue）を追加したい</b></summary>
 
-`~/.ui-chan/cues/<名前>.json`（開発中のクローンなら `cues/<名前>.json`）を1ファイル作るだけです。同名なら同梱Cueを上書きします。継承なし・完全に自己完結で、保存すると即リロードされます。
-ビジュアルに作るなら `npm run editor`。書式とレイヤー指定は
-[docs/CUE_AUTHORING.md](docs/CUE_AUTHORING.md)、PSD レイヤー名の早見表は
-[docs/PSD_LAYERS.md](docs/PSD_LAYERS.md)。
+`~/.ui-chan/cues/<名前>.json` を1ファイル作るだけです。同名なら同梱のCueを上書きします。
+継承なし・完全に自己完結で、**保存すると即リロード**されます。ビジュアルに作るなら
+`npm run editor`（開発用クローンが必要）。書式は [docs/CUE_AUTHORING.md](docs/CUE_AUTHORING.md)。
 </details>
 
 <details>
@@ -287,53 +235,31 @@ PSD が `~/.ui-chan/assets/` に無い場合はプレースホルダ表示にな
 <details>
 <summary><b>別のキャラクターに差し替えたい</b></summary>
 
-`npm run dump-psd -- path/to/file.psd` でレイヤー名を確認し、`ui-chan.config.json` と
-`cues/*.json`（土台は `cues/default.json`）を書き換えます。人格側は `persona/` と `context/` を
-丸ごと差し替えてください。存在しないレイヤーパスは無視され `get_state` の `warnings` に出るので、
-差し替え作業中もクラッシュはしません。
+`persona/` と `context/` を書き換え、PSD に合わせて `cues/` とレイヤー設定を作り直します。
+どれも `~/.ui-chan/` 側に置けば同梱のものを上書きできます。手順は
+[docs/CUE_AUTHORING.md](docs/CUE_AUTHORING.md) と [docs/PERSONA.md](docs/PERSONA.md)。
 </details>
 
 <details>
 <summary><b>マスコットを終了させたい</b></summary>
 
-MCP ツールには終了コマンドがありません（次にツールを呼んだ時点で MCP サーバが
-アプリを起動し直すため、ツールとして持たせても意味がないからです）。
+いちばん簡単なのは、マスコットの右上のつまみ（ハンバーガー）を開いて**電源アイコン＝おやすみ**。
+これで終了し、**エージェントがツールを呼んでも起き直しません**（次にセッションを開くか、
+`ui-chan start` で起こすまで）。
 
-リポジトリのある場所で:
-
-```bash
-npm run stop
-```
-
-どこからでも止める場合:
+コマンドからは：
 
 ```bash
-pkill -f "ui-chan-mcp/node_modules/electron"
-npm --prefix /path/to/ui-chan-mcp run stop   # これでも可
+ui-chan stop     # 止める
+ui-chan start    # 起こす
 ```
 
-アプリは detached で起動しているため、Claude Code や Claude Desktop を閉じても
-残り続けます。止めたいときは明示的に終了させてください。
-</details>
+**放っておいても、繋がっているエージェントが全部いなくなれば自動で終了します**（既定 60 秒後。
+`~/.ui-chan/config.json` の `exitAfterLastAgentSec`、`0` で無効）。猶予があるのは、
+クライアントの再起動で一瞬切断されただけのときに消えないためです。
 
-<details>
-<summary><b>マスコットを終了させたい</b></summary>
-
-**接続しているエージェントがすべて切断されると、自動で終了します**（既定 60 秒後。
-`ui-chan.config.json` の `exitAfterLastAgentSec`、`0` で無効）。Claude Code を閉じても
-Claude Desktop や他の MCP クライアントが繋がっていれば終了しないので、
-共有していても取り合いになりません。猶予があるのは、Claude Code の再起動で一瞬
-切断されるだけのときに消えてしまわないようにするためです。
-
-すぐ止めたい場合：
-
-```bash
-npm run stop                                  # リポジトリのある場所で
-npm --prefix /path/to/ui-chan-mcp run stop    # どこからでも
-```
-
-MCP ツールに終了コマンドはありません。次にツールを呼んだ時点で MCP サーバが
-アプリを起動し直すため、ツールとして持たせても意味がないからです。
+MCP ツールに終了コマンドはありません。エージェントが自分の都合でマスコットを閉じるのは、
+ユーザーの画面を勝手に片付けることなので。
 </details>
 
 <details>
@@ -343,17 +269,17 @@ MCP ツールに終了コマンドはありません。次にツールを呼ん�
 直球の好意表現はむしろ下がります。
 </details>
 
-## ドキュメント
+## もっと知る
 
-| ファイル | 内容 |
+このページは**使う人向け**です。中を直したくなったら、以下へ。
+
+| | |
 |---|---|
-| [docs/CUE_AUTHORING.md](docs/CUE_AUTHORING.md) | **Cueを書く**ときに読む。ファイルの書式と `ui-chan.config.json` の全設定項目 |
-| [docs/PSD_LAYERS.md](docs/PSD_LAYERS.md) | **Cueを書く**ときに読む。PSD レイヤー名の早見表（人間向け・AIには渡らない） |
-| [docs/PERSONA.md](docs/PERSONA.md) | 人格がどう注入されるか |
-| [docs/TTS.md](docs/TTS.md) | VoiSona Talk 連携の詳細 |
-| [docs/SETUP.html](docs/SETUP.html) | 図解セットアップ手順（公開アーティファクトの実体） |
-| [docs/design/CUE_CATALOG.md](docs/design/CUE_CATALOG.md) | 設計の記録：Cueカタログを MECE に保つ方針 |
-| [CLAUDE.md](CLAUDE.md) | 実装ガイド（AI・コントリビュータ向け） |
+| [図解セットアップ](docs/SETUP.html) | クローンから画面に出るまでを絵で |
+| [docs/](docs/README.md) | **ういちゃんMCP を開発する人向け**の資料一式（索引） |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 開発の準備・コマンド・アーキテクチャ |
+| [docs/PERSONA.md](docs/PERSONA.md) / [docs/TTS.md](docs/TTS.md) | 人格の注入 / 音声合成の詳細 |
+| [CLAUDE.md](CLAUDE.md) | 実装ガイド（設計判断と、そうした理由） |
 | [VISION.md](VISION.md) | 用語とコンセプト |
 
 ## ライセンス
