@@ -1,4 +1,9 @@
-# CUES — Cue制作リファレンス
+# PSD レイヤー早見表（Cue制作用）
+
+**Cue を書くときに「どのレイヤー名を指定すればいいか」を引く表。** 人間向けの資料で、
+AI のコンテキストには渡りません（`context/` に置かないのはそのため）。書式は
+[docs/CUE_AUTHORING.md](CUE_AUTHORING.md)。
+
 
 うい（マスコット）の見た目＋声を操る唯一の単位が **Cue**。`cues/*.json`（1ファイル=1Cue、
 `cue.schema.json` 準拠）にある名前を `set_cue(cue, text?, ...)` に渡すだけで、顔・腕・声色が

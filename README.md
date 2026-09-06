@@ -250,8 +250,8 @@ PSD が `~/.ui-chan/assets/` に無い場合はプレースホルダ表示にな
 
 `~/.ui-chan/cues/<名前>.json`（開発中のクローンなら `cues/<名前>.json`）を1ファイル作るだけです。同名なら同梱Cueを上書きします。継承なし・完全に自己完結で、保存すると即リロードされます。
 ビジュアルに作るなら `npm run editor`。書式とレイヤー指定は
-[docs/CUES_AND_CONFIG.md](docs/CUES_AND_CONFIG.md)、PSD レイヤー名の早見表は
-[docs/CUES.md](docs/CUES.md)。
+[docs/CUE_AUTHORING.md](docs/CUE_AUTHORING.md)、PSD レイヤー名の早見表は
+[docs/PSD_LAYERS.md](docs/PSD_LAYERS.md)。
 </details>
 
 <details>
@@ -347,11 +347,12 @@ MCP ツールに終了コマンドはありません。次にツールを呼ん�
 
 | ファイル | 内容 |
 |---|---|
-| [docs/CUES_AND_CONFIG.md](docs/CUES_AND_CONFIG.md) | Cue ファイルの書式と `ui-chan.config.json` の全設定項目 |
-| [docs/CUES.md](docs/CUES.md) | PSD レイヤー名カタログ（新規Cue制作用・人間向け） |
-| [docs/PERSONA.md](docs/PERSONA.md) | 人格の定義場所と注入方法 |
+| [docs/CUE_AUTHORING.md](docs/CUE_AUTHORING.md) | **Cueを書く**ときに読む。ファイルの書式と `ui-chan.config.json` の全設定項目 |
+| [docs/PSD_LAYERS.md](docs/PSD_LAYERS.md) | **Cueを書く**ときに読む。PSD レイヤー名の早見表（人間向け・AIには渡らない） |
+| [docs/PERSONA.md](docs/PERSONA.md) | 人格がどう注入されるか |
 | [docs/TTS.md](docs/TTS.md) | VoiSona Talk 連携の詳細 |
-| [docs/setup-page.html](docs/setup-page.html) | 図解セットアップ手順（公開アーティファクトの実体） |
+| [docs/SETUP.html](docs/SETUP.html) | 図解セットアップ手順（公開アーティファクトの実体） |
+| [docs/design/CUE_CATALOG.md](docs/design/CUE_CATALOG.md) | 設計の記録：Cueカタログを MECE に保つ方針 |
 | [CLAUDE.md](CLAUDE.md) | 実装ガイド（AI・コントリビュータ向け） |
 | [VISION.md](VISION.md) | 用語とコンセプト |
 

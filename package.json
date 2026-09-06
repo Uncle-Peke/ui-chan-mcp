@@ -62,7 +62,7 @@
     ".env.example",
     "docs",
     "README.md",
-    "CUE_CATALOG.md"
+    "LICENSE"
   ],
   "repository": {
     "type": "git",

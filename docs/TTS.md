@@ -1,6 +1,6 @@
 # 音声合成（VoiSona Talk 連携）
 
-README から分離した詳細リファレンス。
+**声が出ない／声を調整したいとき**に読む。有効化手順、設定項目、うまく喋らないときの原因。
 
 
 [VoiSona Talk](https://voisona.com/talk/download/)（テクノスピーチ、無料）の REST API 経由で、
@@ -14,8 +14,9 @@ API リファレンスは REST API 有効化後に http://localhost:32766/docs/t
 
 1. VoiSona Talk を起動してログインし、ボイスライブラリを 1 つ以上ダウンロード
 2. メニュー「編集 > 環境設定」の **API タブ** で待ち受けポート（デフォルト 32766）と API 用パスワードを設定し、「REST API を有効にする」をチェック
-3. 認証情報を **mcp.json の `env`** に設定（上記「Claude Code への登録」参照）。
-   本サーバの config はディスク上に認証情報を持たず、MCP ブリッジ経由でメモリ上にのみ渡されます
+3. 認証情報を **`~/.ui-chan/.env`** に置く（`npx ui-chan` の対話セットアップが聞いてきます。
+   環境変数 `UI_CHAN_TTS_USERNAME` / `UI_CHAN_TTS_PASSWORD` でも可で、そちらが優先）。
+   `ui-chan.config.json` は認証情報を持たず、MCP ブリッジ経由でメモリ上にのみ渡されます
 
 `ui-chan.config.json` 側の設定は接続先とボイス選択だけです：
 

@@ -1,7 +1,8 @@
-# Cue と設定ファイル
+# Cue を書く / 設定を変える
 
-README から分離した詳細リファレンス。新しい Cue を書くとき、`ui-chan.config.json` を
-調整するときはここを見る。PSD のレイヤー名カタログは `docs/CUES.md`。
+**新しい表情（Cue）を足すとき**と、**`ui-chan.config.json` を調整するとき**に読む。
+使えるレイヤー名の早見表は [docs/PSD_LAYERS.md](PSD_LAYERS.md)、
+カタログ全体をどう整理するかの方針は [docs/design/CUE_CATALOG.md](design/CUE_CATALOG.md)。
 
 ## Cue（cues/）
 
@@ -38,7 +39,7 @@ README から分離した詳細リファレンス。新しい Cue を書くと�
   直接呼べば動作はする）。IdlingCueが内部的に組み立てるための部品Cue（`cues/idling_*.json`）に付与
 
 Cue選定・PSDレイヤー名カタログなど、**新規Cue制作のための人間向け参照ドキュメント**は
-`docs/CUES.md` を参照。実行時にもAIのコンテキストにもロードされない（`context/`ではなく
+`docs/PSD_LAYERS.md` を参照。実行時にもAIのコンテキストにもロードされない（`context/`ではなく
 あえて`docs/`に置いている）。
 
 ## 設定（ui-chan.config.json）

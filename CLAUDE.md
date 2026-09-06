@@ -198,7 +198,7 @@ that). This is the only cross-folder name dependency in the PSD.
   IdlingCue building-block Cues, `cues/idling_*.json`). Neither field affects
   `set_cue`/`composeDirectives()` at all; they exist solely for the `persona`
   prompt's generated catalog (see below).
-- `docs/CUES.md` is a hand-maintained reference catalog (raw PSD layer paths
+- `docs/PSD_LAYERS.md` is a hand-maintained reference catalog (raw PSD layer paths
   for parts not currently baked into any Cue, an "eyes/mouth/brows/..." parts
   table) for *authoring* new Cues. Deliberately in `docs/`, not `context/`:
   `context/*.md` is swept wholesale into the AI's session by the `persona`
@@ -583,7 +583,7 @@ context injected into the agent, defined in Markdown:
   `VOCABULARY.md` (vocabulary, catchphrases, NG words), `AFFINITY.md`. Anything
   placed here is swept wholesale into the AI's context — keep it to things the
   roleplay agent should actually know, not authoring reference material (see
-  `docs/CUES.md` above for why that lives outside `context/`).
+  `docs/PSD_LAYERS.md` above for why that lives outside `context/`).
 - `src/app/persona.ts` — **the one implementation** of "the character as text":
   the persona file, every `context/*.md` in filename order, and a Cue catalog
   generated fresh from `cues/*.json` (every non-`internal` Cue's name, label and
