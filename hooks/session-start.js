@@ -36,6 +36,15 @@ const config = paths?.config ?? {};
  * here is never worth breaking persona injection over.
  */
 function ensureAppRunning(port) {
+  // "おやすみ" (the panel's quit) must survive opening a new session — otherwise
+  // the very next SessionStart drags her back up, which is exactly what the
+  // button exists to prevent. Same flag the MCP bridge checks.
+  try {
+    const home = process.env.UI_CHAN_HOME ?? path.join(require('node:os').homedir(), '.ui-chan');
+    if (fs.existsSync(path.join(home, 'asleep'))) return;
+  } catch {
+    /* unreadable flag — fall through and behave as before */
+  }
   const probe = net.connect({ host: '127.0.0.1', port });
   probe.setTimeout(700);
   const launch = () => {
