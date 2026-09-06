@@ -174,6 +174,7 @@ VoiSona Talk が起きてないか、REST API が有効になってないか、�
 ### 本ソフトウェア
 
 MIT License（[LICENSE](LICENSE)）。Copyright (c) 2026 Uncle-Peke。
+第三者の素材・製品についての表記は [NOTICE.md](NOTICE.md) にもまとめてあります。
 
 MIT が適用されるのは**このリポジトリのコードと、同梱の設定・Cue 定義・ドキュメントのみ**です。
 以下の2つは同梱しておらず、MIT の対象外です。

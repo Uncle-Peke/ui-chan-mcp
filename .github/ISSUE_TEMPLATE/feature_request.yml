@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        提案の前に [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md) の「設計上、再提案をお断りしているもの」に
+        提案の前に [CONTRIBUTING.md](https://github.com/Uncle-Peke/ui-chan-mcp/blob/main/CONTRIBUTING.md) の「設計上、再提案をお断りしているもの」に
         目を通していただけると助かります。
   - type: textarea
     id: problem

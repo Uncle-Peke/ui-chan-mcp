@@ -62,7 +62,8 @@
     ".env.example",
     "docs",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE.md"
   ],
   "repository": {
     "type": "git",
