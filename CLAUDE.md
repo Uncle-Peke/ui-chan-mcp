@@ -415,13 +415,23 @@ Its buttons (`ui-chan:panel-action`) are icon-only in one row — text there
 looked like an app toolbar, and icons keep the height fixed so the panel only
 ever grows downward with sessions. Left to right: しずかに (mutes the *voice*
 only; the bubble stays, because a fully blank mascot reads as broken), ひといき
-(`clear` — stop talking and drop back to Idling), a **gear** that unfolds an
-affinity slider (the only place a human sets affinity directly; the agent's
-`adjust_affinity` stays direction+magnitude, so this can't be used to sneak past
-the asymmetric curve on her behalf), 起きなおす (relaunch), and — pushed to the
-right edge, away from the rest — おやすみ. The gear is a **filled silhouette**
-(trapezoid teeth + a big centre hole): a stroked ring with spokes reads as a
-sun, and thin teeth read as fraying, at 17px. The `clear` icon is a **circle with a
+(`clear` — stop talking and drop back to Idling), a **heart** that unfolds the
+affinity slider, a **house** = リセット, and — pushed to the right edge, away
+from the rest — おやすみ.
+
+Two of those icons say something the code has to keep true:
+
+- The heart is not a gear because affinity is the *only* thing behind it;
+  naming it 設定 would promise a drawer that isn't there. If other settings
+  appear, it goes back to being a gear. The slider is also the only place a
+  human sets affinity directly — the agent's `adjust_affinity` stays
+  direction+magnitude, so this can't be used to sneak past the asymmetric curve
+  on her behalf.
+- The house is the relaunch action, renamed: `createWindow` recomputes the
+  bottom-right position from the work area every time, so restarting *already*
+  put her back in her spot. The old circular arrow claimed "reload" while
+  quietly being the only way to recover a window dragged somewhere useless (or
+  stranded off-screen by a display change). The icon now says what it does. The `clear` icon is a **circle with a
 slash**: the action force-quits whatever is playing, which is neither muting
 nor undoing (an arrow), and a ■ only reads as "stop" next to ▶/⏸ — alone it is
 just a square. The prohibition sign carries "stop this" on its own, which is
