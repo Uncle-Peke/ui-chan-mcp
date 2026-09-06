@@ -80,7 +80,7 @@ ui-chan doctor
 | `opencode` | OpenCode | `~/.config/opencode/opencode.json`（MCP＋EventCueプラグイン） |
 | `cursor` | Cursor | `~/.cursor/mcp.json` |
 | `vscode` | VS Code (Copilot Chat) | `User/mcp.json` |
-| `hermes` | Hermes | `~/.hermes/mcp.json`（`UI_CHAN_HERMES_CONFIG` で変更可・パス未検証） |
+| `hermes` | Hermes Agent | `~/.hermes/config.yaml` の `mcp_servers:`＋`~/.hermes/plugins/ui-chan/`（EventCue。`HERMES_HOME` / `UI_CHAN_HERMES_CONFIG` で変更可） |
 
 一覧に無いクライアントには `ui-chan print <id>`（引数なしで汎用 stdio 設定）が貼り付け用の
 スニペットを出します。**新しいホストへの対応は `tools/setup/clients.mjs` に1エントリ足すだけ**で、
@@ -124,9 +124,10 @@ ui-chan start / stop         # マスコットの起動・停止
 | 作業への自動リアクション（EventCue） | ✕ | ○ |
 
 EventCue（作業の失敗・ターン終了・サブエージェントの往復などへの自動リアクション）は
-**Claude Code と OpenCode の両方**で動きます。前者は `hooks/`（Claude Code のフック）、後者は
-`plugins/opencode/ui-chan.mjs`（OpenCode の `event` / `tool.execute.*` フック）で、
-`ui-chan install opencode` が MCP 登録と一緒に `plugin` 配列へ入れます。どちらも
+**Claude Code / OpenCode / Hermes Agent** で動きます。それぞれ `hooks/`（Claude Code のフック）、
+`plugins/opencode/ui-chan.mjs`（`event` / `tool.execute.*`）、
+`plugins/hermes/ui-chan/`（Python プラグイン。`pre_tool_call` / `post_tool_call` / `on_session_end`）で、
+`ui-chan install <id>` が MCP 登録と一緒に配置します。どれも
 **「どのイベントが起きたか」しか決めません** — セリフ・重み・クールダウン・好感度ゲートは
 `ui-chan.config.json` の `eventCues` にあり、ホストが違ってもういちゃんの反応は同じです。
 

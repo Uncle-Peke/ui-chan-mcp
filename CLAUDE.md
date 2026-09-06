@@ -42,6 +42,11 @@ binary or audio/voice-library file. Distribution is by clone (or
 Installation is one CLI, `bin/ui-chan.mjs` (`ui-chan`), with everything
 client-specific in `tools/setup/clients.mjs` — a new MCP host is one entry in
 that table (config path, entry shape, install, uninstall), never a new script.
+Most hosts are `jsonClient(...)`; the two that aren't show what an entry may
+carry: OpenCode adds its EventCue plugin to the same file via `extras`, and
+Hermes edits YAML **line-wise** around a `# >>> ui-chan` marker block (a
+round-trip parse would need a YAML dependency and would rewrite the user's
+comments) plus copies a Python plugin dir into `~/.hermes/plugins/`.
 The registered command is always
 `<pkg>/bin/ui-chan-node <pkg>/dist/mcp-server.js`, so GUI-launched clients get a
 node that exists. The repo-root `.mcp.json` is **gone**: `${CLAUDE_PLUGIN_ROOT}`
@@ -294,7 +299,10 @@ The trigger lives outside the app, once per host: `hooks/reaction.js` and
 `tool.execute.before|after` hooks (`session.idle` → `turn_done`,
 `permission.asked` → `permission`, `session.compacted` → `compact`,
 `session.error` and a failed loud tool → `tool_failure`, the task tool →
-`agent_out`/`agent_back`). Both post
+`agent_out`/`agent_back`), and `plugins/hermes/ui-chan/` does it for Hermes
+Agent's Python hooks (`pre_tool_call`/`post_tool_call`/`on_session_end`).
+Hermes' plugin runtime isn't JavaScript, so it spawns `hooks/fire-event.js`
+— the same last step, exposed for any host that can only run a command. All post
 `{tool: 'event_cue', args: {event}}` over the WebSocket. That is *all* a trigger
 decides — which is what keeps two hosts from drifting into different lines. Everything else — which lines exist, weights, affinity/time gates, the
 cooldown, and the chance roll — is `eventCues.events.<name>` in

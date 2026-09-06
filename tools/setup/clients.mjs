@@ -249,6 +249,110 @@ const claudeCodePlugin = {
   },
 };
 
+/** Hermes Agent (Nous Research). Two differences from every other host:
+ *  its config is YAML (`~/.hermes/config.yaml`, `mcp_servers:`), and its plugin
+ *  surface is Python (`~/.hermes/plugins/<name>/`), so the EventCue plugin is
+ *  installed as a directory rather than a config line.
+ *
+ *  The YAML is edited line-wise instead of parsed and re-serialised: a real
+ *  round-trip would need a YAML dependency and would rewrite the user's
+ *  comments and formatting. This touches only ui-chan's own block. */
+function hermesHome() {
+  return process.env.HERMES_HOME ?? path.join(home, '.hermes');
+}
+
+function hermesConfigFile() {
+  return process.env.UI_CHAN_HERMES_CONFIG ?? path.join(hermesHome(), 'config.yaml');
+}
+
+const HERMES_BEGIN = '  # >>> ui-chan (managed by `ui-chan install hermes`)';
+const HERMES_END = '  # <<< ui-chan';
+
+function hermesBlock(cmd) {
+  return [
+    HERMES_BEGIN,
+    `  ${SERVER_NAME}:`,
+    `    command: "${cmd.command}"`,
+    `    args: [${cmd.args.map((a) => `"${a}"`).join(', ')}]`,
+    HERMES_END,
+  ].join('\n');
+}
+
+/** Strip a previously written block, so install is idempotent and uninstall is
+ *  exact. Returns [remaining lines, whether anything was removed]. */
+function stripHermesBlock(text) {
+  const lines = text.split('\n');
+  const start = lines.indexOf(HERMES_BEGIN);
+  if (start < 0) return [lines, false];
+  const end = lines.indexOf(HERMES_END, start);
+  if (end < 0) return [lines, false];
+  lines.splice(start, end - start + 1);
+  return [lines, true];
+}
+
+const hermesPluginDir = () => path.join(hermesHome(), 'plugins', SERVER_NAME);
+
+const hermes = {
+  id: 'hermes',
+  label: 'Hermes Agent',
+  note: '設定は ~/.hermes/config.yaml（HERMES_HOME / UI_CHAN_HERMES_CONFIG で変更可）。EventCue プラグインも同時に置きます。',
+  configPath: () => hermesConfigFile(),
+  status() {
+    const f = hermesConfigFile();
+    if (!fs.existsSync(f)) return { installed: false, detail: `未作成: ${f}` };
+    const installed = fs.readFileSync(f, 'utf-8').includes(`  ${SERVER_NAME}:`);
+    return { installed, detail: f };
+  },
+  snippet(cmd) {
+    return `# ${hermesConfigFile()}\nmcp_servers:\n${hermesBlock(cmd)}`;
+  },
+  install(cmd, pkgRoot) {
+    const f = hermesConfigFile();
+    const text = fs.existsSync(f) ? fs.readFileSync(f, 'utf-8') : '';
+    const [lines] = stripHermesBlock(text);
+    const at = lines.findIndex((l) => /^mcp_servers:\s*$/.test(l));
+    if (at >= 0) {
+      lines.splice(at + 1, 0, hermesBlock(cmd));
+    } else {
+      if (lines.length > 0 && lines[lines.length - 1].trim() !== '') lines.push('');
+      lines.push('mcp_servers:', hermesBlock(cmd), '');
+    }
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    if (fs.existsSync(f)) fs.copyFileSync(f, `${f}.bak`);
+    fs.writeFileSync(f, lines.join('\n'), 'utf-8');
+
+    // The Python plugin needs to know where ui-chan lives; bake the path in.
+    const src = path.join(pkgRoot, 'plugins', 'hermes', SERVER_NAME);
+    const dest = hermesPluginDir();
+    fs.mkdirSync(dest, { recursive: true });
+    for (const name of fs.readdirSync(src)) {
+      const body = fs
+        .readFileSync(path.join(src, name), 'utf-8')
+        .replaceAll('@@UI_CHAN_ROOT@@', pkgRoot);
+      fs.writeFileSync(path.join(dest, name), body, 'utf-8');
+    }
+    return `${f} + ${dest}`;
+  },
+  uninstall() {
+    const f = hermesConfigFile();
+    let touched = null;
+    if (fs.existsSync(f)) {
+      const [lines, removed] = stripHermesBlock(fs.readFileSync(f, 'utf-8'));
+      if (removed) {
+        fs.copyFileSync(f, `${f}.bak`);
+        fs.writeFileSync(f, lines.join('\n'), 'utf-8');
+        touched = f;
+      }
+    }
+    const dir = hermesPluginDir();
+    if (fs.existsSync(dir)) {
+      fs.rmSync(dir, { recursive: true, force: true });
+      touched = touched ? `${touched} + ${dir}` : dir;
+    }
+    return touched;
+  },
+};
+
 export const CLIENTS = [
   claudeCode,
   claudeCodePlugin,
@@ -284,17 +388,7 @@ export const CLIENTS = [
     key: 'servers',
     entry: (c) => ({ type: 'stdio', command: c.command, args: c.args }),
   }),
-  jsonClient({
-    id: 'hermes',
-    label: 'Hermes',
-    // Path unverified against a Hermes release — override with the env var if
-    // yours differs, and `ui-chan print hermes` always gives the raw snippet.
-    file: () => process.env.UI_CHAN_HERMES_CONFIG ?? path.join(home, '.hermes', 'mcp.json'),
-    key: 'mcpServers',
-    entry: (c) => ({ command: c.command, args: c.args }),
-    unverified: true,
-    note: '設定ファイルの場所は UI_CHAN_HERMES_CONFIG で上書きできます。',
-  }),
+  hermes,
 ];
 
 export function findClient(id) {
