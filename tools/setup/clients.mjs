@@ -17,11 +17,8 @@ import * as path from 'node:path';
 export const SERVER_NAME = 'ui-chan';
 
 export function serverCommand(pkgRoot) {
-  // `bin/ui-chan-node` is a POSIX shell script and cannot run on Windows, so
-  // there is a `.cmd` twin. Both do the same thing: find a node and exec it.
-  const launcher = process.platform === 'win32' ? 'ui-chan-node.cmd' : 'ui-chan-node';
   return {
-    command: path.join(pkgRoot, 'bin', launcher),
+    command: path.join(pkgRoot, 'bin', 'ui-chan-node'),
     args: [path.join(pkgRoot, 'dist', 'mcp-server.js')],
   };
 }
@@ -29,26 +26,14 @@ export function serverCommand(pkgRoot) {
 const home = os.homedir();
 const XDG = process.env.XDG_CONFIG_HOME ?? path.join(home, '.config');
 
+// macOS 専用（package.json の `os` で他OSへのインストールを拒否している）。
+// 他OSのパス分岐は置かない — 未検証の分岐が残っていると「対応している」と読める。
 function desktopConfigPath() {
-  if (process.platform === 'darwin')
-    return path.join(
-      home,
-      'Library',
-      'Application Support',
-      'Claude',
-      'claude_desktop_config.json',
-    );
-  if (process.platform === 'win32')
-    return path.join(process.env.APPDATA ?? home, 'Claude', 'claude_desktop_config.json');
-  return path.join(XDG, 'Claude', 'claude_desktop_config.json');
+  return path.join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
 }
 
 function vscodeConfigPath() {
-  if (process.platform === 'darwin')
-    return path.join(home, 'Library', 'Application Support', 'Code', 'User', 'mcp.json');
-  if (process.platform === 'win32')
-    return path.join(process.env.APPDATA ?? home, 'Code', 'User', 'mcp.json');
-  return path.join(XDG, 'Code', 'User', 'mcp.json');
+  return path.join(home, 'Library', 'Application Support', 'Code', 'User', 'mcp.json');
 }
 
 function readJson(file) {
