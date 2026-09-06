@@ -15,3 +15,8 @@ assets/*.png
 # Claude Code local runtime state (session-specific, not portable)
 .claude/
 cues.old/
+
+# 更新の記録（npm/コピー導入時にのみ作られる、その環境固有の値）
+.ui-chan-install.json
+# npm pack の出力
+*.tgz

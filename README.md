@@ -19,6 +19,9 @@ Claude Code や任意の MCP 対応エージェントから、マスコットの
 
 ## セットアップ
 
+> **必要なもの** — Node.js 22 以上。`npm install` で Electron（200MB 超）が入ります。
+> 立ち絵PSDと VoiSona Talk は**同梱していません**（後述のライセンス）。どちらも無くても起動します。
+
 インストールは **`ui-chan` コマンド1本**です。クライアントごとの JSON を手で書く必要はありません。
 
 ```bash
@@ -358,6 +361,17 @@ MCP ツールに終了コマンドはありません。次にツールを呼ん�
 | [docs/PERSONA.md](docs/PERSONA.md) | 人格の定義場所と注入方法 |
 | [docs/TTS.md](docs/TTS.md) | VoiSona Talk 連携の詳細 |
 | [docs/setup-page.html](docs/setup-page.html) | 図解セットアップ手順（公開アーティファクトの実体） |
-| [docs/PLUGIN_UPDATE.md](docs/PLUGIN_UPDATE.md) | プラグインの更新手順 |
 | [CLAUDE.md](CLAUDE.md) | 実装ガイド（AI・コントリビュータ向け） |
 | [VISION.md](VISION.md) | 用語とコンセプト |
+
+## ライセンス
+
+このリポジトリのソフトウェアは MIT（[LICENSE](LICENSE)）。ただし**同梱していないもの**が2つあり、
+そちらは各自が入手し、それぞれの規約に従ってください。
+
+- **立ち絵素材「雨衣（うい）」**（坂本アヒル様） — [BOOTH](https://ui-roid.booth.pm/items/8593427) で入手し、
+  [雨衣キャラクターガイドライン](https://www.ui-roid.com/guidelines/)の範囲で利用してください
+- **VoiSona Talk**（テクノスピーチ社） — [公式サイト](https://voisona.com/talk/download/)からインストールしてください
+
+パッケージにこれらが混入していないことは `npm run check-package` が機械的に検査し、
+公開処理（`prepublishOnly`）から必ず実行されます。

@@ -1,0 +1,17 @@
+# 依存の更新 PR。CI が型・lint・ビルド・配布物検査まで見るので、
+# 壊れる更新はマージ前に落ちる。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      # 個別に5本来ても嬉しくないので、開発依存はまとめる。
+      dev-dependencies:
+        dependency-type: development
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

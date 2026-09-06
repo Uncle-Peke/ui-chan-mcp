@@ -70,5 +70,21 @@
   },
   "engines": {
     "node": ">=22"
-  }
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "desktop-mascot",
+    "electron",
+    "psd",
+    "tts",
+    "voisona",
+    "claude",
+    "mascot"
+  ],
+  "homepage": "https://github.com/Uncle-Peke/ui-chan-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Uncle-Peke/ui-chan-mcp/issues"
+  },
+  "author": "Uncle-Peke"
 }
