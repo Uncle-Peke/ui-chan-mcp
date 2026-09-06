@@ -650,6 +650,28 @@ subagents and slash commands. To retarget a different character, rewrite
 `persona/` + `context/` and the PSD layer mappings in `ui-chan.config.json` +
 `cues/`.
 
+## Platform support: macOS only
+
+`package.json`'s `os: ["darwin"]` makes npm refuse to install elsewhere, and
+that is deliberate. Three things tie ui-chan to macOS, and two of them are not
+ours to fix:
+
+- `bin/ui-chan-node` is POSIX sh, and `hooks/hooks.json` names it directly.
+  That file is static JSON with no platform branching, so a Windows launcher
+  would need a second plugin manifest.
+- VoiSona Talk's auto-launch is `open -a`, and VoiSona itself has no Linux build.
+- `tools/stop-app.mjs` matches the process by command line via `pkill`.
+  (`taskkill /FI` cannot filter on a command line at all — filtering by image
+  name alone would kill every unrelated Electron app on the machine, which is
+  why the Windows branch that briefly lived here was wrong as written.)
+
+A half-supported platform is worse than an unsupported one: the failure mode
+was "the MCP server silently never starts", which reads as a broken product
+rather than an unsupported OS. Windows support means fixing those three points
+**and having a machine to verify on** — not adding a branch blind. For the same
+reason there are no win32/linux config paths in `clients.mjs`: an untested
+branch reads as a supported one.
+
 ## Editing notes
 
 - Renderer changes are **not** picked up by `tsc` alone — they need the esbuild
