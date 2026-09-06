@@ -335,7 +335,7 @@ export interface MascotStateSnapshot {
   cue: CueState;
   currentSpeech: SpeechItem | null;
   speechQueue: SpeechItem[];
-  connectedAgents: { name: string; connectedAt: string }[];
+  connectedAgents: ConnectedAgent[];
   availableCues: string[];
   tts?: {
     enabled: boolean;
@@ -375,10 +375,37 @@ export type DebugAction =
   | { type: 'set_affinity'; value: number }
   | { type: 'interact'; kind?: string };
 
+/** Who is on the other end of one WebSocket connection.
+ *
+ *  MCP has no session id, and a stdio server is one process per client session,
+ *  so *the connection itself* is the session. What identifies it usefully to a
+ *  human is the client's own name plus the directory it was started in — that
+ *  is what tells two Claude Code windows apart. Everything here is best-effort:
+ *  a client that says nothing still connects, it just shows as its name. */
+export interface ConnectedAgent {
+  /** Unique per connection — the only thing that can tell two sessions of the
+   *  same client in the same directory apart, so it (not `name`) is what the
+   *  panel matches "who is she speaking for" against. */
+  id: number;
+  name: string;
+  connectedAt: string;
+  /** MCP clientInfo name/version, when the client sent one. */
+  client?: string;
+  clientVersion?: string;
+  /** The directory the client launched the MCP server in, and its basename. */
+  cwd?: string;
+  project?: string;
+  /** The bridge process, so two sessions of the same client in the same
+   *  project are still distinguishable. */
+  pid?: number;
+}
+
 export interface WsRequest {
   id: number;
   type: 'hello' | 'tool' | 'screenshot' | 'debug';
   agent?: string;
+  /** Identity sent with `hello` (see ConnectedAgent). */
+  identity?: Omit<ConnectedAgent, 'name' | 'connectedAt'>;
   /** TTS credentials forwarded from the agent side (mcp.json env); kept in memory only */
   tts?: { username: string; password: string };
   tool?: 'set_cue' | 'get_state' | 'clear' | 'adjust_affinity' | 'event_cue';
@@ -402,7 +429,11 @@ export type RenderCommand =
       reading?: string | null;
       audio?: TtsAudio | null;
     }
-  | { type: 'no-psd'; assetsDir: string };
+  | { type: 'no-psd'; assetsDir: string }
+  /** Who is connected right now, and who ういちゃん spoke for last. Drives the
+   *  collapsible connections panel in the renderer — deliberately a render
+   *  command like any other, so the panel can never disagree with the app. */
+  | { type: 'connections'; agents: ConnectedAgent[]; active: number | null };
 
 // ---- Explicit per-tool result types (replaces the loose ToolResultInfo
 // index signature; each tool's actual return shape is now checked by tsc). ----

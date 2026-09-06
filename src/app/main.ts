@@ -5,6 +5,7 @@ import { type WebSocket, WebSocketServer } from 'ws';
 import { loadEnvFiles, resolvePaths } from '../shared/paths';
 import { setCueArgsSchema } from '../shared/set-cue-schema';
 import type {
+  ConnectedAgent,
   Cue,
   MascotConfig,
   MascotStateSnapshot,
@@ -43,7 +44,7 @@ let cues = loadCurrentCues();
 let win: BrowserWindow | null = null;
 let rendererReady = false;
 let rendererWarnings: string[] = [];
-const agents = new Map<WebSocket, { name: string; connectedAt: string }>();
+const agents = new Map<WebSocket, ConnectedAgent>();
 const pendingCommands: RenderCommand[] = [];
 
 function findPsd(): string | null {
@@ -58,12 +59,31 @@ function sendToRenderer(cmd: RenderCommand): void {
   }
 }
 
+/** The agent ういちゃん last spoke for — "who is she talking to right now",
+ *  which is the question the connections panel exists to answer. */
+let activeAgent: number | null = null;
+let nextAgentId = 1;
+
+/** Push the current connection list to the renderer. Called on connect,
+ *  disconnect, and whenever she starts speaking for someone else — the panel
+ *  never polls, so it cannot show a stale session. */
+function sendConnections(): void {
+  sendToRenderer({ type: 'connections', agents: [...agents.values()], active: activeAgent });
+}
+
 const tts = config.tts?.enabled ? new VoiSonaTalkClient(config.tts) : null;
+/** Voice can be muted from the panel. This silences the *voice* only — the
+ *  bubble still appears, because a mascot that goes completely blank looks
+ *  broken rather than quiet. */
+let muted = false;
+
 const state = new UiChanState(
   config,
   cues,
   sendToRenderer,
-  tts ? (text, cue, adlib) => tts.synthesize(text, cue, adlib) : undefined,
+  tts
+    ? (text, cue, adlib) => (muted ? Promise.resolve(null) : tts.synthesize(text, cue, adlib))
+    : undefined,
   // OS-wide "seconds since the user last touched keyboard or mouse" — what lets
   // Idling read the user's presence instead of only its own timers.
   () => powerMonitor.getSystemIdleTime(),
@@ -179,7 +199,13 @@ function handleRequest(ws: WebSocket, req: WsRequest): WsResponse {
   try {
     switch (req.type) {
       case 'hello': {
-        agents.set(ws, { name: req.agent ?? 'unknown', connectedAt: new Date().toISOString() });
+        agents.set(ws, {
+          id: nextAgentId++,
+          name: req.agent ?? 'unknown',
+          connectedAt: new Date().toISOString(),
+          ...(req.identity ?? {}),
+        });
+        sendConnections();
         if (exitTimer) {
           clearTimeout(exitTimer);
           exitTimer = null;
@@ -192,6 +218,11 @@ function handleRequest(ws: WebSocket, req: WsRequest): WsResponse {
       case 'tool': {
         const handler = req.tool ? toolHandlers[req.tool] : undefined;
         if (!handler) return { id: req.id, ok: false, error: `unknown tool: ${req.tool}` };
+        const caller = agents.get(ws)?.id ?? null;
+        if (caller !== null && caller !== activeAgent) {
+          activeAgent = caller;
+          sendConnections();
+        }
         return { id: req.id, ok: true, result: handler(req.args ?? {}, agent) };
       }
       case 'debug': {
@@ -247,6 +278,7 @@ function startWsServer(): void {
     });
     ws.on('close', () => {
       agents.delete(ws);
+      sendConnections();
       scheduleExitIfIdle();
     });
   });
@@ -330,6 +362,32 @@ if (!gotLock) {
   });
 
   app.on('window-all-closed', () => app.quit());
+
+  /** The panel's buttons. Deliberately few and all reversible-or-obvious:
+   *  anything destructive belongs in the CLI, not in a window that pops open
+   *  on its own. */
+  ipcMain.handle('ui-chan:panel-action', (_ev, kind: string) => {
+    switch (kind) {
+      case 'mute':
+        muted = true;
+        return { muted };
+      case 'unmute':
+        muted = false;
+        return { muted };
+      case 'clear':
+        state.clear();
+        return { ok: true };
+      case 'restart':
+        app.relaunch();
+        app.quit();
+        return { ok: true };
+      case 'quit':
+        app.quit();
+        return { ok: true };
+      default:
+        return { ok: false };
+    }
+  });
 
   ipcMain.handle('ui-chan:get-init', () => {
     const psdFile = findPsd();

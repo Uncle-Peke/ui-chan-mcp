@@ -17,6 +17,7 @@ interface UiChanApi {
   reportWarnings(warnings: string[]): void;
   onCommand(cb: (cmd: RenderCommand) => void): void;
   interaction(kind: string): void;
+  panelAction(kind: string): Promise<unknown>;
   dragStart(): void;
   dragEnd(): void;
 }
@@ -336,7 +337,153 @@ function setSpeech(text: string | null): void {
   }
 }
 
+// ---- Connections panel -------------------------------------------------
+//
+// "Which agent is she talking to right now?" — answered without putting a
+// single label next to the mascot. The hard constraint here is the world: a
+// permanent HUD around her would break it, so the panel is **collapsed to a
+// small ribbon tab by default**, opens on click, and opens *itself* only for
+// the one situation the user cannot infer — more than one client, or more than
+// one session of the same client, being connected at once.
+//
+// It is also where the few operations that need a button live (mute, clear,
+// restart, quit), so reaching them never means finding a terminal.
+
+interface PanelAgent {
+  id: number;
+  name: string;
+  connectedAt: string;
+  client?: string;
+  clientVersion?: string;
+  cwd?: string;
+  project?: string;
+  pid?: number;
+}
+
+const panelEl = document.getElementById('panel') as HTMLDivElement;
+const panelTab = document.getElementById('panel-tab') as HTMLButtonElement;
+const panelList = document.getElementById('panel-list') as HTMLDivElement;
+const panelCount = document.getElementById('panel-count') as HTMLSpanElement;
+
+let panelOpen = false;
+let panelPinned = false; // opened by the user — never auto-closes
+let panelAutoCloseTimer: number | null = null;
+let lastCrowdKey = '';
+let muted = false;
+
+/** One line per connection. Two of the same client in different directories are
+ *  two sessions, so the project is what actually disambiguates them. */
+function agentLabel(a: PanelAgent): { title: string; sub: string } {
+  const client = a.client ?? a.name;
+  const where = a.project ?? '';
+  return { title: client, sub: where || (a.pid ? `pid ${a.pid}` : '') };
+}
+
+/** The one thing the user can't work out on their own: is more than one
+ *  session live? Same client twice (different project or pid) counts. */
+function crowdKey(agents: PanelAgent[]): string {
+  return agents
+    .map((a) => `${a.client ?? a.name}:${a.project ?? ''}:${a.id}`)
+    .sort()
+    .join('|');
+}
+
+function setPanelOpen(open: boolean, pinned = false): void {
+  panelOpen = open;
+  panelPinned = open && pinned;
+  panelEl.classList.toggle('open', open);
+  if (panelAutoCloseTimer !== null) {
+    clearTimeout(panelAutoCloseTimer);
+    panelAutoCloseTimer = null;
+  }
+  // An auto-opened panel folds itself away again: it announced the thing it
+  // needed to announce, and the world goes back to just her.
+  if (open && !pinned) {
+    panelAutoCloseTimer = window.setTimeout(() => {
+      if (!panelPinned) setPanelOpen(false);
+    }, 6000);
+  }
+}
+
+function renderConnections(agents: PanelAgent[], active: number | null): void {
+  // The tab says the one thing worth saying. With a single session (or none)
+  // there is nothing to report, so it is just a menu button — a hamburger, the
+  // most ignorable shape there is. Two or more sessions is genuinely news the
+  // user cannot infer, so then it becomes the count.
+  const crowd = agents.length > 1;
+  panelCount.textContent = crowd ? String(agents.length) : '';
+  panelEl.classList.toggle('crowded', crowd);
+  panelTab.title = crowd ? `${agents.length}セッション接続中` : 'メニュー';
+  panelEl.classList.toggle('has-agents', agents.length > 0);
+
+  panelList.replaceChildren();
+  if (agents.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'panel-empty';
+    empty.textContent = 'だれもいない';
+    panelList.append(empty);
+  }
+  for (const a of agents) {
+    const { title, sub } = agentLabel(a);
+    const row = document.createElement('div');
+    row.className = 'panel-row';
+    if (a.id === active) row.classList.add('active');
+    const dot = document.createElement('span');
+    dot.className = 'panel-dot';
+    const text = document.createElement('span');
+    text.className = 'panel-text';
+    const t = document.createElement('b');
+    t.textContent = title;
+    text.append(t);
+    if (sub) {
+      const s = document.createElement('small');
+      s.textContent = sub;
+      text.append(s);
+    }
+    row.append(dot, text);
+    row.title = a.cwd ?? a.name;
+    panelList.append(row);
+  }
+
+  // Auto-open only on a *change* into a crowded state, so it never re-opens
+  // over and over for a situation the user has already seen and folded away.
+  const key = crowdKey(agents);
+  const crowded = agents.length > 1;
+  if (crowded && key !== lastCrowdKey && !panelOpen) setPanelOpen(true);
+  lastCrowdKey = crowded ? key : '';
+}
+
+function wirePanel(): void {
+  panelTab.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setPanelOpen(!panelOpen, true);
+  });
+  panelEl.addEventListener('mouseenter', () => {
+    if (panelAutoCloseTimer !== null) {
+      clearTimeout(panelAutoCloseTimer);
+      panelAutoCloseTimer = null;
+    }
+  });
+  panelEl.addEventListener('mouseleave', () => {
+    if (panelOpen && !panelPinned) setPanelOpen(false);
+  });
+
+  for (const btn of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-action]'))) {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const kind = btn.dataset.action === 'mute' && muted ? 'unmute' : btn.dataset.action;
+      const res = (await window.uiChan.panelAction(kind as string)) as { muted?: boolean };
+      if (typeof res?.muted === 'boolean') {
+        muted = res.muted;
+        btn.textContent = muted ? '声をもどす' : 'しずかに';
+        btn.classList.toggle('on', muted);
+      }
+    });
+  }
+}
+
 async function init(): Promise<void> {
+  wirePanel();
   const initData = await window.uiChan.getInit();
 
   window.uiChan.onCommand((cmd) => {
@@ -348,6 +495,8 @@ async function init(): Promise<void> {
       reportWarnings();
       lipCurrentMouth = null; // let the next lip tick re-assert its mouth
       draw();
+    } else if (cmd.type === 'connections') {
+      renderConnections(cmd.agents, cmd.active);
     } else if (cmd.type === 'speech') {
       setSpeech(cmd.text);
       if (cmd.text !== null) {

@@ -373,6 +373,32 @@ actually blocked on them.
 Voice: `context/VOCABULARY.md` is authoritative for 一人称 (**「わたし」「うい」 —
 not 「あたし」**) and for calling the user 「きみ」.
 
+### The connections panel (who is she talking to?)
+
+With several hosts able to connect at once, the user needs to know *which*
+session a line belongs to — but a permanent HUD next to the mascot breaks the
+world, which is a hard non-functional requirement here. So the panel is
+collapsed to a small ribbon tab in the window's top-right corner: a **hamburger
+when 0–1 sessions are connected** (nothing to report; it is just a menu), the
+**session count when 2+** are. It opens on click, and opens *itself* only on a
+change into a multi-session state — the one thing the user cannot infer — then
+folds away after 6s unless they pinned it open by clicking.
+
+Identity comes from the bridge, not from guesswork: `hello` now carries the MCP
+`clientInfo` name/version, `process.cwd()` and its basename, and the bridge pid
+(`ConnectedAgent`). MCP has no session id, and a stdio server is one process per
+client session, so **the connection is the session**, and `cwd` is what tells
+two windows of the same client apart. Each connection also gets an incrementing
+`id`, and "active" is set by **whichever connection last called a tool** —
+matching on `name` would light up two rows when the same client is connected
+twice. The list is pushed as an ordinary `RenderCommand` (`connections`) on
+connect/disconnect/tool call, so the panel can never show a stale session.
+
+Its buttons (`ui-chan:panel-action`) are deliberately few and all
+reversible-or-obvious — しずかに (mute the *voice* only; the bubble stays, because a
+fully blank mascot reads as broken), ひっこめる (`clear`), 再起動, おやすみ. Anything
+destructive belongs in the CLI, not in a window that can open on its own.
+
 ### Rejected designs (do not reintroduce)
 
 `extends` inheritance between scenes; named wrapper fields (`pose`,

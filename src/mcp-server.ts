@@ -116,6 +116,22 @@ async function ensureVoiSonaRunning(): Promise<void> {
   lastVoiSonaCheckAt = Date.now();
 }
 
+/** Identity for the connections panel: what this bridge can honestly say about
+ *  the session it belongs to. `cwd` is the client's working directory — for
+ *  Claude Code and OpenCode that is the project being worked on, which is the
+ *  one field that tells two windows of the same client apart. */
+function identity() {
+  const info = server.server.getClientVersion();
+  const cwd = process.cwd();
+  return {
+    client: info?.name,
+    clientVersion: info?.version,
+    cwd,
+    project: path.basename(cwd),
+    pid: process.pid,
+  };
+}
+
 function agentName(): string {
   return (
     process.env.UI_CHAN_AGENT_NAME ??
@@ -187,7 +203,12 @@ async function doConnect(): Promise<WebSocket> {
         }
       });
       socket = ws;
-      await sendRequest({ type: 'hello', agent: agentName(), tts: ttsCredentials() });
+      await sendRequest({
+        type: 'hello',
+        agent: agentName(),
+        identity: identity(),
+        tts: ttsCredentials(),
+      });
       return ws;
     } catch {
       // A hello timeout/failure leaves `ws` open (only a real socket-level
@@ -223,6 +244,7 @@ async function doConnect(): Promise<WebSocket> {
 function sendRequest(msg: {
   type: 'hello' | 'tool';
   agent?: string;
+  identity?: Record<string, unknown>;
   tool?: string;
   args?: unknown;
   tts?: { username: string; password: string };
