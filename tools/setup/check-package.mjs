@@ -29,24 +29,40 @@ const FORBIDDEN = [
   { re: /voisona/i, why: 'VoiSona Talk 由来のファイル' },
 ];
 
-// `npm pack` は `prepare`（＝ビルド）を走らせるので、その出力が JSON の前に
-// 混ざることがある（npm のバージョンによって stdout か stderr かが変わる）。
-// 素直に JSON.parse すると、環境によってだけ落ちる検査になってしまうので、
-// 最初の `[` から最後の `]` までを取り出す。
-function parsePackJson(raw) {
+// `npm pack` は既定で `prepare`（＝ビルド）を走らせ、その出力が JSON の前後に
+// 混ざる。npm のバージョンによって stdout に来たり stderr に来たりするので、
+// 手元で通って CI でだけ落ちる、という厄介な壊れ方をした。
+//
+// 対処は2段構え。まず `--ignore-scripts` で混ざる原因そのものを断つ（ここが
+// 見たいのは「いまディスクにあるファイルのうち何が詰められるか」であって、
+// ビルドし直す必要はない）。そのうえで、それでも前後に出力が付いた場合に
+// そなえ、括弧の深さを数えて JSON 配列だけを切り出す。
+function extractJsonArray(raw) {
   const start = raw.indexOf('[');
-  const end = raw.lastIndexOf(']');
-  if (start < 0 || end < start) {
-    throw new Error(`npm pack --json の出力を解釈できません:\n${raw.slice(0, 400)}`);
+  if (start < 0) throw new Error(`JSON が見つかりません:\n${raw.slice(0, 400)}`);
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < raw.length; i++) {
+    const c = raw[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === '\\') escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === '[') depth++;
+    else if (c === ']' && --depth === 0) return JSON.parse(raw.slice(start, i + 1));
   }
-  return JSON.parse(raw.slice(start, end + 1));
+  throw new Error(`JSON 配列が閉じていません:\n${raw.slice(0, 400)}`);
 }
 
-const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
+const out = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
   encoding: 'utf-8',
   maxBuffer: 32 * 1024 * 1024,
 });
-const parsed = parsePackJson(out);
+const parsed = extractJsonArray(out);
 if (!Array.isArray(parsed) || !parsed[0]?.files) {
   console.error(
     '❌ npm pack の結果にファイル一覧がありません。npm のバージョンを確認してください。',
