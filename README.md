@@ -43,10 +43,13 @@ npm install -g .        # または npm link
 ui-chan doctor
 ```
 
-> **npm 公開はしません。** 立ち絵PSDは二次配布禁止の素材なので、配布物に混入させないことが
-> 前提条件です。`package.json` の `files` は `assets/` を含まず、`private: true` で publish 自体を
+> **npm 公開はしません。** 外部ライセンスのものを配布物に混ぜないことが前提条件だからです。
+> 立ち絵PSDは二次配布禁止の素材、VoiSona Talk とそのボイスライブラリはテクノスピーチ社の製品で、
+> どちらも同梱できません（ういちゃんは、利用者が自分でインストールした VoiSona Talk を
+> `open -a` で起こして、ローカルの REST API を叩いているだけです）。`package.json` の `files` は `assets/` を含まず、`private: true` で publish 自体を
 > 塞いだうえ、`npm run check-package`（`prepublishOnly` から自動実行）が `npm pack` の実物を検査して
-> `.psd` / `assets/` / `.env` が1つでもあれば失敗します。配布はクローン（または
+> `.psd` / `assets/` / `.env` / アプリ・インストーラ・ネイティブバイナリ・音声データが
+> 1つでもあれば失敗します。配布はクローン（または
 > `npx github:Uncle-Peke/ui-chan-mcp`）経由で、PSD は各自が BOOTH で入手して
 > `~/.ui-chan/assets/` に置く、という形です。
 

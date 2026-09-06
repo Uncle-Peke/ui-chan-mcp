@@ -29,12 +29,15 @@ env vars still winning. `loadCues`/`findPsd`/`watchCues` therefore take an
 **array of dirs**, and the editor writes to `paths.cueWriteDir` (home when it
 exists, the repo in a bare clone).
 
-**The package must never carry the PSD.** The mascot art is licensed and
-redistribution is forbidden, so `files` omits `assets/`, `private: true` blocks
-`npm publish`, and `prepublishOnly` runs `tools/setup/check-package.mjs`, which
-inspects the real `npm pack` output and fails on any `.psd`, `assets/`, `.env`
-or key/backup file. Distribution is by clone (or `npx github:…`); the user
-supplies their own PSD into `~/.ui-chan/assets/`.
+**The package must never carry third-party-licensed files.** Two of them: the
+mascot PSD (redistribution forbidden) and VoiSona Talk with its voice libraries
+(TechnoSpeech's product — ui-chan only `open -a`s the copy the user installed
+and calls its local REST API; nothing of it is bundled). So `files` omits
+`assets/`, `private: true` blocks `npm publish`, and `prepublishOnly` runs
+`tools/setup/check-package.mjs`, which inspects the real `npm pack` output and
+fails on any `.psd`, `assets/`, `.env`, key/backup, app/installer, native
+binary or audio/voice-library file. Distribution is by clone (or
+`npx github:…`); the user brings their own PSD and their own VoiSona Talk.
 
 Installation is one CLI, `bin/ui-chan.mjs` (`ui-chan`), with everything
 client-specific in `tools/setup/clients.mjs` — a new MCP host is one entry in
