@@ -273,6 +273,10 @@
     #panel-actions .i-slash {
       display: none;
     }
+    #panel-actions .i-fill {
+      fill: currentColor;
+      stroke: none;
+    }
     #panel-actions button.on {
       color: #4e5bb5;
       background: rgba(78, 91, 181, 0.16);
@@ -308,12 +312,12 @@
               <path class="i-slash" d="M13.2 7.4l4.4 5.2M17.6 7.4l-4.4 5.2" />
             </svg>
           </button>
-          <button type="button" data-action="clear" title="ひといき（喋りをやめて Idling に戻す）" aria-label="ひといき">
+          <button type="button" data-action="clear" title="ひといき（いま喋っていることを止めて Idling に戻す）" aria-label="ひといき">
             <svg viewBox="0 0 20 20" aria-hidden="true">
-              <!-- 吹き出しだけだと「喋る」の記号にしかならないので、斜線で
-                   「その喋りを消す」を表す（ミュートの波→斜線と同じ作り）。 -->
-              <path d="M4 5.5h12v7h-6.5L6 15.5V12.5H4z" />
-              <path d="M3.2 16.8L16.8 3.2" />
+              <!-- 停止記号。この操作は「今やっていることを強制的に打ち切る」
+                   なので、消音（斜線）でも取り消し（矢印）でもなく ■ が正しい。 -->
+              <rect x="4.5" y="4.5" width="11" height="11" rx="2.2" />
+              <rect class="i-fill" x="7.6" y="7.6" width="4.8" height="4.8" rx="1" />
             </svg>
           </button>
           <button type="button" data-action="restart" title="起きなおす（再起動）" aria-label="起きなおす">
