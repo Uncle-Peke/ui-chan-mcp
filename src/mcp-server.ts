@@ -149,21 +149,7 @@ function tryConnect(): Promise<WebSocket> {
   });
 }
 
-/** She was told to sleep (the panel's おやすみ). Respect it: the whole point of
- *  that button is that the next tool call must not drag her back up. */
-function isAsleep(): boolean {
-  try {
-    return fs.existsSync(path.join(paths.home, 'asleep'));
-  } catch {
-    return false;
-  }
-}
-
 function launchApp(): void {
-  if (isAsleep()) {
-    log('ui-chan is asleep (おやすみ) — not launching. Wake her with `ui-chan start`.');
-    return;
-  }
   const now = Date.now();
   if (now - lastLaunchAt < 10_000) return;
   lastLaunchAt = now;
@@ -179,21 +165,36 @@ function launchApp(): void {
 // WebSocket.
 let connectingPromise: Promise<WebSocket> | null = null;
 
-function ensureConnected(): Promise<WebSocket> {
+/**
+ * `allowLaunch` is the whole policy in one flag, and only **bridge startup**
+ * (≈ session start) passes it.
+ *
+ * The bridge used to launch the app on *every* tool call. That sounds like
+ * self-healing and is actually the user losing the ability to put the mascot
+ * away: quitting her was undone by whatever the agent did next. Now a tool call
+ * only ever **reconnects** — which covers the case that matters in practice
+ * (the app is up, this bridge's socket went stale) without deciding on the
+ * user's behalf that she should be on screen. If she is genuinely not running,
+ * the call fails saying how to start her, and starting her is a person's
+ * choice: `ui-chan start`, a new session, or the panel.
+ */
+function ensureConnected(allowLaunch = false): Promise<WebSocket> {
   if (socket && socket.readyState === WebSocket.OPEN) return Promise.resolve(socket);
   if (!connectingPromise) {
-    connectingPromise = doConnect().finally(() => {
+    connectingPromise = doConnect(allowLaunch).finally(() => {
       connectingPromise = null;
     });
   }
   return connectingPromise;
 }
 
-async function doConnect(): Promise<WebSocket> {
+async function doConnect(allowLaunch: boolean): Promise<WebSocket> {
   socket = null;
 
   let launched = false;
-  const deadline = Date.now() + 25_000;
+  // Waiting 25s only makes sense while an app we just launched is booting.
+  // When we're not launching, a dead socket is an answer, not a race.
+  const deadline = Date.now() + (allowLaunch ? 25_000 : 1_500);
   for (;;) {
     let ws: WebSocket | null = null;
     try {
@@ -237,7 +238,7 @@ async function doConnect(): Promise<WebSocket> {
           /* ignore */
         }
       }
-      if (!launched) {
+      if (allowLaunch && !launched) {
         try {
           launchApp();
         } catch (e) {
@@ -245,18 +246,10 @@ async function doConnect(): Promise<WebSocket> {
         }
         launched = true;
       }
-      if (isAsleep()) {
-        // Fail fast and say why, instead of spending the full timeout waiting
-        // for an app that was deliberately put to bed.
-        throw new Error(
-          'ういちゃんはおやすみ中です（パネルの「おやすみ」で終了しました）。' +
-            '`ui-chan start` で起こせます。',
-        );
-      }
       if (Date.now() > deadline) {
         throw new Error(
-          `could not reach the ui-chan display app at ${wsUrl}. ` +
-            `Start it manually with \`ui-chan start\` (${projectRoot})`,
+          `ういちゃんは起動していません（${wsUrl} に接続できません）。` +
+            '`ui-chan start` で起動してください。',
         );
       }
       await new Promise((r) => setTimeout(r, 400));
@@ -430,7 +423,8 @@ async function main() {
   // her. Both are fire-and-forget — a mascot that can't start must never stop
   // the tools from working.
   void ensureVoiSonaRunning();
-  ensureConnected().catch((e) => log(`display app not reachable yet: ${e.message ?? e}`));
+  // The one place that may launch her unprompted (see ensureConnected).
+  ensureConnected(true).catch((e) => log(`display app not reachable yet: ${e.message ?? e}`));
 
   log(`ready (display app at ${wsUrl})`);
 }

@@ -405,14 +405,22 @@ nor undoing (an arrow), and a ■ only reads as "stop" next to ▶/⏸ — alone
 just a square. The prohibition sign carries "stop this" on its own, which is
 what a four-icon utility row needs.
 
-**おやすみ has to be more than `app.quit()`**: the bridge relaunches the app on
-the next tool call (`ensureConnected` → `launchApp`), so quitting alone means
-she pops back up seconds later. The button therefore writes an `asleep` flag
-into the user data dir; `launchApp()` refuses to start while it exists and
-tool calls fail fast with "おやすみ中です" instead of burning the 20s connect
-timeout. Any explicit launch (`ui-chan start`, `npm run app`) clears it — being
-started *is* waking up. The flag lives in `~/.ui-chan` rather than the package
-so it survives an update, and so the CLI can see it.
+**Who may launch the app** (`ensureConnected`'s `allowLaunch`). Only **bridge
+startup** does — ≈ session start, where configuring the MCP server is itself
+the request for a mascot (`hooks/session-start.js` is the Claude Code
+equivalent). A tool call may **reconnect**, never launch.
+
+It used to launch on every tool call. That sounds like self-healing and is
+actually the user losing the ability to put the mascot away: quitting her was
+undone by whatever the agent did next. Reconnect-only covers the case that
+actually happens (the app is up, this bridge's socket went stale) without
+deciding on the user's behalf that she should be on screen, and it removes the
+question that made this hard — a dead socket means "crashed" and "the user quit
+her" alike, and the bridge cannot tell. Now it doesn't need to: neither
+relaunches. Two earlier attempts at that distinction (an `~/.ui-chan/asleep`
+flag file, then a `goodnight` broadcast before `app.quit()`) are gone with it;
+if she is genuinely down, the tool call fails in ~1.5s saying how to start her,
+and starting her stays a person's choice.
 
 ### Rejected designs (do not reintroduce)
 
