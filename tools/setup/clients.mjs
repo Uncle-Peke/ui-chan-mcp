@@ -17,8 +17,11 @@ import * as path from 'node:path';
 export const SERVER_NAME = 'ui-chan';
 
 export function serverCommand(pkgRoot) {
+  // `bin/ui-chan-node` is a POSIX shell script and cannot run on Windows, so
+  // there is a `.cmd` twin. Both do the same thing: find a node and exec it.
+  const launcher = process.platform === 'win32' ? 'ui-chan-node.cmd' : 'ui-chan-node';
   return {
-    command: path.join(pkgRoot, 'bin', 'ui-chan-node'),
+    command: path.join(pkgRoot, 'bin', launcher),
     args: [path.join(pkgRoot, 'dist', 'mcp-server.js')],
   };
 }

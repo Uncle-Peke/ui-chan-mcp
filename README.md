@@ -7,7 +7,7 @@
   <img alt="license" src="https://img.shields.io/badge/license-MIT-blue.svg">
   <img alt="node" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg">
   <img alt="mcp" src="https://img.shields.io/badge/MCP-server-8A2BE2.svg">
-  <img alt="platform" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg">
+  <img alt="platform" src="https://img.shields.io/badge/platform-macOS-lightgrey.svg">
 </p>
 
 ---
@@ -56,6 +56,11 @@
 
 > **要るもの** — Node.js 22 以上。入れるときに Electron（200MB 超）も付いてくるよ。重いね。
 > 立ち絵と VoiSona Talk は入ってないけど、無くても起動はする。
+>
+> **動作環境について。** いま動作を確認できているのは **macOS だけ**。Windows と Linux でも
+> 動くように書いてあるし、パスもコマンドも分岐させてあるけど、実機で試せてないから
+> 「動くはず」までしか言えない。試して転んだら [Issue](https://github.com/Uncle-Peke/ui-chan-mcp/issues)
+> で教えてくれると助かる。既知の制約は[このへん](#動作環境と既知の制約)にまとめてあるよ。
 
 コマンド1本でいいよ。クライアントごとの JSON を手で書く必要はないから。
 
@@ -309,6 +314,23 @@ MCP のツールに終了コマンドは無いよ。エージェントが自分�
 前に言ったことを覚えててくれるとか、そういうので上がる。
 逆に、いきなり口説いてくるのは下がるから。やだよ～ん。
 </details>
+
+## 動作環境と既知の制約
+
+| | macOS | Windows | Linux |
+|---|---|---|---|
+| MCP ツール（`set_cue` ほか）・立ち絵・吹き出し | ✅ 確認済み | 動くはず | 動くはず |
+| 音声（VoiSona Talk） | ✅ 確認済み | 動くはず（**自動起動はしない**） | ✕（VoiSona Talk 自体が非対応） |
+| クライアント登録（`ui-chan install`） | ✅ 確認済み | 動くはず | 動くはず |
+| Claude Code プラグイン（`/talk` などのスキル） | ✅ 確認済み | 動くはず | 動くはず |
+| 作業への自動リアクション（EventCue のフック） | ✅ 確認済み | ⚠️ 未対応 | 動くはず |
+
+- **VoiSona Talk の自動起動は macOS だけ。** 他の OS では、こちらから起こしにいかないので、
+  自分で立ち上げておいてね。起動してさえいれば喋るよ
+- **EventCue のフックは Windows で動かない。** プラグインのフック定義がシェルスクリプトの
+  ランチャを直接指していて、そこだけ `.cmd` に切り替えられないから。ツールも人格も普通に使えるし、
+  自分から喋るアイドリングも動く。作業への自動リアクションだけが出ない
+- Linux で音声を使いたい場合、VoiSona Talk が Windows / macOS 専用なので、声は出ない
 
 ## わたしの中を覗きたい人へ
 

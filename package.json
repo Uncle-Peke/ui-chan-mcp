@@ -89,5 +89,10 @@
   "author": "Uncle-Peke",
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "os": [
+    "darwin",
+    "win32",
+    "linux"
+  ]
 }
