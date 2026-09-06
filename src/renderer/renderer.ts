@@ -420,8 +420,16 @@ function renderConnections(agents: PanelAgent[], active: number | null): void {
   if (agents.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'panel-empty';
-    // 顔文字（絵文字は OS/フォント依存で字形が変わる）。仮名と記号だけで組む。
-    empty.textContent = 'だれもいない…(´･ω･`)';
+    // 顔文字（絵文字は OS/フォント依存で字形が変わる）。ここも同じ理由で、
+    // ハングルやカンナダ文字を使う泣き顔（ㅠ_ㅠ / ಥ_ಥ）は避けて、日本語フォントに
+    // 必ずある全角記号と ω だけで組む。
+    // 顔文字は語ではないので、途中で折り返すと崩れる。必ず1行で持たせる。
+    const emptyText = document.createElement('span');
+    emptyText.textContent = 'だれもいない…';
+    const emptyFace = document.createElement('span');
+    emptyFace.className = 'panel-face';
+    emptyFace.textContent = '｡ﾟ(Ｔ^Ｔ)ﾟ｡ﾟ';
+    empty.append(emptyText, emptyFace);
     panelList.append(empty);
   }
   for (const a of agents) {
