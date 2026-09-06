@@ -529,7 +529,7 @@ function wirePanel(): void {
         // Icon-only, so the state has to live in the icon: `.on` swaps the
         // sound wave for a slash and tints the button.
         btn.classList.toggle('on', muted);
-        btn.title = muted ? '声をもどす' : 'しずかに（声だけ止める）';
+        btn.title = muted ? '声をもどす' : '声だけ止める';
       }
     });
   }

@@ -218,6 +218,15 @@ function handleDebug(_ws: WebSocket, req: WsRequest): WsResponse {
         state.onInteraction(action.kind ?? 'poke');
         return { id: req.id, ok: true, result: { ok: true } };
       }
+      case 'fake_update': {
+        sendToRenderer({
+          type: 'update',
+          available: action.available,
+          behind: action.behind ?? 3,
+          blocked: null,
+        });
+        return { id: req.id, ok: true, result: { ok: true } };
+      }
       default: {
         return { id: req.id, ok: false, error: `unknown debug action` };
       }
@@ -370,14 +379,22 @@ function scheduleExitIfIdle(): void {
   }, sec * 1000);
 }
 
-function createWindow(): void {
+/** 定位置＝主ディスプレイの作業領域の右下。起動時とリセット時の両方が
+ *  ここを見るので、「起動し直さないと位置が戻らない」ということはない。 */
+function homePosition(): { x: number; y: number } {
   const { width, height, margin } = config.window;
   const wa = screen.getPrimaryDisplay().workArea;
+  return { x: wa.x + wa.width - width - margin, y: wa.y + wa.height - height - margin };
+}
+
+function createWindow(): void {
+  const { width, height, margin } = config.window;
+  const home = homePosition();
   win = new BrowserWindow({
     width,
     height,
-    x: wa.x + wa.width - width - margin,
-    y: wa.y + wa.height - height - margin,
+    x: home.x,
+    y: home.y,
     transparent: true,
     frame: false,
     resizable: false,

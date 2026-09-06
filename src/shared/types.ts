@@ -389,7 +389,10 @@ export type DebugAction =
   | { type: 'trigger_event'; event: string }
   | { type: 'preview_cue'; cue: string }
   | { type: 'set_affinity'; value: number }
-  | { type: 'interact'; kind?: string };
+  | { type: 'interact'; kind?: string }
+  /** 更新の有無を強制する（撮影と手元確認用。実際の判定は6時間ごとの
+   *  update-check.mjs が行う）。 */
+  | { type: 'fake_update'; available: boolean; behind?: number };
 
 /** Who is on the other end of one WebSocket connection.
  *
