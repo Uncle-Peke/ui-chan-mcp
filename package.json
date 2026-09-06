@@ -3,7 +3,7 @@
   "version": "0.4.0",
   "description": "Desktop mascot MCP server — control a PSD-based mascot (speech bubble, Cue-driven look + voice) from any MCP-capable agent",
   "main": "dist/app/main.js",
-  "private": true,
+  "private": false,
   "type": "commonjs",
   "scripts": {
     "build": "tsc -p tsconfig.json && esbuild src/renderer/renderer.ts --bundle --platform=browser --format=iife --outfile=dist/renderer/bundle.js && esbuild src/renderer/editor.ts --bundle --platform=browser --format=iife --outfile=dist/renderer/editor.js && node -e \"const fs=require('fs');fs.copyFileSync('src/renderer/index.html','dist/renderer/index.html');fs.copyFileSync('src/renderer/editor.html','dist/renderer/editor.html')\"",
@@ -86,5 +86,8 @@
   "bugs": {
     "url": "https://github.com/Uncle-Peke/ui-chan-mcp/issues"
   },
-  "author": "Uncle-Peke"
+  "author": "Uncle-Peke",
+  "publishConfig": {
+    "access": "public"
+  }
 }

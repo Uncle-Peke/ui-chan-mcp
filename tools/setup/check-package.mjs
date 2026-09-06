@@ -13,6 +13,8 @@
 // actually contain and fails if anything license-bound or secret is in it.
 //
 // Runs from `prepublishOnly`, so it cannot be skipped by publishing normally.
+// This is now the *only* thing standing between a mistake and the registry:
+// the package is public, so `npm publish` will succeed unless this fails.
 import { execFileSync } from 'node:child_process';
 
 const FORBIDDEN = [

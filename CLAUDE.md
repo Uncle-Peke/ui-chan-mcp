@@ -33,11 +33,14 @@ exists, the repo in a bare clone).
 mascot PSD (redistribution forbidden) and VoiSona Talk with its voice libraries
 (TechnoSpeech's product — ui-chan only `open -a`s the copy the user installed
 and calls its local REST API; nothing of it is bundled). So `files` omits
-`assets/`, `private: true` blocks `npm publish`, and `prepublishOnly` runs
-`tools/setup/check-package.mjs`, which inspects the real `npm pack` output and
-fails on any `.psd`, `assets/`, `.env`, key/backup, app/installer, native
-binary or audio/voice-library file. Distribution is by clone (or
-`npx github:…`); the user brings their own PSD and their own VoiSona Talk.
+`assets/`, and `prepublishOnly` runs `tools/setup/check-package.mjs`, which
+inspects the real `npm pack` output and fails on any `.psd`, `assets/`, `.env`,
+key/backup, app/installer, native binary or audio/voice-library file. **The
+package is public**, so that check is now the only thing between a mistake and
+the registry — never weaken it to make a publish go through. Users bring their
+own PSD and their own VoiSona Talk; `dist/` is gitignored but shipped in the
+tarball (built by `prepublishOnly`, and in CI by `release.yml` so what is
+published is never "whatever was in someone's working copy").
 
 Installation is one CLI, `bin/ui-chan.mjs` (`ui-chan`), with everything
 client-specific in `tools/setup/clients.mjs` — a new MCP host is one entry in

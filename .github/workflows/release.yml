@@ -40,8 +40,8 @@ jobs:
         run: npm run check-package
       - name: 中身の確認
         run: npm pack --dry-run
-      # package.json が private の間は publish できない（公開判断が出るまでの
-      # 意図的な蓋）。外したうえで NPM_TOKEN を設定すると初めて動く。
+      # ここまで（型・Cue・配布物検査）が全部通ったものだけが世界に出る。
+      # NPM_TOKEN が未設定なら、ここで落ちる＝公開されない。
       - name: 公開
         if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
         run: npm publish --provenance --access public

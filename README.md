@@ -38,23 +38,14 @@ npx ui-chan          # 対話セットアップ（TUI）
 4. **クライアント選択** — ↑↓ と Space で選んで Enter。選んだ設定ファイルに書き込みます（`.bak` を残します）
 5. **doctor** — ビルド・PSD・資格情報・エンジン・各クライアントの登録状況を一覧表示
 
-グローバルに入れておくと、どのディレクトリからでも `ui-chan` で呼べます（クローンからのローカル
-インストールです。npm レジストリへの公開はしません — 後述）。
+開発用のクローンをグローバルに入れたい場合は、クローン内で `npm install -g .`（または `npm link`）。
 
-```bash
-npm install -g .        # または npm link
-ui-chan doctor
-```
-
-> **npm 公開はしません。** 外部ライセンスのものを配布物に混ぜないことが前提条件だからです。
-> 立ち絵PSDは二次配布禁止の素材、VoiSona Talk とそのボイスライブラリはテクノスピーチ社の製品で、
-> どちらも同梱できません（ういちゃんは、利用者が自分でインストールした VoiSona Talk を
-> `open -a` で起こして、ローカルの REST API を叩いているだけです）。`package.json` の `files` は `assets/` を含まず、`private: true` で publish 自体を
-> 塞いだうえ、`npm run check-package`（`prepublishOnly` から自動実行）が `npm pack` の実物を検査して
-> `.psd` / `assets/` / `.env` / アプリ・インストーラ・ネイティブバイナリ・音声データが
-> 1つでもあれば失敗します。配布はクローン（または
-> `npx github:Uncle-Peke/ui-chan-mcp`）経由で、PSD は各自が BOOTH で入手して
-> `~/.ui-chan/assets/` に置く、という形です。
+> **パッケージに入っていないもの。** 立ち絵PSDは二次配布禁止の素材、VoiSona Talk とボイスライブラリは
+> テクノスピーチ社の製品で、どちらも同梱できません（ういちゃんは、利用者が自分でインストールした
+> VoiSona Talk を `open -a` で起こして、ローカルの REST API を叩いているだけです）。混入していないことは
+> `npm run check-package` が `npm pack` の実物を検査して保証し、公開処理（`prepublishOnly`）から必ず
+> 実行されます — `.psd` / `assets/` / `.env` / アプリ・インストーラ・ネイティブバイナリ・音声データが
+> 1つでもあれば publish は失敗します。PSD は各自が BOOTH で入手して `~/.ui-chan/assets/` に置いてください。
 
 ### パッケージとユーザーデータは分かれています
 
