@@ -16,6 +16,9 @@
 // This is now the *only* thing standing between a mistake and the registry:
 // the package is public, so `npm publish` will succeed unless this fails.
 import { execFileSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 
 const FORBIDDEN = [
   { re: /\.psd$/i, why: '立ち絵PSD（二次配布禁止）' },
@@ -29,47 +32,46 @@ const FORBIDDEN = [
   { re: /voisona/i, why: 'VoiSona Talk 由来のファイル' },
 ];
 
-// `npm pack` は既定で `prepare`（＝ビルド）を走らせ、その出力が JSON の前後に
-// 混ざる。npm のバージョンによって stdout に来たり stderr に来たりするので、
-// 手元で通って CI でだけ落ちる、という厄介な壊れ方をした。
+// **実際に tarball を作って、その中身を見る。**
 //
-// 対処は2段構え。まず `--ignore-scripts` で混ざる原因そのものを断つ（ここが
-// 見たいのは「いまディスクにあるファイルのうち何が詰められるか」であって、
-// ビルドし直す必要はない）。そのうえで、それでも前後に出力が付いた場合に
-// そなえ、括弧の深さを数えて JSON 配列だけを切り出す。
-function extractJsonArray(raw) {
-  const start = raw.indexOf('[');
-  if (start < 0) throw new Error(`JSON が見つかりません:\n${raw.slice(0, 400)}`);
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-  for (let i = start; i < raw.length; i++) {
-    const c = raw[i];
-    if (inString) {
-      if (escaped) escaped = false;
-      else if (c === '\\') escaped = true;
-      else if (c === '"') inString = false;
-      continue;
-    }
-    if (c === '"') inString = true;
-    else if (c === '[') depth++;
-    else if (c === ']' && --depth === 0) return JSON.parse(raw.slice(start, i + 1));
+// 以前は `npm pack --json` の出力を解釈していたが、環境差で二度こけた：
+// (1) `prepare`（ビルド）の出力が JSON の前後に混ざり、しかも npm の版で
+// stdout か stderr かが変わる。(2) npm 11 は `[{...}]`、npm 12 は
+// `{"名前": {...}}` と形そのものが変わる。どちらも「手元では通って CI で
+// だけ落ちる」壊れ方をした。
+//
+// この検査はライセンス素材の混入を止める最後の砦なので、npm の表示仕様に
+// 依存させない。tar が読める実体だけを見る。
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ui-chan-pack-'));
+let files;
+try {
+  // --ignore-scripts: ビルドし直す必要はない（見たいのは、いまディスクに
+  // あるもののうち何が詰められるか）。--pack-destination: 作業ツリーを汚さない。
+  const packed = execFileSync('npm', ['pack', '--ignore-scripts', '--pack-destination', tmp], {
+    encoding: 'utf-8',
+    maxBuffer: 32 * 1024 * 1024,
+  });
+  const tgz = fs
+    .readdirSync(tmp)
+    .filter((f) => f.endsWith('.tgz'))
+    .map((f) => path.join(tmp, f))[0];
+  if (!tgz) {
+    console.error(`❌ tarball が作られませんでした:\n${packed}`);
+    process.exit(1);
   }
-  throw new Error(`JSON 配列が閉じていません:\n${raw.slice(0, 400)}`);
+  // tar の一覧は "package/<パス>" 形式。ディレクトリ行（末尾 /）は捨てる。
+  files = execFileSync('tar', ['-tzf', tgz], { encoding: 'utf-8', maxBuffer: 32 * 1024 * 1024 })
+    .split('\n')
+    .filter((l) => l && !l.endsWith('/'))
+    .map((l) => l.replace(/^package\//, ''));
+} finally {
+  fs.rmSync(tmp, { recursive: true, force: true });
 }
 
-const out = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
-  encoding: 'utf-8',
-  maxBuffer: 32 * 1024 * 1024,
-});
-const parsed = extractJsonArray(out);
-if (!Array.isArray(parsed) || !parsed[0]?.files) {
-  console.error(
-    '❌ npm pack の結果にファイル一覧がありません。npm のバージョンを確認してください。',
-  );
+if (files.length === 0) {
+  console.error('❌ tarball の中身を読めませんでした。');
   process.exit(1);
 }
-const files = parsed[0].files.map((f) => f.path);
 
 const hits = files.flatMap((path) => {
   const rule = FORBIDDEN.find((r) => r.re.test(path));
