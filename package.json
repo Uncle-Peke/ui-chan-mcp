@@ -67,5 +67,8 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Uncle-Peke/ui-chan-mcp.git"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

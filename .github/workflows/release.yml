@@ -1,0 +1,49 @@
+# npm への公開。CI と分けてあるのは、公開が「起きてしまう」ものであっては
+# ならないから：タグを打つか、手で起動するかしないと走らない。
+#
+# 公開物は **この場でビルドしたもの** に限る。手元から `npm publish` すると
+# 「そのとき手元にあった dist/」が世界に出るが、ここではクリーンな環境で
+# npm ci → build → 検査 → publish の順に必ず通る。
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '公開せず、作られる tarball の中身だけ確認する'
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - name: 型チェック
+        run: npx tsc -p tsconfig.json --noEmit
+      - name: Cue のスキーマ検証
+        run: npm run validate-cues
+      - name: 配布物の検査
+        run: npm run check-package
+      - name: 中身の確認
+        run: npm pack --dry-run
+      # package.json が private の間は publish できない（公開判断が出るまでの
+      # 意図的な蓋）。外したうえで NPM_TOKEN を設定すると初めて動く。
+      - name: 公開
+        if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

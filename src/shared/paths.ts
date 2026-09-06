@@ -64,7 +64,10 @@ export function installKind(pkgRoot: string): InstallKind {
   // `<project>/node_modules/<name>` (local). Both end in node_modules/<name>,
   // which a clone never does.
   const parent = path.basename(path.dirname(pkgRoot));
-  if (parent === 'node_modules' || path.basename(path.dirname(path.dirname(pkgRoot))) === 'node_modules') {
+  if (
+    parent === 'node_modules' ||
+    path.basename(path.dirname(path.dirname(pkgRoot))) === 'node_modules'
+  ) {
     return pkgRoot.includes(`${path.sep}lib${path.sep}node_modules${path.sep}`) ||
       !fs.existsSync(path.join(pkgRoot, '..', '..', 'package.json'))
       ? 'npm-global'
