@@ -1,5 +1,5 @@
 name: ui-chan
-version: 0.5.0
+version: 0.5.1
 description: デスクトップマスコット「うい」への自動リアクション（EventCue）。ツール失敗・サブエージェントの往復・セッション終了を、隣にいるういちゃんに伝える。
 provides_hooks:
   - pre_tool_call
