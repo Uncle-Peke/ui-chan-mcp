@@ -314,10 +314,12 @@
           </button>
           <button type="button" data-action="clear" title="ひといき（いま喋っていることを止めて Idling に戻す）" aria-label="ひといき">
             <svg viewBox="0 0 20 20" aria-hidden="true">
-              <!-- 停止記号。この操作は「今やっていることを強制的に打ち切る」
-                   なので、消音（斜線）でも取り消し（矢印）でもなく ■ が正しい。 -->
-              <rect x="4.5" y="4.5" width="11" height="11" rx="2.2" />
-              <rect class="i-fill" x="7.6" y="7.6" width="4.8" height="4.8" rx="1" />
+              <!-- 手のひら（止まれ）。■ が停止に見えるのは ▶ ⏸ と並んでいる
+                   ときだけで、単独ではただの四角になる。文脈なしで「止める」が
+                   伝わる記号として手を使う。 -->
+              <path d="M7.4 9.2V5.1a1.15 1.15 0 0 1 2.3 0v3.6" />
+              <path d="M9.7 8.7V4.3a1.15 1.15 0 0 1 2.3 0v4.4" />
+              <path d="M12 8.7V5.6a1.15 1.15 0 0 1 2.3 0v5.2c0 3.1-1.9 5.4-4.6 5.4-2.7 0-4.6-2.1-4.6-5.1V8.4a1.1 1.1 0 0 1 2.2 0" />
             </svg>
           </button>
           <button type="button" data-action="restart" title="起きなおす（再起動）" aria-label="起きなおす">

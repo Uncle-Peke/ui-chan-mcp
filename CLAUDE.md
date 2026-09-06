@@ -399,10 +399,11 @@ looked like an app toolbar, and icons keep the height fixed so the panel only
 ever grows downward with sessions. Left to right: しずかに (mutes the *voice*
 only; the bubble stays, because a fully blank mascot reads as broken), ひといき
 (`clear` — stop talking and drop back to Idling), 起きなおす (relaunch), and —
-pushed to the right edge, away from the rest — おやすみ. The `clear` icon is a **stop
-square**: the action force-quits whatever is playing, which is neither muting
-(a slash) nor undoing (an arrow) — a speech bubble, slashed or not, reads as
-"hide the text" and understates it.
+pushed to the right edge, away from the rest — おやすみ. The `clear` icon is a **raised palm**:
+the action force-quits whatever is playing, which is neither muting (a slash)
+nor undoing (an arrow), and a ■ only reads as "stop" next to ▶/⏸ — alone it is
+just a square. A hand carries the meaning without needing the transport-control
+context that a four-icon utility row does not provide.
 
 **おやすみ has to be more than `app.quit()`**: the bridge relaunches the app on
 the next tool call (`ensureConnected` → `launchApp`), so quitting alone means
