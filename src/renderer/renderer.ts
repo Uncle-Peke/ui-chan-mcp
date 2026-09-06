@@ -420,8 +420,8 @@ function renderConnections(agents: PanelAgent[], active: number | null): void {
   if (agents.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'panel-empty';
-    // 傘＝雨衣モチーフ。文字を増やさずに温度だけ足す。
-    empty.textContent = 'だれもいない…🌂';
+    // 顔文字（絵文字は OS/フォント依存で字形が変わる）。仮名と記号だけで組む。
+    empty.textContent = 'だれもいない…(´･ω･`)';
     panelList.append(empty);
   }
   for (const a of agents) {
