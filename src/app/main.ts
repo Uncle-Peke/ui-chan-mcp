@@ -406,6 +406,10 @@ if (!gotLock) {
     for (const cmd of pendingCommands.splice(0)) {
       win?.webContents.send('ui-chan:command', cmd);
     }
+    // The panel is otherwise only fed by *changes*, so a renderer that starts
+    // (or reloads) while nobody is connected would sit there showing neither
+    // rows nor the empty state. Send the current list once it can receive it.
+    sendConnections();
   });
 
   ipcMain.on('ui-chan:interaction', (_ev, kind: string) => {
