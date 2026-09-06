@@ -65,11 +65,6 @@ npm run stop       # kill a running ui-chan Electron app
 npm run restart    # stop + relaunch the app
 npm run mcp        # run the MCP server standalone (node dist/mcp-server.js)
 npm run editor     # launch the visual Cue editor (雨衣ちゃんのデバッグルーム)
-npm run debug      # interactive debug console (direct WebSocket, no MCP)
-npm run debug:launch    # launch the app and drop into the debug console
-npm run debug:restart   # stop a running app, then launch the app and drop into the debug console
-npm run debug:state     # one-shot get_state over direct WebSocket
-npm run debug:list      # list cues + configured IdlingCues/chatter
 npm run lint       # biome check .   (lint:fix / format to autofix)
 npm run dump-psd -- ~/.ui-chan/assets/ui_sozai.psd   # dump PSD layer tree
 ```
@@ -270,8 +265,8 @@ Implementation notes, all in `tickIdling()` (1s poll, armed only when gated):
   when `effectivePriority() <= PRIORITY.idle`, so it cuts off her own snoring
   and never the agent.
 - `awayCue`/`wakeCue` are ordinary `CueSequence`es in config. They're reachable
-  by name from `npm run debug` → `idle away_doze` / `idle wake_up` (and listed
-  by `list`), but excluded from the random pick — their real triggers are 15
+  by name over the WebSocket `debug` action (`trigger_idle` with their name),
+  but excluded from the random pick — their real triggers are 15
   minutes away, and a performance you can only see by waiting a quarter hour
   never gets looked at.
 - `systemIdle.enabled: false` restores the pure wall-clock behavior exactly.
@@ -345,9 +340,9 @@ edit with no hook code involved.
   finishing a turn stays a beat rather than a verbal tic.
 - `permission` / `idle_wait` use `cooldownSec: 0`: being throttled while trying
   to fetch an absent user is the one case where silence is the wrong answer.
-- Debug: `npm run debug` → `event <name>` (Tab-completes). A forced fire skips
-  cooldown and chance and does **not** stamp the cooldown, so previewing a line
-  can't silence the next real one. Affinity/time gates still apply.
+- Forcing one: the WebSocket `debug` action `trigger_event` with the event
+  name. A forced fire skips cooldown and chance and does **not** stamp the
+  cooldown, so previewing a line can't silence the next real one. Affinity/time gates still apply.
 
 #### Writing EventCue lines: who is speaking, and what they're allowed to know
 
@@ -420,8 +415,13 @@ Its buttons (`ui-chan:panel-action`) are icon-only in one row — text there
 looked like an app toolbar, and icons keep the height fixed so the panel only
 ever grows downward with sessions. Left to right: しずかに (mutes the *voice*
 only; the bubble stays, because a fully blank mascot reads as broken), ひといき
-(`clear` — stop talking and drop back to Idling), 起きなおす (relaunch), and —
-pushed to the right edge, away from the rest — おやすみ. The `clear` icon is a **circle with a
+(`clear` — stop talking and drop back to Idling), a **gear** that unfolds an
+affinity slider (the only place a human sets affinity directly; the agent's
+`adjust_affinity` stays direction+magnitude, so this can't be used to sneak past
+the asymmetric curve on her behalf), 起きなおす (relaunch), and — pushed to the
+right edge, away from the rest — おやすみ. The gear is a **filled silhouette**
+(trapezoid teeth + a big centre hole): a stroked ring with spokes reads as a
+sun, and thin teeth read as fraying, at 17px. The `clear` icon is a **circle with a
 slash**: the action force-quits whatever is playing, which is neither muting
 nor undoing (an arrow), and a ■ only reads as "stop" next to ▶/⏸ — alone it is
 just a square. The prohibition sign carries "stop this" on its own, which is

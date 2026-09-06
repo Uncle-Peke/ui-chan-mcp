@@ -284,7 +284,7 @@ PSD が `~/.ui-chan/assets/` に無い場合はプレースホルダ表示にな
 用意されているイベント：`permission`（許可待ち）、`idle_wait`（入力待ち）、`tool_failure`、
 `turn_done`、`compact`、`agent_out`（サブエージェント送り出し）、`agent_back`（帰還）。
 
-確認は `npm run debug` の `event <イベント名>`。フック側（`hooks/`）はイベント名を投げるだけなので、
+確認はアプリの WebSocket `debug` アクション（`trigger_event`）。フック側（`hooks/`）はイベント名を投げるだけなので、
 セリフを変えるのに JavaScript を触る必要はありません。
 </details>
 
