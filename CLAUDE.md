@@ -397,9 +397,11 @@ connect/disconnect/tool call, so the panel can never show a stale session.
 Its buttons (`ui-chan:panel-action`) are icon-only in one row — text there
 looked like an app toolbar, and icons keep the height fixed so the panel only
 ever grows downward with sessions. Left to right: しずかに (mutes the *voice*
-only; the bubble stays, because a fully blank mascot reads as broken), ひっこめる
-(`clear`), 起きなおす (relaunch), and — pushed to the right edge, away from the
-rest — おやすみ.
+only; the bubble stays, because a fully blank mascot reads as broken), ひといき
+(`clear` — stop talking and drop back to Idling), 起きなおす (relaunch), and —
+pushed to the right edge, away from the rest — おやすみ. The `clear` icon is a
+speech bubble **with a slash**: a bare bubble is the symbol for *speaking*, not
+for stopping, so it needs the same negation mark the mute icon uses.
 
 **おやすみ has to be more than `app.quit()`**: the bridge relaunches the app on
 the next tool call (`ensureConnected` → `launchApp`), so quitting alone means

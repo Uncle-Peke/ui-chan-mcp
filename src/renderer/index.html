@@ -308,9 +308,12 @@
               <path class="i-slash" d="M13.2 7.4l4.4 5.2M17.6 7.4l-4.4 5.2" />
             </svg>
           </button>
-          <button type="button" data-action="clear" title="ひっこめる（吹き出しとCueを戻す）" aria-label="ひっこめる">
+          <button type="button" data-action="clear" title="ひといき（喋りをやめて Idling に戻す）" aria-label="ひといき">
             <svg viewBox="0 0 20 20" aria-hidden="true">
+              <!-- 吹き出しだけだと「喋る」の記号にしかならないので、斜線で
+                   「その喋りを消す」を表す（ミュートの波→斜線と同じ作り）。 -->
               <path d="M4 5.5h12v7h-6.5L6 15.5V12.5H4z" />
+              <path d="M3.2 16.8L16.8 3.2" />
             </svg>
           </button>
           <button type="button" data-action="restart" title="起きなおす（再起動）" aria-label="起きなおす">
