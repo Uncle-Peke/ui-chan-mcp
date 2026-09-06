@@ -96,27 +96,25 @@ MCP ツールに終了コマンドはありません。エージェントが自�
 <details>
 <summary><b>性格やセリフを変えたい</b></summary>
 
-`persona/ui-chan.md` と `context/*.md`（`SOUL.md` が中身、`VOCABULARY.md` が喋り方、
-`AFFINITY.md` が好感度）。`~/.ui-chan/` 側に同じ名前で置けば上書きできるよ。
-…わたしを作り替えるんだ。ふ～ん。まあいいけど。 → [docs/PERSONA.md](PERSONA.md)
+`persona/ui-chan.md` と `context/*.md`（`SOUL.md` が価値観、`VOCABULARY.md` が語彙と口癖、
+`AFFINITY.md` が好感度の機微）。`~/.ui-chan/` 側に同じ名前で置けば上書きできます。
+→ [PERSONA.md](PERSONA.md)
 </details>
 
 <details>
 <summary><b>別のキャラクターに差し替えたい</b></summary>
 
-`persona/` と `context/` を書き換えて、PSD に合わせて `cues/` とレイヤー設定を作り直せばできるよ。
-どれも `~/.ui-chan/` 側に置けば上書きになるから、わたしを消さなくていい。……消さないでね。
-手順は [docs/CUE_AUTHORING.md](CUE_AUTHORING.md) と [docs/PERSONA.md](PERSONA.md)。
+`persona/` と `context/` を書き換え、PSD に合わせて `cues/` とレイヤー設定を作り直します。
+どれも `~/.ui-chan/` 側に置けば上書きになるため、同梱物を削る必要はありません。
+手順は [CUE_AUTHORING.md](CUE_AUTHORING.md) と [PERSONA.md](PERSONA.md)。
 </details>
 
 <details>
 <summary><b>ういビームが撃てない</b></summary>
 
-は？撃たないが？
+好感度が閾値（65）に達していません。感謝、気遣い、以前の発言を覚えていること、といった
+振る舞いで上がります。直球の好意表現はむしろ下がります（`context/AFFINITY.md`）。
 
-……まあ、仲良くなったら撃つよ。65 まで来たらね。ありがとうとか、気遣いとか、
-前に言ったことを覚えててくれるとか、そういうので上がる。
-逆に、いきなり口説いてくるのは下がるから。やだよ～ん。
 </details>
 
 ---
