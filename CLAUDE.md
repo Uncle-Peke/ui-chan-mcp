@@ -29,6 +29,13 @@ env vars still winning. `loadCues`/`findPsd`/`watchCues` therefore take an
 **array of dirs**, and the editor writes to `paths.cueWriteDir` (home when it
 exists, the repo in a bare clone).
 
+**The package must never carry the PSD.** The mascot art is licensed and
+redistribution is forbidden, so `files` omits `assets/`, `private: true` blocks
+`npm publish`, and `prepublishOnly` runs `tools/setup/check-package.mjs`, which
+inspects the real `npm pack` output and fails on any `.psd`, `assets/`, `.env`
+or key/backup file. Distribution is by clone (or `npx github:…`); the user
+supplies their own PSD into `~/.ui-chan/assets/`.
+
 Installation is one CLI, `bin/ui-chan.mjs` (`ui-chan`), with everything
 client-specific in `tools/setup/clients.mjs` — a new MCP host is one entry in
 that table (config path, entry shape, install, uninstall), never a new script.

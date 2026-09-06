@@ -35,12 +35,20 @@ npx ui-chan          # 対話セットアップ（TUI）
 4. **クライアント選択** — ↑↓ と Space で選んで Enter。選んだ設定ファイルに書き込みます（`.bak` を残します）
 5. **doctor** — ビルド・PSD・資格情報・エンジン・各クライアントの登録状況を一覧表示
 
-グローバルに入れておくと、どのディレクトリからでも `ui-chan` で呼べます。
+グローバルに入れておくと、どのディレクトリからでも `ui-chan` で呼べます（クローンからのローカル
+インストールです。npm レジストリへの公開はしません — 後述）。
 
 ```bash
 npm install -g .        # または npm link
 ui-chan doctor
 ```
+
+> **npm 公開はしません。** 立ち絵PSDは二次配布禁止の素材なので、配布物に混入させないことが
+> 前提条件です。`package.json` の `files` は `assets/` を含まず、`private: true` で publish 自体を
+> 塞いだうえ、`npm run check-package`（`prepublishOnly` から自動実行）が `npm pack` の実物を検査して
+> `.psd` / `assets/` / `.env` が1つでもあれば失敗します。配布はクローン（または
+> `npx github:Uncle-Peke/ui-chan-mcp`）経由で、PSD は各自が BOOTH で入手して
+> `~/.ui-chan/assets/` に置く、という形です。
 
 ### パッケージとユーザーデータは分かれています
 
