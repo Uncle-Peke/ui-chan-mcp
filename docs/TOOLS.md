@@ -8,7 +8,7 @@
 
 | ツール | 引数 | 説明 |
 |---|---|---|
-| `set_cue` | `cue`, `text?`, `reading?`, `duration_ms?`, `pitch?`, `speed?`, `volume?`, `intonation?` | Cue（見た目＋声）を切り替え、任意でセリフを同時に話す。`text` を省略すると無言でCueだけ変わる。未知の `cue` 名は `default` にフォールバックし `note` が付く。`pitch`/`speed`/`volume`/`intonation` はその一行だけのアドリブ演技 |
+| `set_cue` | `cue`, `text?`, `reading?`, `duration_ms?` | Cue（見た目＋声）を切り替え、任意でセリフを同時に話す。`text` を省略すると無言でCueだけ変わる。未知の `cue` 名は `default` にフォールバックし `note` が付く。**演技の数値パラメータは無い**——読み方は `text` の書き方（`、` `…` で間、`〜` で語尾伸ばし、`**強調**`、`？` で語尾上げ）から導出される |
 | `get_state` | — | 現在の状態・接続エージェント・利用可能Cue・好感度・警告 |
 | `adjust_affinity` | `direction`（`up`/`down`）, `magnitude`（`low`/`middle`/`high`） | 好感度を増減（セッション内のみ・再起動でリセット）。実際の増減量はエンジンが決めます |
 | `clear` | — | 吹き出し・Cueを初期状態（`default`）にリセット |

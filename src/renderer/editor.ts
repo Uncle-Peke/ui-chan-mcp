@@ -205,10 +205,6 @@ function buildVoice(): Cue['voice'] {
   }
   const voice: NonNullable<Cue['voice']> = {};
   if (Object.keys(style_weights).length) voice.style_weights = style_weights;
-  const alp = readSlider('alp');
-  const huskiness = readSlider('huskiness');
-  if (alp !== 0) voice.alp = alp;
-  if (huskiness !== 0) voice.huskiness = huskiness;
   return Object.keys(voice).length ? voice : undefined;
 }
 
@@ -218,8 +214,6 @@ function loadVoiceIntoSliders(voice: Cue['voice']): void {
   for (const name of styles.style_names) {
     setSlider(`style:${name}`, voice?.style_weights?.[name] ?? 0);
   }
-  setSlider('alp', voice?.alp ?? 0);
-  setSlider('huskiness', voice?.huskiness ?? 0);
 }
 
 // ---- load / new ----
@@ -469,11 +463,10 @@ async function init(): Promise<void> {
   stage.draw();
   window.addEventListener('resize', () => stage.draw());
 
-  // Static alp / huskiness sliders live in the HTML host next to the styles.
-  $('static-voice').append(
-    sliderRow('alp', 'alp', -1, 1, 0.05, 0),
-    sliderRow('huskiness', 'huskiness', -20, 20, 1, 0),
-  );
+  // 声色は**感情スタイルの重みだけ**。alp / huskiness のスライダーは撤去した——
+  // 81個のCueで一度も使われず、しかも声質を直に歪める逃げ道なので、正面玄関
+  // （5つの学習済みスタイルの混ぜ方）に一本化する。
+  $('static-voice').append();
   styles = await window.uiEditor.listStyles();
   buildVoiceSliders();
 

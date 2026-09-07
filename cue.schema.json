@@ -56,7 +56,7 @@
     },
     "voice": {
       "type": "object",
-      "description": "このCue固有の声色。VoiSona Talk REST APIの speech_synthesis_global_parameters のうち、Cueに焼き込む値（baked）だけを持つ。pitch/speed/volume/intonationはここに含めない — それらはset_cue呼び出し時のアドリブ引数（1行のセリフごとの演技）であり、このスキーマの対象外。",
+      "description": "このCue固有の声色。**感情スタイルの重みだけ**を持つ。声質を直に歪めるパラメータ（alp/huskiness）と、1行ごとの数値（pitch/speed/volume/intonation）は意図的に持たない——手で数値を書く設計をやめ、読み方はセリフの記法（**強調**・…・〜・？）とCueの delivery からアプリが導出する。→ src/app/prosody.ts",
       "additionalProperties": false,
       "properties": {
         "style_weights": {
@@ -70,20 +70,6 @@
           "propertyNames": {
             "minLength": 1
           }
-        },
-        "alp": {
-          "type": "number",
-          "minimum": -1,
-          "maximum": 1,
-          "default": 0,
-          "description": "声質パラメータ。VoiSona global_parameters.alp をそのまま焼き込む。"
-        },
-        "huskiness": {
-          "type": "number",
-          "minimum": -20,
-          "maximum": 20,
-          "default": 0,
-          "description": "かすれ具合。VoiSona global_parameters.huskiness をそのまま焼き込む。"
         }
       }
     }
@@ -100,7 +86,9 @@
       "hide": [],
       "blink": false,
       "voice": {
-        "style_weights": { "Happy": 1.0 },
+        "style_weights": {
+          "Happy": 1.0
+        },
         "alp": 0,
         "huskiness": 0
       }

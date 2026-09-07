@@ -26,7 +26,7 @@
   差分だけ書けばよい）。顔・腕・エフェクトを区別せず、そのCueに必要なレイヤーパスを並べるだけでよい
 - `blink` — まばたきの有効化（目が開いているCueのみ true 推奨）
 - `voice.style_weights` — スタイル名 → 重みのオブジェクト。省略すればデフォルトの声
-- `voice.alp` / `voice.huskiness` — このCue固有の声色パラメータ（VoiSona の `global_parameters` にそのまま渡る）
+- `voice` が持てるのは `style_weights` だけです（`alp`/`huskiness` は廃止）
 - 強さ違い（例: 「激おこ」）は intensity ではなく別ファイル（例 `gekioko.json`）として作る
 - JSON が壊れている、または `cue.schema.json` に適合しないファイルはスキップされ、`get_state` の
   `warnings` に出ます

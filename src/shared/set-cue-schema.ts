@@ -20,7 +20,14 @@ export const setCueShape = {
       'Optional line to speak in the bubble. Omit for a silent Cue change. Write it in ORDINARY ' +
         'Japanese orthography, exactly as it should appear on screen: Latin names stay in Latin ' +
         '(Linux, bash, k8s), digits stay as digits (バージョン 0.1, 3回), kanji stays kanji. The ' +
-        "pronunciation is reading's job — never spell the sound out here (NOT リナックス, NOT 零点一).",
+        "pronunciation is reading's job — never spell the sound out here (NOT リナックス, NOT 零点一). " +
+        'DELIVERY comes from ordinary Japanese punctuation — just write the line the way it is ' +
+        'actually said and it is read that way: 、 and … give a beat, ー / 〜 hold the vowel ' +
+        '(「まじで〜」 really drags). The one added mark is **bold** for the ONE word that carries ' +
+        'the line (「それ、**本気**で言ってる？」) — it is re-phrased into its own accent peak, the ' +
+        'way a speaker stresses a word. Bold at most one or two words per line; bolding everything ' +
+        'stresses nothing. The ** marks never appear in the bubble. Put them in reading too when ' +
+        'reading is what gets spoken (i.e. when text has Latin letters or digits).',
     ),
   reading: z
     .string()
@@ -46,30 +53,12 @@ export const setCueShape = {
         'Without text: how long to hold this Cue before easing back to default, ms ' +
         '(default: holds until the next set_cue).',
     ),
-  pitch: z
-    .number()
-    .min(-600)
-    .max(600)
-    .optional()
-    .describe('Ad-lib pitch shift for this line only, in cents (-600..600, default 0)'),
-  speed: z
-    .number()
-    .min(0.2)
-    .max(5)
-    .optional()
-    .describe('Ad-lib speech speed for this line only (0.2..5, default 1)'),
-  volume: z
-    .number()
-    .min(-8)
-    .max(8)
-    .optional()
-    .describe('Ad-lib volume for this line only, in dB (-8..8, default 0)'),
-  intonation: z
-    .number()
-    .min(0)
-    .max(2)
-    .optional()
-    .describe('Ad-lib intonation strength for this line only (0..2, default 1)'),
+  // pitch / speed / volume / intonation は**意図的に無い**。数値の演技指示を
+  // 渡せるようにしたことがあり、実測で AI の思考時間が跳ね上がった（1回の呼び
+  // 出しで「何を言うか」とは別に「数値をいくつにするか」を考えることになる）。
+  // 実際この4つは正しく動いていたのに、ほぼ一度も使われないまま残っていた。
+  // 読み方はセリフの書き方から導出する（→ src/app/prosody.ts）：、と…で間、
+  // 〜で語尾伸ばし、**語**で強調、？で語尾上げ。声色は Cue が持つ。
 };
 
 export const setCueArgsSchema = z.object(setCueShape);

@@ -351,8 +351,9 @@ server.registerTool(
       'than transliterating its spelling: an established reading wins however far it is from the ' +
       'spelling (k8s → くーばねてぃす), otherwise judge by word shape (bash → ばっしゅ, NPO → えぬぴーおー). ' +
       'Numbers, units and paths become sound too (3回 → さんかい, ~/.zshrc → ちるだ どっと ずぃーしぇるあーるしー). ' +
-      'pitch/speed/volume/intonation are one-line ad-lib performance knobs layered on top of this ' +
-      "Cue's baked voice.style_weights/alp/huskiness; leave them unset to just use the Cue's voice as-is.",
+      'There are no numeric performance knobs: how a line is DELIVERED comes from how you write ' +
+      'it (、 … for a beat, 〜 to hold a vowel, **bold** for the one word that carries the line, ' +
+      '？ to rise), and its voice colour comes from the Cue you picked.',
     inputSchema: setCueShape,
   },
   wrapTool('set_cue'),
