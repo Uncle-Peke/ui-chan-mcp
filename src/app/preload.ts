@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('uiChan', {
   interaction: (kind: string) => ipcRenderer.send('ui-chan:interaction', kind),
   panelAction: (kind: string, value?: number) =>
     ipcRenderer.invoke('ui-chan:panel-action', kind, value),
+  setClickThrough: (on: boolean) => ipcRenderer.send('ui-chan:click-through', on),
   dragStart: () => ipcRenderer.send('ui-chan:drag-start'),
   dragEnd: () => ipcRenderer.send('ui-chan:drag-end'),
 });

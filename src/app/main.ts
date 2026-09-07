@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { app, BrowserWindow, ipcMain, powerMonitor, screen } from 'electron';
@@ -254,10 +254,6 @@ function handleRequest(ws: WebSocket, req: WsRequest): WsResponse {
           ...(req.identity ?? {}),
         });
         sendConnections();
-        if (exitTimer) {
-          clearTimeout(exitTimer);
-          exitTimer = null;
-        }
         if (req.tts?.username && tts) {
           tts.setCredentials(req.tts.username, req.tts.password);
         }
@@ -345,7 +341,6 @@ function startWsServer(): void {
     ws.on('close', () => {
       agents.delete(ws);
       sendConnections();
-      scheduleExitIfIdle();
     });
   });
   wss.on('error', (err) => {
@@ -353,37 +348,25 @@ function startWsServer(): void {
   });
 }
 
-/**
- * Quit once nothing is connected any more.
+/*
+ * 「誰も繋がっていなければ自動で終了する」は**やめた**（exitAfterLastAgentSec は
+ * 設定ごと削除）。理由は2つ。
  *
- * The app is launched detached (by the MCP server or the SessionStart hook), so
- * without this it outlives every client and has to be killed by hand from the
- * repo. Agents are tracked per WebSocket, which makes "is anyone still there?"
- * exact across windows, apps and other MCP clients alike — and it needs no
- * cooperation from the client, so a session that dies without a goodbye still
- * releases her.
+ * 1. 判定できていなかった。タイマーを仕掛けるのは WebSocket が閉じた瞬間だけで、
+ *    しかも閉じた相手を見ていなかったので、hello を送って居座るセッションが
+ *    去ったときと、フックが event_cue を1本撃って250msで閉じたとき（＝そもそも
+ *    誰も来ていない）が同じ扱いだった。結果、ブリッジが繋がっていない間に
+ *    フックが飛ぶと——アプリを手で起動しただけのとき、再起動直後でまだツール
+ *    呼び出しが無いとき——生きているセッションを「不在」と数えて60秒後に消えた。
+ *    しかも一度もフックが飛ばなければ永久に生き続けるので、同じ「誰もいない」
+ *    状態でも結果が外部要因で変わっていた。
+ * 2. 直したとしても、消える意味が薄い。彼女はデスクトップマスコットで、
+ *    IdlingCue は誰も繋がっていなくても動く。画面に居続けることがそもそもの
+ *    仕事なので、片付けるかどうかはユーザーが決めればいい——起動を人の判断に
+ *    委ねた ensureConnected の allowLaunch と同じ考え方で、終了もそちらへ。
  *
- * The delay matters: restarting Claude Code drops the socket and reconnects a
- * few seconds later, and quitting on the gap would make every restart blink the
- * mascot out of existence. Any reconnection inside the window cancels it.
+ * 終了の口はパネルの「おやすみ」と `ui-chan stop`（npm run stop）。
  */
-let exitTimer: NodeJS.Timeout | null = null;
-
-function scheduleExitIfIdle(): void {
-  if (exitTimer) {
-    clearTimeout(exitTimer);
-    exitTimer = null;
-  }
-  const sec = config.exitAfterLastAgentSec ?? 0;
-  if (sec <= 0 || agents.size > 0) return;
-
-  exitTimer = setTimeout(() => {
-    exitTimer = null;
-    if (agents.size > 0) return; // someone came back while we waited
-    console.error(`[ui-chan] no agents connected for ${sec}s — quitting`);
-    app.quit();
-  }, sec * 1000);
-}
 
 /** 定位置＝主ディスプレイの作業領域の右下。起動時とリセット時の両方が
  *  ここを見るので、「起動し直さないと位置が戻らない」ということはない。 */
@@ -391,6 +374,48 @@ function homePosition(): { x: number; y: number } {
   const { width, height, margin } = config.window;
   const wa = screen.getPrimaryDisplay().workArea;
   return { x: wa.x + wa.width - width - margin, y: wa.y + wa.height - height - margin };
+}
+
+/**
+ * セッション行を押されたとき、その相手のアプリを前面に出す。
+ *
+ * 手がかりは ConnectedAgent の pid ——ブリッジ（dist/mcp-server.js）のプロセス
+ * で、stdio の MCP サーバはクライアントの子なので、親をたどれば必ずクライアント
+ * 本体に行き着く。例：
+ *
+ *   node dist/mcp-server.js → claude → zsh → login → Ghostty.app
+ *   node dist/mcp-server.js → Claude.app（デスクトップ版はこれだけ）
+ *
+ * .app バンドルに当たったところで打ち切って `open -a` する。**タブまでは選ばない**
+ * ——同じ端末の別タブを撃ち分けるには AppleScript が要り、端末ごとに方言があり
+ * （Terminal/iTerm2 は tty、Ghostty は cwd しか持たない）、初回に自動化の許可
+ * ダイアログも出る。ターミナルで動くクライアントでは粒度が粗いままだが、
+ * デスクトップアプリ（Claude Desktop、Hermes）ではこれで十分に正確で、
+ * 「裏に埋もれた窓を前に出す」という用途は満たす。
+ */
+function parentOf(pid: number): { ppid: number; command: string } | null {
+  const r = spawnSync('ps', ['-o', 'ppid=,comm=', '-p', String(pid)], { encoding: 'utf-8' });
+  const line = r.stdout?.trim();
+  if (!line) return null;
+  const m = line.match(/^\s*(\d+)\s+(.*)$/);
+  return m ? { ppid: Number(m[1]), command: m[2] } : null;
+}
+
+function focusAgentApp(id: number): { ok: boolean; app?: string; error?: string } {
+  const agent = [...agents.values()].find((a) => a.id === id);
+  if (!agent?.pid) return { ok: false, error: 'pid unknown' };
+  let pid = agent.pid;
+  for (let i = 0; i < 8 && pid > 1; i++) {
+    const p = parentOf(pid);
+    if (!p) break;
+    const m = p.command.match(/^(.*\.app)\/Contents\/MacOS\//);
+    if (m) {
+      spawn('open', ['-a', m[1]], { detached: true, stdio: 'ignore' }).unref();
+      return { ok: true, app: m[1] };
+    }
+    pid = p.ppid;
+  }
+  return { ok: false, error: 'no .app ancestor' };
 }
 
 /** パネルのボタンの実体。IPC からも、デバッグ用の WS アクションからも同じ
@@ -404,6 +429,8 @@ function panelAction(kind: string, value?: number): unknown {
       // be used to sneak past the asymmetric curve on her behalf.
       if (typeof value === 'number') state.setAffinity(value);
       return state.affinitySnapshot();
+    case 'focus':
+      return typeof value === 'number' ? focusAgentApp(value) : { ok: false };
     case 'affinity:get':
       return state.affinitySnapshot();
     case 'mute':
@@ -507,6 +534,12 @@ function createWindow(): void {
     },
   });
   win.setAlwaysOnTop(true, 'floating');
+  // 既定はクリック透過。窓は420x680の矩形で、ういちゃんが占めるのはその一部
+  // なので、素通しにしないと「彼女の周りの何もないところ」が後ろのウィンドウ
+  // へのクリックを全部飲んでしまう。forward:true にすると透過中も mousemove
+  // だけは届くので、レンダラ側がカーソルの下を見て、実ピクセルとパネルの上に
+  // 来た瞬間だけ透過を解く（renderer.ts の updateClickThrough）。
+  win.setIgnoreMouseEvents(true, { forward: true });
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.loadFile(path.join(projectRoot, 'dist', 'renderer', 'index.html'));
   win.on('closed', () => {
@@ -567,6 +600,12 @@ if (!gotLock) {
 
   ipcMain.on('ui-chan:interaction', (_ev, kind: string) => {
     state.onInteraction(kind);
+  });
+
+  // カーソルの下が「押せるもの」かどうかはレンダラにしか分からない（アルファ
+  // 判定もパネルのDOMもあちら側）。ここはその判定を窓に反映するだけ。
+  ipcMain.on('ui-chan:click-through', (_ev, on: boolean) => {
+    win?.setIgnoreMouseEvents(on, { forward: true });
   });
 
   // Manual window drag (we dropped -webkit-app-region:drag so JS can own the

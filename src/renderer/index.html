@@ -107,19 +107,31 @@
     /* ---- 接続パネル -------------------------------------------------
        世界観を壊さないための約束：平常時はリボン色の小さなつまみだけ。
        クリックで開き、複数セッションを検知したときだけ自分から開いて、
-       用が済んだら畳まる。立ち絵と吹き出しには一切干渉しない。 */
+       用が済んだら畳まる。立ち絵と吹き出しには一切干渉しない。
+
+       置き場所は右下＝足元。上に置くと、開いたパネルが吹き出しと同じ場所を
+       取り合う——吹き出しは彼女の声そのものなので、譲るのは常にパネルの側。
+       足は Cue が触らない唯一の部位なので、ここなら隠れても表情が死なない。
+       column-reverse なので、つまみは下端に残ったままパネルは上へ開く。 */
     #panel {
       position: absolute;
-      top: 6px;
+      bottom: 6px;
       right: 6px;
       z-index: 5;
       display: flex;
-      flex-direction: column;
+      flex-direction: column-reverse;
       align-items: flex-end;
       font-size: 12px;
       color: #2e2a35;
+      /* 畳んでいても、この箱は本体（幅176px）ぶんの面積を持っている。背景が
+         透明でも要素は要素なので、外すのを忘れると elementFromPoint がここを
+         拾い、つまみの上に広がる不可視の長方形がまるごと「押せるもの」に
+         なる＝後ろのアプリのボタンが押せなくなる。押せるのはつまみと、開いて
+         いる本体だけ。 */
+      pointer-events: none;
     }
     #panel-tab {
+      pointer-events: auto;
       -webkit-app-region: no-drag;
       appearance: none;
       border: none;
@@ -164,7 +176,7 @@
       width: 30px;
     }
     #panel-body {
-      margin-top: 6px;
+      margin-bottom: 6px;
       /* Narrow on purpose: open, it must not sit on top of her face. */
       width: 176px;
       background: linear-gradient(180deg, rgba(250, 245, 243, 0.98), rgba(232, 223, 226, 0.98));
@@ -174,8 +186,8 @@
       padding: 8px;
       box-sizing: border-box;
       opacity: 0;
-      transform: translateY(-6px) scale(0.98);
-      transform-origin: top right;
+      transform: translateY(6px) scale(0.98);
+      transform-origin: bottom right;
       pointer-events: none;
       transition: opacity 0.18s ease, transform 0.18s ease;
     }
@@ -193,6 +205,18 @@
     }
     .panel-row.active {
       background: rgba(78, 91, 181, 0.14);
+    }
+    /* 行は押せる。押すとそのセッションのアプリが前面に出る。 */
+    .panel-row {
+      cursor: pointer;
+    }
+    .panel-row:hover {
+      background: rgba(78, 91, 181, 0.22);
+    }
+    /* 飛べなかったとき用。成功は窓が前に出ることで分かるので、光らせるのは
+       失敗のときだけでいい。 */
+    .panel-row.miss {
+      background: rgba(180, 81, 94, 0.18);
     }
     .panel-dot {
       width: 7px;

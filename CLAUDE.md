@@ -657,7 +657,7 @@ Two more things GUI-launched clients get wrong, both fixed in-repo:
   `claude plugin install` by hand restores the copy — re-run
   `ui-chan install claude-code-plugin`.
 
-`agents/` (talk, mode) and `skills/` (talk, mode, beam, eli14) are the plugin's
+`agents/` (talk, mode) and `skills/` (talk, mode, beam, eli14, grill-me) are the plugin's
 subagents and slash commands. To retarget a different character, rewrite
 `persona/` + `context/` and the PSD layer mappings in `ui-chan.config.json` +
 `cues/`.

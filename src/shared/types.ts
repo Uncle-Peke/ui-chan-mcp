@@ -54,12 +54,6 @@ export interface MascotConfig {
   cuesDir?: string;
   personaFile?: string;
   window: { width: number; height: number; margin: number };
-  /** Seconds to wait after the last agent disconnects before quitting.
-   *  0 disables the auto-quit (the app then only stops via `npm run stop`).
-   *  The grace period exists because a Claude Code restart drops the socket
-   *  and reconnects seconds later — quitting instantly would make every
-   *  restart flash the mascot away and back. */
-  exitAfterLastAgentSec?: number;
   port: number;
   lipSync?: LipSyncConfig;
   tts?: TtsConfig;
@@ -458,6 +452,11 @@ export type RenderCommand =
   /** Whether a newer ui-chan is waiting upstream. The panel shows its update
    *  entry only when this is true — nothing to announce, nothing on screen. */
   | { type: 'update'; available: boolean; behind?: number; blocked?: string | null }
+  /** 現在の好感度。歯車の中のスライダーは、開いた瞬間に一度読むだけだった
+   *  ので、パネルを開いたままエージェントが adjust_affinity を呼ぶと表示だけ
+   *  古い値で取り残される。好感度が動くのを見たくて開けている場所が嘘をつく
+   *  わけにいかないので、connections と同じく変わるたびに撒く。 */
+  | { type: 'affinity'; value: number; band: string; beamReady: boolean }
   /** Paint a backdrop behind her, for screenshots. The window is transparent by
    *  design, which makes a capture unusable anywhere that isn't white — so the
    *  backdrop is applied just long enough to take the picture. */

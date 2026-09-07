@@ -18,6 +18,7 @@ interface UiChanApi {
   onCommand(cb: (cmd: RenderCommand) => void): void;
   interaction(kind: string): void;
   panelAction(kind: string, value?: number): Promise<unknown>;
+  setClickThrough(on: boolean): void;
   dragStart(): void;
   dragEnd(): void;
 }
@@ -144,6 +145,36 @@ function onCharacter(e: MouseEvent): boolean {
   return stage.loaded && stage.alphaAt(e.clientX, e.clientY) >= HIT_ALPHA;
 }
 
+// ---- click-through ----
+// 窓は 420x680 の矩形で、ういちゃんが実際に描かれているのはその一部でしかない。
+// 何もしないとその矩形が、後ろのエディタやデスクトップに向けたクリックを全部
+// 飲む——透明なのに触れない板が机の上に置いてある状態で、これは邪魔でしかない。
+// なので既定はクリック透過（main.ts の setIgnoreMouseEvents(true,{forward:true})）
+// にして、カーソルの下が「押せるもの」のときだけ窓を実体化させる。
+//
+// 押せるものは 2 つだけ：**彼女の実ピクセル**（つつく／掴んで動かす）と
+// **パネル**。吹き出しは意図的に含めない——見えてはいても押す物ではないので、
+// 透明な余白と同じく後ろに素通ししたほうが、机の上の邪魔にならない。
+let clickThrough = true; // createWindow() が設定する初期値と一致させること
+function setClickThrough(on: boolean): void {
+  if (on === clickThrough) return;
+  clickThrough = on;
+  window.uiChan.setClickThrough(on);
+}
+
+/** パネルは畳んでいるとき pointer-events:none なので、elementFromPoint は
+ *  「いま実際に押せるパネル」だけを返す。判定をCSSと二重に持たなくて済む。 */
+function overPanel(x: number, y: number): boolean {
+  return document.elementFromPoint(x, y)?.closest('#panel') != null;
+}
+
+function updateClickThrough(e: MouseEvent): void {
+  // ドラッグ中は実体のまま。カーソルは彼女の外へ簡単に出るし、そこで透過に
+  // 戻すと mouseup を取り逃してドラッグが終わらなくなる。
+  if (downScreen) return;
+  setClickThrough(!(onCharacter(e) || overPanel(e.clientX, e.clientY)));
+}
+
 function startPointerHandling(): void {
   window.addEventListener('mousedown', (e) => {
     if (e.button !== 0 || !onCharacter(e)) return;
@@ -152,6 +183,7 @@ function startPointerHandling(): void {
     window.uiChan.dragStart();
   });
   window.addEventListener('mousemove', (e) => {
+    updateClickThrough(e);
     if (!downScreen) return; // only track movement while pressing (drag vs click)
     if (
       Math.abs(e.screenX - downScreen.x) > DRAG_THRESHOLD ||
@@ -166,6 +198,12 @@ function startPointerHandling(): void {
     if (!dragging && onCharacter(e)) window.uiChan.interaction('poke');
     downScreen = null;
     dragging = false;
+    updateClickThrough(e); // 掴んだまま余白へ抜けた場合、ここで穴に戻す
+  });
+  // 窓の外へ出たら必ず穴に戻す。端をすばやく横切ると最後の mousemove が
+  // 彼女の上のままになることがあり、実体のまま取り残されてしまう。
+  document.addEventListener('mouseleave', () => {
+    if (!downScreen) setClickThrough(true);
   });
 }
 
@@ -320,7 +358,12 @@ function startAudioLipSync(
  *  after it (the usual trailing 。) doesn't produce a blank last line. An
  *  explicit \n in the text survives too, thanks to `white-space: pre-wrap`. */
 function bubbleText(text: string): string {
-  return text.replace(/([。！？!?]+)[ \u3000]*(?=[^」』）)】])/g, '$1\n');
+  // 先読みは「次の文が始まること」の確認。除外に句読点そのものを入れておかないと、
+  // 文末の「マジ！？」で ([。！？!?]+) が「！？」を掴んだあと先読みが文字を要求して
+  // 失敗し、バックトラックで「！」まで縮んだうえ「？」が除外に無いので条件を満たす
+  // ——！と？のあいだで改行される。閉じ括弧と同じく、句読点の続きも文の始まりでは
+  // ないので同列に置く。
+  return text.replace(/([。！？!?]+)[ \u3000]*(?=[^。！？!?」』）)】])/g, '$1\n');
 }
 
 let hideTextTimer: number | null = null;
@@ -450,7 +493,18 @@ function renderConnections(agents: PanelAgent[], active: number | null): void {
       text.append(s);
     }
     row.append(dot, text);
-    row.title = a.cwd ?? a.name;
+    // 押すとそのセッションのアプリが前面に出る。タブまでは選ばない——端末に
+    // よってはタブという概念すら無いので、「動いているものが前に出る」で足りる。
+    row.title = `クリックで前面に出す — ${a.cwd ?? a.name}`;
+    row.addEventListener('click', async () => {
+      const res = (await window.uiChan.panelAction('focus', a.id)) as { ok?: boolean };
+      // 前面化は「窓が来たかどうか」でしか結果が分からず、彼女の側からは
+      // 見えない。飛べなかったときだけ行を光らせて、無反応と区別する。
+      if (!res?.ok) {
+        row.classList.add('miss');
+        window.setTimeout(() => row.classList.remove('miss'), 700);
+      }
+    });
     panelList.append(row);
   }
 
@@ -469,9 +523,17 @@ const affEl = document.getElementById('panel-affinity') as HTMLDivElement;
 const affRange = document.getElementById('aff-range') as HTMLInputElement;
 const affValue = document.getElementById('aff-value') as HTMLElement;
 const affBand = document.getElementById('aff-band') as HTMLElement;
+let affGrabbed = false; // つまみを指で掴んでいる間は外からの更新を当てない
 
 function showAffinity(a: { value: number; band: string } | null): void {
   if (!a) return;
+  // 掴んでいる最中の押し付けは無視する。追従は「開いたまま置いてある表示が
+  // 嘘をつかない」ためのもので、いま指で動かしているつまみを横から引き戻す
+  // ためのものではない。離せば change が飛び、結局この値に落ち着く。
+  if (affGrabbed) {
+    affBand.textContent = a.band;
+    return;
+  }
   affRange.value = String(Math.round(a.value));
   affValue.textContent = String(Math.round(a.value));
   affBand.textContent = a.band;
@@ -491,6 +553,15 @@ function wirePanel(): void {
     affEl.hidden = !open;
     gear.classList.toggle('on', open);
     if (open) await refreshAffinity();
+  });
+  affRange.addEventListener('pointerdown', () => {
+    affGrabbed = true;
+  });
+  affRange.addEventListener('pointerup', () => {
+    affGrabbed = false;
+  });
+  affRange.addEventListener('pointercancel', () => {
+    affGrabbed = false;
   });
   affRange.addEventListener('input', () => {
     affValue.textContent = affRange.value;
@@ -571,6 +642,8 @@ async function init(): Promise<void> {
       // Sessions are news; a release is news too — surface it once, the same
       // way, instead of waiting for the user to happen to open the panel.
       if (cmd.available && !panelOpen) setPanelOpen(true);
+    } else if (cmd.type === 'affinity') {
+      showAffinity(cmd);
     } else if (cmd.type === 'connections') {
       renderConnections(cmd.agents, cmd.active);
     } else if (cmd.type === 'speech') {
