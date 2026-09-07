@@ -254,10 +254,6 @@ function handleRequest(ws: WebSocket, req: WsRequest): WsResponse {
           ...(req.identity ?? {}),
         });
         sendConnections();
-        if (exitTimer) {
-          clearTimeout(exitTimer);
-          exitTimer = null;
-        }
         if (req.tts?.username && tts) {
           tts.setCredentials(req.tts.username, req.tts.password);
         }
@@ -345,7 +341,6 @@ function startWsServer(): void {
     ws.on('close', () => {
       agents.delete(ws);
       sendConnections();
-      scheduleExitIfIdle();
     });
   });
   wss.on('error', (err) => {
@@ -353,37 +348,25 @@ function startWsServer(): void {
   });
 }
 
-/**
- * Quit once nothing is connected any more.
+/*
+ * 「誰も繋がっていなければ自動で終了する」は**やめた**（exitAfterLastAgentSec は
+ * 設定ごと削除）。理由は2つ。
  *
- * The app is launched detached (by the MCP server or the SessionStart hook), so
- * without this it outlives every client and has to be killed by hand from the
- * repo. Agents are tracked per WebSocket, which makes "is anyone still there?"
- * exact across windows, apps and other MCP clients alike — and it needs no
- * cooperation from the client, so a session that dies without a goodbye still
- * releases her.
+ * 1. 判定できていなかった。タイマーを仕掛けるのは WebSocket が閉じた瞬間だけで、
+ *    しかも閉じた相手を見ていなかったので、hello を送って居座るセッションが
+ *    去ったときと、フックが event_cue を1本撃って250msで閉じたとき（＝そもそも
+ *    誰も来ていない）が同じ扱いだった。結果、ブリッジが繋がっていない間に
+ *    フックが飛ぶと——アプリを手で起動しただけのとき、再起動直後でまだツール
+ *    呼び出しが無いとき——生きているセッションを「不在」と数えて60秒後に消えた。
+ *    しかも一度もフックが飛ばなければ永久に生き続けるので、同じ「誰もいない」
+ *    状態でも結果が外部要因で変わっていた。
+ * 2. 直したとしても、消える意味が薄い。彼女はデスクトップマスコットで、
+ *    IdlingCue は誰も繋がっていなくても動く。画面に居続けることがそもそもの
+ *    仕事なので、片付けるかどうかはユーザーが決めればいい——起動を人の判断に
+ *    委ねた ensureConnected の allowLaunch と同じ考え方で、終了もそちらへ。
  *
- * The delay matters: restarting Claude Code drops the socket and reconnects a
- * few seconds later, and quitting on the gap would make every restart blink the
- * mascot out of existence. Any reconnection inside the window cancels it.
+ * 終了の口はパネルの「おやすみ」と `ui-chan stop`（npm run stop）。
  */
-let exitTimer: NodeJS.Timeout | null = null;
-
-function scheduleExitIfIdle(): void {
-  if (exitTimer) {
-    clearTimeout(exitTimer);
-    exitTimer = null;
-  }
-  const sec = config.exitAfterLastAgentSec ?? 0;
-  if (sec <= 0 || agents.size > 0) return;
-
-  exitTimer = setTimeout(() => {
-    exitTimer = null;
-    if (agents.size > 0) return; // someone came back while we waited
-    console.error(`[ui-chan] no agents connected for ${sec}s — quitting`);
-    app.quit();
-  }, sec * 1000);
-}
 
 /** 定位置＝主ディスプレイの作業領域の右下。起動時とリセット時の両方が
  *  ここを見るので、「起動し直さないと位置が戻らない」ということはない。 */
