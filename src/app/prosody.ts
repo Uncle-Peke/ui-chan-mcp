@@ -378,7 +378,10 @@ const endsWithSokuon = (surface: string) => /[っッ]$/.test(surface);
  *   - `〜` … 行末の母音を伸ばす（長さは Cue の感情から決まる）
  *   - `っ` … その語の母音を詰める（`CLIP_SEC`）
  */
-export function buildDurations(tsml: string, opts: { stretchSec?: number }): number[] | null {
+export function buildDurations(
+  tsml: string,
+  opts: { stretchSec?: number; clipSec?: number },
+): number[] | null {
   const { seq, words } = phonemeMap(tsml);
   const out = seq.map(() => -1);
   let touched = false;
@@ -387,7 +390,7 @@ export function buildDurations(tsml: string, opts: { stretchSec?: number }): num
     if (!endsWithSokuon(w.surface)) continue;
     for (let i = w.end; i >= w.start; i--) {
       if (VOWELS.test(seq[i])) {
-        out[i] = CLIP_SEC;
+        out[i] = opts.clipSec ?? CLIP_SEC;
         touched = true;
         break;
       }
@@ -404,4 +407,25 @@ export function buildDurations(tsml: string, opts: { stretchSec?: number }): num
     }
   }
   return touched ? out : null;
+}
+
+/**
+ * 語尾の扱いを差し替える。
+ *
+ * `flat` は `is_question` を外す——`？` が付いていても上げない読みで、呆れ・詰問・
+ * 断定・独り言がこれ。`rise` は逆に、`？` が無い行の最後の語に付けて上げさせる
+ * （甘え・確認）。どちらも「完了か継続か」を語尾で伝えるための操作で、
+ * エンジンは表記からしかそれを判断できない。
+ */
+export function applyEnding(tsml: string, ending: 'flat' | 'rise'): string {
+  if (ending === 'flat') return tsml.replace(/\s*is_question="1"/g, '');
+  if (/\bis_question="1"/.test(tsml)) return tsml; // すでに上がる
+  const ws = words(tsml);
+  // 記号ではなく、音を持つ最後の語に付ける。
+  for (let i = ws.length - 1; i >= 0; i--) {
+    if (attr(ws[i].raw, 'phoneme')) {
+      return tsml.replace(ws[i].raw, setAttr(ws[i].raw, 'is_question', '1'));
+    }
+  }
+  return tsml;
 }

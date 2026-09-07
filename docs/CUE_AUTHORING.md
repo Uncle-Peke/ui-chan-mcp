@@ -50,6 +50,9 @@ Cue選定・PSDレイヤー名カタログなど、**新規Cue制作のための
 - `assetsDir` — PSD を探すディレクトリ（最初に見つかった `.psd` を使用）
 - `window` — ウィンドウサイズ・画面端からのマージン
 - `cuesDir` — Cueのディレクトリ（デフォルト `cues`）
+- **固定セリフのステップには `delivery` を書ける**（`ending` / `speed` / `pitch` / `stretchSec` /
+  `words` など、その一行だけの演技指定）。`set_cue` には無い口で、IdlingCue・EventCue・
+  FidgetCue のように**人が事前に書いた行**だけが持てる → [design/PROSODY.md](design/PROSODY.md)
 - `idle.idlingCues` — アイドル中に自発的に再生される**IdlingCue**（Cue＋任意のセリフのステップ列）のプール。
   `items[].steps[]`は`{ cue?, text?, reading?, holdMs? }`で、`cue`を省略すると直前のCueを維持する。
   各 IdlingCue は `weight`（出やすさ、デフォルト 1）、`minAffinity`（必要な好感度）、`maxAffinity`（上限好感度）を持てる。

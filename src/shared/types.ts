@@ -277,6 +277,47 @@ export interface CueStep {
   reading?: string;
   /** How long this step lasts before advancing to the next, in ms (default 2000). Ignored for a step with `text` (waits for the line to finish). */
   holdMs?: number;
+  /** この一行だけの演技指定（→ Delivery）。 */
+  delivery?: Delivery;
+}
+
+/**
+ * 固定セリフ1行ぶんの演技指定。**すべて任意**で、書かなかったものは感情からの
+ * 導出値（`src/app/prosody.ts`）がそのまま残る。書いたものは**上書き**する
+ * ——加算ではないので、書いた値がそのまま出る。
+ *
+ * これは `set_cue` には無い。AI に数値を渡すと1回の呼び出しで「何を言うか」とは
+ * 別に「数値をいくつにするか」を考えることになり、思考時間が跳ね上がる——という
+ * のが数値パラメータを廃止した理由だった。**ここにはその理由が当てはまらない**：
+ * IdlingCue / EventCue / FidgetCue のセリフは人間が事前に書いた固定の行で、AI は
+ * 一切関与しない。しかも同じ行が何度も再生されるので、チューニングの費用対効果が
+ * いちばん高く、TSML の解析結果もキャッシュが効く。
+ *
+ * 強調（`**語**`）・間（`、` `…`）・伸ばし（`〜`）・詰め（`っ`）は `text` の書き方
+ * でそのまま指定できるので、ここには無い。→ docs/design/PROSODY.md
+ */
+export interface Delivery {
+  /** 声色を Cue のものから差し替える（この行だけ別の感情で言わせたいとき）。
+   *  抑揚・話速の導出もこの値を基準に行う。 */
+  style_weights?: Record<string, number>;
+  /** ピッチ変動の倍率（0〜2）。導出値を上書き。 */
+  intonation?: number;
+  /** 話速（0.2〜5）。導出値を上書き。 */
+  speed?: number;
+  /** 高さ（cent、-600〜600）。導出値を上書き。 */
+  pitch?: number;
+  /** 音量（dB、-8〜8）。 */
+  volume?: number;
+  /** `〜` で伸ばす母音の長さ（秒）。導出値を上書き。 */
+  stretchSec?: number;
+  /** 語末の `っ` で詰める母音の長さ（秒）。既定 0.15 を上書き。 */
+  clipSec?: number;
+  /** 語尾の扱い。`flat` は `？` があっても上げない（呆れ・詰問・断定）、
+   *  `rise` は `？` が無くても上げる（甘え・確認）。 */
+  ending?: 'flat' | 'rise';
+  /** この行だけの読み・アクセント上書き。`tts.lexicon` と同じ形で、
+   *  同じ語が両方にあるときはこちらが勝つ。 */
+  words?: LexiconEntry[];
 }
 
 export interface TtsConfig {
@@ -340,6 +381,8 @@ export interface SpeechItem {
   durationMs: number;
   agent: string;
   reading?: string;
+  /** 固定セリフだけが持つ、この行の演技指定。 */
+  delivery?: Delivery;
   /** The Cue this line's baked voice color synthesizes with — fixed to the
    *  Cue given in the same set_cue call that produced this line, so a later
    *  set_cue can't retroactively change an in-flight line's voice. */

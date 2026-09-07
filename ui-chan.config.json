@@ -69,6 +69,8 @@
           "steps": [
             {
               "cue": "mix_disgust_anger",
+              "$comment_delivery": "「……なに？」は問いではなく詰問なので、？が付いていても語尾を上げない。固定セリフだけに許される行ごとの演技指定（→ docs/design/PROSODY.md）",
+              "delivery": { "ending": "flat" },
               "text": "……なに？",
               "reading": "……なに？"
             }

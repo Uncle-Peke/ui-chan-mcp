@@ -1,5 +1,6 @@
-import type { CueVoice, LexiconEntry, TtsAudio, TtsConfig } from '../shared/types';
+import type { CueVoice, Delivery, LexiconEntry, TtsAudio, TtsConfig } from '../shared/types';
 import {
+  applyEnding,
   applyLexicon,
   buildDurations,
   emphasisTargets,
@@ -219,8 +220,8 @@ export class VoiSonaTalkClient {
    *  layered with this line's ad-lib pitch/speed/volume/intonation. Thin
    *  wrapper that resolves the Cue name to its saved voice color, then defers
    *  to synthesizeWithVoice. */
-  synthesize(text: string, cue: string): Promise<TtsAudio | null> {
-    return this.synthesizeWithVoice(text, this.cfg.cueVoice?.[cue]);
+  synthesize(text: string, cue: string, delivery?: Delivery): Promise<TtsAudio | null> {
+    return this.synthesizeWithVoice(text, this.cfg.cueVoice?.[cue], delivery);
   }
 
   /**
@@ -234,8 +235,11 @@ export class VoiSonaTalkClient {
     spoken: string,
     targets: string[],
     lexicon: LexiconEntry[],
+    ending?: 'flat' | 'rise',
   ): Promise<string | null> {
-    const key = `${spoken}\u0000${targets.join('\u0001')}`;
+    // キャッシュキーは「同じ TSML になる条件」を全部含める。語の上書きと語尾の
+    // 扱いで結果が変わるので、文字列と強調だけでは足りない。
+    const key = `${spoken}\u0000${targets.join('\u0001')}\u0000${ending ?? ''}\u0000${JSON.stringify(lexicon)}`;
     const hit = this.tsmlCache.get(key);
     if (hit !== undefined) return hit;
     try {
@@ -269,6 +273,7 @@ export class VoiSonaTalkClient {
       if (!tsml) return null;
       tsml = applyLexicon(tsml, lexicon);
       for (const t of targets) tsml = emphasize(tsml, t);
+      if (ending) tsml = applyEnding(tsml, ending);
       if (this.tsmlCache.size >= TSML_CACHE_MAX) {
         this.tsmlCache.delete(this.tsmlCache.keys().next().value as string);
       }
@@ -284,31 +289,41 @@ export class VoiSonaTalkClient {
   async synthesizeWithVoice(
     text: string,
     cueVoice: CueVoice | undefined,
+    delivery?: Delivery,
   ): Promise<TtsAudio | null> {
     if (!this.cfg.enabled || !this.hasCredentials() || Date.now() < this.disabledUntil) return null;
     try {
       const voice = await this.resolveVoice();
       // 記法の翻訳。太字も辞書語も無い行は、ここで何も起きず今までの経路を通る。
       const spoken = forSpeech(text);
-      const lexicon = this.cfg.lexicon ?? [];
-      const tsml = needsTsml(text, lexicon)
-        ? await this.analyzed(spoken, emphasisTargets(text), lexicon)
+      // 行ごとの上書きは全部ここで解決する。書かれていないものは導出値のまま。
+      // 語の上書きは config のあとに置く——applyLexicon は順に当てるので、
+      // 同じ語があれば後勝ち＝行の指定のほうが強い。
+      const lexicon = [...(this.cfg.lexicon ?? []), ...(delivery?.words ?? [])];
+      const styles = delivery?.style_weights ?? cueVoice?.style_weights;
+      const needs = needsTsml(text, lexicon) || !!delivery?.ending || !!delivery?.words?.length;
+      const tsml = needs
+        ? await this.analyzed(spoken, emphasisTargets(text), lexicon, delivery?.ending)
         : null;
       // 語尾伸ばしは音素長で当てる。TSML から音素列を再現できるので、往復は
       // 増えない（→ prosody.ts の phonemeSequence）。
       // 伸ばし（`〜`）と詰め（`っ`）を1つの配列にまとめる。どちらも書き方が指示。
       const stretch = tsml
         ? buildDurations(tsml, {
-            ...(wantsStretch(text) ? { stretchSec: stretchSeconds(cueVoice?.style_weights) } : {}),
+            ...(wantsStretch(text)
+              ? { stretchSec: delivery?.stretchSec ?? stretchSeconds(styles) }
+              : {}),
+            ...(delivery?.clipSec !== undefined ? { clipSec: delivery.clipSec } : {}),
           })
         : null;
-      const weights = voice ? this.styleWeights(cueVoice?.style_weights, voice) : undefined;
+      const weights = voice ? this.styleWeights(styles, voice) : undefined;
       const globalParameters = {
         ...(weights ? { style_weights: weights } : {}),
         // 演技は全部ここで感情から導出する。Cue にも行にも数値は置かない。
-        intonation: intonationFor(this.cfg.intonation ?? 1.1, cueVoice?.style_weights),
-        speed: speedFor(cueVoice?.style_weights),
-        pitch: pitchFor(cueVoice?.style_weights),
+        intonation: delivery?.intonation ?? intonationFor(this.cfg.intonation ?? 1.1, styles),
+        speed: delivery?.speed ?? speedFor(styles),
+        pitch: delivery?.pitch ?? pitchFor(styles),
+        ...(delivery?.volume !== undefined ? { volume: delivery.volume } : {}),
       };
       const res = await fetch(`${this.base()}/speech-syntheses`, {
         method: 'POST',

@@ -6,6 +6,7 @@ import type {
   CueSequence,
   CueState,
   CueStep,
+  Delivery,
   LayerDirectives,
   MascotConfig,
   RenderCommand,
@@ -157,7 +158,11 @@ export class UiChanState {
     private config: MascotConfig,
     cues: Record<string, Cue>,
     private emit: (cmd: RenderCommand) => void,
-    private synthesize?: (text: string, cue: string) => Promise<TtsAudio | null>,
+    private synthesize?: (
+      text: string,
+      cue: string,
+      delivery?: Delivery,
+    ) => Promise<TtsAudio | null>,
     /** Seconds since the user last touched keyboard or mouse, OS-wide. Injected
      *  (Electron's powerMonitor in main.ts) so this class stays free of
      *  Electron; absent = the system-idle gate is simply off. */
@@ -386,10 +391,13 @@ export class UiChanState {
     opts?: {
       durationMs?: number;
       reading?: string;
+      /** 固定セリフ（IdlingCue / EventCue / FidgetCue）だけが持つ行ごとの演技指定。
+       *  set_cue にはこの口が無い——理由は shared/types.ts の Delivery を参照。 */
+      delivery?: Delivery;
       onComplete?: () => void;
     },
   ): EnqueueResult {
-    const { durationMs, reading, onComplete } = opts ?? {};
+    const { durationMs, reading, delivery, onComplete } = opts ?? {};
     if (this.speechQueue.length >= MAX_QUEUE) {
       onComplete?.(); // don't strand a caller waiting on a line that never got queued
       return { ok: false, error: `speech queue is full (${MAX_QUEUE})` };
@@ -397,7 +405,15 @@ export class UiChanState {
     // 長さの見積もりは「表示される文字数」で。記法の印（**）を数えると、
     // 強調を書いた行だけ不必要に長く表示される。
     const duration = durationMs ?? estimateSpeechDurationMs(forDisplay(text), this.config.speech);
-    this.speechQueue.push({ text, durationMs: duration, agent, reading, cue, onComplete });
+    this.speechQueue.push({
+      text,
+      durationMs: duration,
+      agent,
+      reading,
+      delivery,
+      cue,
+      onComplete,
+    });
     const immediate = this.currentSpeech === null;
     this.pumpSpeech();
     return {
@@ -419,7 +435,7 @@ export class UiChanState {
     let audio: TtsAudio | null = null;
     if (this.synthesize) {
       const spoken = ttsTextFor(item.text, item.reading);
-      audio = await this.synthesize(spoken, item.cue).catch(() => null);
+      audio = await this.synthesize(spoken, item.cue, item.delivery).catch(() => null);
     }
     if (this.currentSpeech !== item) return; // cleared while synthesizing
     const speech = this.config.speech;
@@ -726,6 +742,7 @@ export class UiChanState {
     if (step.text) {
       this.enqueueSpeech(step.text, cueName, source, {
         reading: step.reading,
+        delivery: step.delivery,
         onComplete: advance,
       });
     } else {
