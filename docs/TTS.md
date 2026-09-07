@@ -45,8 +45,13 @@ API リファレンスは REST API 有効化後に http://localhost:32766/docs/t
 - `voice.style_weights` はスタイル名 → 重みのオブジェクト（`{"Happy": 0.7, "Bashful": 0.3}`）。
   ブレンド計算はせず、ボイスの `style_names` の並び順に変換して VoiSona の `global_parameters.style_weights`
   にそのまま渡ります
-- `voice.alp` / `voice.huskiness` もCueに焼き込め、同じく `global_parameters` に素通しされます
-- そのセリフ一行だけの演技（`pitch`/`speed`/`volume`/`intonation`）は `set_cue` の引数として渡します。
+> [!NOTE]
+> 「どこを立てるか・どこで切るか」を決める仕組み（記法・感情からの導出・辞書）は
+> [design/PROSODY.md](design/PROSODY.md) にまとめてあります。
+
+- Cueが持つ声色は **`style_weights` だけ**です。`alp`/`huskiness`（声質を直に歪めるパラメータ）と、
+  行ごとの数値（`pitch`/`speed`/`volume`/`intonation`）は廃止しました——手で数値を書く設計をやめ、
+  読み方は**セリフの書き方**から導出します（`、` `…` で間、`〜` で語尾伸ばし、`**強調**`、`？` で語尾上げ）。
   Cueの `voice` と `set_cue` のアドリブパラメータはどちらも同じ `global_parameters` にマージされて送られます
 - スタイル名はボイスごとに異なるので `GET {url}/api/talk/v1/voices/{voice_name}/{voice_version}` の
   `style_names` で確認して合わせてください。一致しない場合はデフォルトのトーンで喋ります

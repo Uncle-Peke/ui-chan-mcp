@@ -175,8 +175,8 @@ that). This is the only cross-folder name dependency in the PSD.
 - **Cues** live one-per-file in `cues/<name>.json`; the filename *is* the `cue`
   name passed to `set_cue`. Each is a flat, fully self-contained
   `select`/`show`/`hide`/`blink` (raw PSD layer paths, no named
-  face/pose/arms split) plus an optional `voice` block
-  (`style_weights`/`alp`/`huskiness`) baked in as that Cue's voice color.
+  face/pose/arms split) plus an optional `voice` block (`style_weights` only)
+  baked in as that Cue's voice color.
   Validated at load time against `cue.schema.json` (the schema is the source
   of truth, not duplicated hand-written constraints). There is no inheritance
   between Cues and no intensity knob: a stronger variant is just another Cue
@@ -541,16 +541,67 @@ when `text` is given, or how long to hold the Cue before easing back to
 ### TTS ↔ Cue coupling
 
 `set_cue(cue)` drives both face and voice: the Cue's own `voice` block
-(`style_weights`/`alp`/`huskiness`) is passed straight through to VoiSona
-Talk's `global_parameters` — no blending, no intensity scaling. `set_cue`
-additionally accepts optional `pitch`/`speed`/`volume`/`intonation` for
-one-line ad-lib delivery, merged into the same `global_parameters` on top of
-the Cue's baked-in values. Each queued `SpeechItem` carries the `cue` it was
+(`style_weights` — the voice library's five trained styles, mixed by weight) is
+passed straight through to VoiSona Talk's `global_parameters` — no blending, no
+intensity scaling.
+
+**There are no numeric performance knobs, by decision.** `voice.alp` /
+`voice.huskiness` and `set_cue`'s `pitch`/`speed`/`volume`/`intonation` all
+existed, worked, and were used by **zero** of 81 Cues and almost no calls.
+Handing an agent numbers costs it deliberation on every call ("what should this
+one be?") on top of writing the line, and the measured effect was a large jump
+in thinking time. So delivery is derived instead of dialled — see "Prosody"
+below. Each queued `SpeechItem` carries the `cue` it was
 spoken under (fixed at `set_cue` call time), so a later `set_cue` can't
 retroactively recolor an in-flight line's voice. Lip-sync is phoneme-timed
 from the synthesized audio; if the engine is unreachable it falls back to
 kana-driven mouth movement from `set_cue`'s `reading` (60s cooldown before
 retry).
+
+### Prosody: 読み方は「書き方」から導出する（`src/app/prosody.ts`）
+
+> 設計の全体像・耳で確かめた値・落第した案は **`docs/design/PROSODY.md`**。ここは要約。
+
+セリフをどう読むかは、数値ではなく**そのセリフの書き方**から決まる。Markdown が
+記法を発明せず「人がすでに打っていた書き方」を意味に昇格させたのと同じやり方で、
+日本語の表記にもとからあるものをそのまま使う。**AI が新しく覚えるのは太字だけ。**
+
+| 記法 | 実測（田中傘 2.0.1） | 実装 |
+|---|---|---|
+| `、` `…` `‥` | すでに `pau` が入る | **何もしない**（エンジンに任せる） |
+| `ー` | すでに長音として伸びる | **何もしない** |
+| `？` | `is_question` が付いて語尾が上がる | **何もしない** |
+| `〜` | **完全に無視される** | 取り除き、最後の母音を `phoneme_durations` で伸ばす |
+| `！` | 無視（強調にならない） | 何もしない（強調は太字で明示する） |
+| `**語**` | `＊` として読まれ、余計な `pau` まで入る | 除去し、TSML の強調に翻訳 |
+
+**TSML**（`POST /text-analyses` が返す解析結果）が、この全部の土台。`<word>` ごとに
+`hl`（モーラ単位の高低）・`chain`（アクセント句の連結）・`pronunciation`・
+`is_question` を持つ XML で、これを編集して `analyzed_text` として投げると `text` の
+代わりに使われる。**AI に TSML を書かせてはいけない**——`pos` や `phoneme` はエンジンが
+決めることなので、書かせれば必ず捏造する。必ず「解析させてから差分を当てる」。
+
+耳で確かめて分かった、外してはいけない点が3つある。
+
+- **`hl`（アクセント型）は書き換えない。** 強調のつもりで「本気」を `lhh`→`hll` に
+  したら、強調ではなく**アクセントの違う別の語**に聞こえた（方言や読み間違いと同じ）。
+  強調は**アクセント句を切り直し、直前に一拍置く**ことで作る。
+- **`〜` を `ー` に置換してはいけない。** 長音は独立した語として解析され `hl="l"`
+  （低）が付くため、**疑問の上げを潰す**（「言ってるー？」が上がらない）。伸ばすのは
+  `phoneme_durations` でやり、解析結果には触らない。
+- **`pau` を二重に数えない。** `phoneme_durations` は合成に使う音素列と同じ並びで
+  渡す必要がある。その列は TSML から再現できる（`phonemeSequence()`、9例で実測一致）
+  が、読点が作る `pau` と句境界の `pau` は**同じもの**なので、両方数えると全体が
+  1つずれて、伸びる音素が別の場所になる。
+
+**TSML の往復は必要な行だけ**（実測 +496ms）。`needsTsml()` が「太字・`〜`・辞書語を
+含むか」を見て、どれも無ければ従来どおり `text` を投げるだけの経路を通る。解析結果は
+キャッシュするので、IdlingCue / EventCue のような固定文では2回目以降ゼロ。解析に
+失敗したら `analyzed_text` を付けずに送る——抑揚が付かないのは劣化だが、喋らないのは故障。
+
+`tts.lexicon`（`ui-chan.config.json`）は**読みとアクセントを常に上書きする語**。「うい」は
+品詞解析で連体詞に落ちて頭高になり、名前が毎回わずかに変な抑揚で呼ばれていた。行ごとの
+演出ではなく、いつ誰が書いても同じように直すべき固定の誤りなので、AI ではなくアプリが持つ。
 
 `reading` is not only for lip-sync: `state.ts`'s `ttsTextFor()` hands the engine
 `reading` instead of `text` whenever `text` contains Latin letters or digits.

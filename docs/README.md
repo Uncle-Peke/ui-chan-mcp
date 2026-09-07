@@ -27,6 +27,7 @@
 | 新しい表情（Cue）を足す | [CUE_AUTHORING.md](CUE_AUTHORING.md) → レイヤー名は [PSD_LAYERS.md](PSD_LAYERS.md) |
 | 性格・口調を変える | [PERSONA.md](PERSONA.md) |
 | Cueカタログの設計方針を知る | [design/CUE_CATALOG.md](design/CUE_CATALOG.md) |
+| **喋り方（間・強調・語尾）を変える** | [design/PROSODY.md](design/PROSODY.md) |
 | **ドキュメントを書く・直す** | [STYLE.md](STYLE.md) |
 
 ---
