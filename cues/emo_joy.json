@@ -10,8 +10,8 @@
   "blink": false,
   "voice": {
     "style_weights": {
-      "Normal": 1,
-      "Happy": 1
+      "Normal": 0.5,
+      "Happy": 0.5
     }
   }
 }

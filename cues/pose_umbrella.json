@@ -5,5 +5,10 @@
     "!奥の腕/*傘",
     "!手前の腕/*基本"
   ],
-  "blink": true
+  "blink": true,
+  "voice": {
+    "style_weights": {
+      "Normal": 1
+    }
+  }
 }

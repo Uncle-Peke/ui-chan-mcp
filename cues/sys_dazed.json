@@ -6,5 +6,11 @@
     "!手前の腕/*基本",
     "!口/*ほあー"
   ],
-  "blink": true
+  "blink": true,
+  "voice": {
+    "style_weights": {
+      "Normal": 0.7,
+      "Sad": 0.3
+    }
+  }
 }

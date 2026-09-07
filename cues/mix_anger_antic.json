@@ -10,7 +10,7 @@
   ],
   "voice": {
     "style_weights": {
-      "Angry": 0.7
+      "Angry": 1.0
     }
   }
 }

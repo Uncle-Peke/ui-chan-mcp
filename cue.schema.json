@@ -61,11 +61,11 @@
       "properties": {
         "style_weights": {
           "type": "object",
-          "description": "スタイル名 → 重み。例 {\"Happy\": 0.7, \"Bashful\": 0.3}。実行時にボイスの style_names 順の配列へ変換して送信する（ブレンド計算はしない、素通し）。スタイル名は使用するVoiSonaボイスに依存するため、GET /api/talk/v1/voices/{voice_name}/{voice_version} の style_names で実在を確認すること。",
+          "description": "スタイル名 → 重み。例 {\"Happy\": 0.6, \"Bashful\": 0.4}。実行時にボイスの style_names 順の配列へ変換して送信する。**エンジンは重みを正規化するので、効くのは比率だけ。合計値には意味がない**（実測：{\"Sad\":0.3} と {\"Sad\":2.0} はバイト単位で同一の音声になる）。したがって {\"Sad\":0.3} は「控えめな悲しみ」ではなく {\"Sad\":1} と同じ。弱めたいときは他のスタイルとの比率で書く（例 {\"Sad\":0.3,\"Normal\":0.7}）。**合計は1に揃えて書くこと**——音は変わらないが、読む人の誤解を防ぐため。スタイル名は使用するVoiSonaボイスに依存するため、GET /api/talk/v1/voices/{voice_name}/{voice_version} の style_names で実在を確認すること。",
           "additionalProperties": {
             "type": "number",
             "minimum": 0,
-            "description": "個々のスタイルの重み。上限・正規化要否はVoiSonaのバージョン/ボイスに依存するため、実装時に talk_api.yaml で要確認。"
+            "description": "個々のスタイルの重み（比率）。合計1で書く。"
           },
           "propertyNames": {
             "minLength": 1

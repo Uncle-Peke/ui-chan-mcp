@@ -5,5 +5,11 @@
     "!奥の腕/*指さし横",
     "!手前の腕/*基本"
   ],
-  "blink": true
+  "blink": true,
+  "voice": {
+    "style_weights": {
+      "Normal": 0.7,
+      "Happy": 0.3
+    }
+  }
 }

@@ -13,7 +13,7 @@
   "blink": false,
   "voice": {
     "style_weights": {
-      "Bashful": 0.8
+      "Bashful": 1.0
     }
   }
 }

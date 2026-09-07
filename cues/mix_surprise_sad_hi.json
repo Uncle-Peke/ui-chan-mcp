@@ -10,5 +10,11 @@
   ],
   "show": [
     "!汗・涙/汗1"
-  ]
+  ],
+  "voice": {
+    "style_weights": {
+      "Sad": 0.6,
+      "Normal": 0.4
+    }
+  }
 }

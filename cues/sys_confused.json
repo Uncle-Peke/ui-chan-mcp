@@ -8,5 +8,11 @@
   ],
   "show": [
     "!汗・涙/汗2"
-  ]
+  ],
+  "voice": {
+    "style_weights": {
+      "Bashful": 0.5,
+      "Normal": 0.5
+    }
+  }
 }

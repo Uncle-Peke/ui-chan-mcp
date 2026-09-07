@@ -9,8 +9,8 @@
   "blink": false,
   "voice": {
     "style_weights": {
-      "Normal": 0.5,
-      "Bashful": 0.3
+      "Normal": 0.625,
+      "Bashful": 0.375
     }
   }
 }

@@ -8,5 +8,11 @@
   ],
   "show": [
     "!頬・顔色/かげり"
-  ]
+  ],
+  "voice": {
+    "style_weights": {
+      "Sad": 0.8,
+      "Angry": 0.2
+    }
+  }
 }

@@ -11,8 +11,8 @@
   ],
   "voice": {
     "style_weights": {
-      "Angry": 1,
-      "Sad": 1
+      "Angry": 0.5,
+      "Sad": 0.5
     }
   }
 }

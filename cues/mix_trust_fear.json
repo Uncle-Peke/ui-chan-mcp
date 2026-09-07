@@ -11,8 +11,8 @@
   ],
   "voice": {
     "style_weights": {
-      "Bashful": 0.3,
-      "Sad": 0.4
+      "Bashful": 0.429,
+      "Sad": 0.571
     }
   }
 }

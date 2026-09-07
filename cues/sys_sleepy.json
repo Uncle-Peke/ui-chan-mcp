@@ -4,5 +4,11 @@
   "select": [
     "!目/*ーー",
     "!口/*ん"
-  ]
+  ],
+  "voice": {
+    "style_weights": {
+      "Sad": 0.4,
+      "Normal": 0.6
+    }
+  }
 }

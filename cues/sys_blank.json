@@ -7,5 +7,10 @@
     "!目/*ーー",
     "!口/*ん"
   ],
-  "blink": true
+  "blink": true,
+  "voice": {
+    "style_weights": {
+      "Normal": 1
+    }
+  }
 }
