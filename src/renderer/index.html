@@ -107,14 +107,19 @@
     /* ---- 接続パネル -------------------------------------------------
        世界観を壊さないための約束：平常時はリボン色の小さなつまみだけ。
        クリックで開き、複数セッションを検知したときだけ自分から開いて、
-       用が済んだら畳まる。立ち絵と吹き出しには一切干渉しない。 */
+       用が済んだら畳まる。立ち絵と吹き出しには一切干渉しない。
+
+       置き場所は右下＝足元。上に置くと、開いたパネルが吹き出しと同じ場所を
+       取り合う——吹き出しは彼女の声そのものなので、譲るのは常にパネルの側。
+       足は Cue が触らない唯一の部位なので、ここなら隠れても表情が死なない。
+       column-reverse なので、つまみは下端に残ったままパネルは上へ開く。 */
     #panel {
       position: absolute;
-      top: 6px;
+      bottom: 6px;
       right: 6px;
       z-index: 5;
       display: flex;
-      flex-direction: column;
+      flex-direction: column-reverse;
       align-items: flex-end;
       font-size: 12px;
       color: #2e2a35;
@@ -164,7 +169,7 @@
       width: 30px;
     }
     #panel-body {
-      margin-top: 6px;
+      margin-bottom: 6px;
       /* Narrow on purpose: open, it must not sit on top of her face. */
       width: 176px;
       background: linear-gradient(180deg, rgba(250, 245, 243, 0.98), rgba(232, 223, 226, 0.98));
@@ -174,8 +179,8 @@
       padding: 8px;
       box-sizing: border-box;
       opacity: 0;
-      transform: translateY(-6px) scale(0.98);
-      transform-origin: top right;
+      transform: translateY(6px) scale(0.98);
+      transform-origin: bottom right;
       pointer-events: none;
       transition: opacity 0.18s ease, transform 0.18s ease;
     }
