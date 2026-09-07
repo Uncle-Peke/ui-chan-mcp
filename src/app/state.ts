@@ -303,6 +303,7 @@ export class UiChanState {
     const delta = direction === 'up' ? base * (1 - frac) : -base * (1 + frac);
     const before = this.affinity;
     this.affinity = this.clampAffinity(this.affinity + delta);
+    this.emitAffinity();
     return {
       ok: true,
       affinity: this.affinity,
@@ -312,6 +313,13 @@ export class UiChanState {
     };
   }
 
+  /** 好感度が動いたことをパネルへ知らせる。呼ぶのは値を変えた両方の口
+   *  （adjustAffinity / setAffinity）——片方だけにすると、どちらから動かしたか
+   *  で表示が追いつくときと追いつかないときができる。 */
+  private emitAffinity(): void {
+    this.emit({ type: 'affinity', ...this.affinitySnapshot() });
+  }
+
   /** Debug: set affinity to an absolute value (clamped to config bounds). */
   setAffinity(value: number): AffinityResult {
     if (typeof value !== 'number' || Number.isNaN(value)) {
@@ -319,6 +327,7 @@ export class UiChanState {
     }
     const before = this.affinity;
     this.affinity = this.clampAffinity(value);
+    this.emitAffinity();
     return {
       ok: true,
       affinity: this.affinity,

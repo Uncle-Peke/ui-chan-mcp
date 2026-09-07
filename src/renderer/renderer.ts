@@ -507,9 +507,17 @@ const affEl = document.getElementById('panel-affinity') as HTMLDivElement;
 const affRange = document.getElementById('aff-range') as HTMLInputElement;
 const affValue = document.getElementById('aff-value') as HTMLElement;
 const affBand = document.getElementById('aff-band') as HTMLElement;
+let affGrabbed = false; // つまみを指で掴んでいる間は外からの更新を当てない
 
 function showAffinity(a: { value: number; band: string } | null): void {
   if (!a) return;
+  // 掴んでいる最中の押し付けは無視する。追従は「開いたまま置いてある表示が
+  // 嘘をつかない」ためのもので、いま指で動かしているつまみを横から引き戻す
+  // ためのものではない。離せば change が飛び、結局この値に落ち着く。
+  if (affGrabbed) {
+    affBand.textContent = a.band;
+    return;
+  }
   affRange.value = String(Math.round(a.value));
   affValue.textContent = String(Math.round(a.value));
   affBand.textContent = a.band;
@@ -529,6 +537,15 @@ function wirePanel(): void {
     affEl.hidden = !open;
     gear.classList.toggle('on', open);
     if (open) await refreshAffinity();
+  });
+  affRange.addEventListener('pointerdown', () => {
+    affGrabbed = true;
+  });
+  affRange.addEventListener('pointerup', () => {
+    affGrabbed = false;
+  });
+  affRange.addEventListener('pointercancel', () => {
+    affGrabbed = false;
   });
   affRange.addEventListener('input', () => {
     affValue.textContent = affRange.value;
@@ -609,6 +626,8 @@ async function init(): Promise<void> {
       // Sessions are news; a release is news too — surface it once, the same
       // way, instead of waiting for the user to happen to open the panel.
       if (cmd.available && !panelOpen) setPanelOpen(true);
+    } else if (cmd.type === 'affinity') {
+      showAffinity(cmd);
     } else if (cmd.type === 'connections') {
       renderConnections(cmd.agents, cmd.active);
     } else if (cmd.type === 'speech') {
