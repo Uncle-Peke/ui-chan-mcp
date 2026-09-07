@@ -18,6 +18,7 @@ interface UiChanApi {
   onCommand(cb: (cmd: RenderCommand) => void): void;
   interaction(kind: string): void;
   panelAction(kind: string, value?: number): Promise<unknown>;
+  setClickThrough(on: boolean): void;
   dragStart(): void;
   dragEnd(): void;
 }
@@ -144,6 +145,36 @@ function onCharacter(e: MouseEvent): boolean {
   return stage.loaded && stage.alphaAt(e.clientX, e.clientY) >= HIT_ALPHA;
 }
 
+// ---- click-through ----
+// 窓は 420x680 の矩形で、ういちゃんが実際に描かれているのはその一部でしかない。
+// 何もしないとその矩形が、後ろのエディタやデスクトップに向けたクリックを全部
+// 飲む——透明なのに触れない板が机の上に置いてある状態で、これは邪魔でしかない。
+// なので既定はクリック透過（main.ts の setIgnoreMouseEvents(true,{forward:true})）
+// にして、カーソルの下が「押せるもの」のときだけ窓を実体化させる。
+//
+// 押せるものは 2 つだけ：**彼女の実ピクセル**（つつく／掴んで動かす）と
+// **パネル**。吹き出しは意図的に含めない——見えてはいても押す物ではないので、
+// 透明な余白と同じく後ろに素通ししたほうが、机の上の邪魔にならない。
+let clickThrough = true; // createWindow() が設定する初期値と一致させること
+function setClickThrough(on: boolean): void {
+  if (on === clickThrough) return;
+  clickThrough = on;
+  window.uiChan.setClickThrough(on);
+}
+
+/** パネルは畳んでいるとき pointer-events:none なので、elementFromPoint は
+ *  「いま実際に押せるパネル」だけを返す。判定をCSSと二重に持たなくて済む。 */
+function overPanel(x: number, y: number): boolean {
+  return document.elementFromPoint(x, y)?.closest('#panel') != null;
+}
+
+function updateClickThrough(e: MouseEvent): void {
+  // ドラッグ中は実体のまま。カーソルは彼女の外へ簡単に出るし、そこで透過に
+  // 戻すと mouseup を取り逃してドラッグが終わらなくなる。
+  if (downScreen) return;
+  setClickThrough(!(onCharacter(e) || overPanel(e.clientX, e.clientY)));
+}
+
 function startPointerHandling(): void {
   window.addEventListener('mousedown', (e) => {
     if (e.button !== 0 || !onCharacter(e)) return;
@@ -152,6 +183,7 @@ function startPointerHandling(): void {
     window.uiChan.dragStart();
   });
   window.addEventListener('mousemove', (e) => {
+    updateClickThrough(e);
     if (!downScreen) return; // only track movement while pressing (drag vs click)
     if (
       Math.abs(e.screenX - downScreen.x) > DRAG_THRESHOLD ||
@@ -166,6 +198,12 @@ function startPointerHandling(): void {
     if (!dragging && onCharacter(e)) window.uiChan.interaction('poke');
     downScreen = null;
     dragging = false;
+    updateClickThrough(e); // 掴んだまま余白へ抜けた場合、ここで穴に戻す
+  });
+  // 窓の外へ出たら必ず穴に戻す。端をすばやく横切ると最後の mousemove が
+  // 彼女の上のままになることがあり、実体のまま取り残されてしまう。
+  document.addEventListener('mouseleave', () => {
+    if (!downScreen) setClickThrough(true);
   });
 }
 

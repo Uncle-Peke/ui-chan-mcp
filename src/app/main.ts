@@ -507,6 +507,12 @@ function createWindow(): void {
     },
   });
   win.setAlwaysOnTop(true, 'floating');
+  // 既定はクリック透過。窓は420x680の矩形で、ういちゃんが占めるのはその一部
+  // なので、素通しにしないと「彼女の周りの何もないところ」が後ろのウィンドウ
+  // へのクリックを全部飲んでしまう。forward:true にすると透過中も mousemove
+  // だけは届くので、レンダラ側がカーソルの下を見て、実ピクセルとパネルの上に
+  // 来た瞬間だけ透過を解く（renderer.ts の updateClickThrough）。
+  win.setIgnoreMouseEvents(true, { forward: true });
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.loadFile(path.join(projectRoot, 'dist', 'renderer', 'index.html'));
   win.on('closed', () => {
@@ -567,6 +573,12 @@ if (!gotLock) {
 
   ipcMain.on('ui-chan:interaction', (_ev, kind: string) => {
     state.onInteraction(kind);
+  });
+
+  // カーソルの下が「押せるもの」かどうかはレンダラにしか分からない（アルファ
+  // 判定もパネルのDOMもあちら側）。ここはその判定を窓に反映するだけ。
+  ipcMain.on('ui-chan:click-through', (_ev, on: boolean) => {
+    win?.setIgnoreMouseEvents(on, { forward: true });
   });
 
   // Manual window drag (we dropped -webkit-app-region:drag so JS can own the
