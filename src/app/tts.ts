@@ -1,4 +1,17 @@
-import type { CueVoice, TtsAudio, TtsConfig, VoiceAdlib } from '../shared/types';
+import type { CueVoice, LexiconEntry, TtsAudio, TtsConfig } from '../shared/types';
+import {
+  applyLexicon,
+  buildDurations,
+  emphasisTargets,
+  emphasize,
+  forSpeech,
+  intonationFor,
+  needsTsml,
+  pitchFor,
+  speedFor,
+  stretchSeconds,
+  wantsStretch,
+} from './prosody';
 
 const RETRY_COOLDOWN_MS = 60_000;
 /** The engine simply not being up yet is a transient, self-healing condition
@@ -15,6 +28,10 @@ interface VoiceInfo {
   style_names: string[];
   default_style_weights: number[];
 }
+
+/** 解析結果は同じ文字列に対して常に同じなので使い回す。IdlingCue と EventCue は
+ *  固定文で何度も再生されるため、実測 +0.5 秒の往復がそこでは実質ゼロになる。 */
+const TSML_CACHE_MAX = 200;
 
 interface SynthesisInfo {
   state: string;
@@ -82,6 +99,8 @@ export class VoiSonaTalkClient {
   private lastError: string | null = null;
   private lastSuccessAt: string | null = null;
   private engineUnreachable = false;
+  /** 解析ずみ TSML のキャッシュ（挿入順の LRU 相当）。 */
+  private tsmlCache = new Map<string, string | null>();
 
   constructor(private cfg: TtsConfig) {}
 
@@ -200,8 +219,64 @@ export class VoiSonaTalkClient {
    *  layered with this line's ad-lib pitch/speed/volume/intonation. Thin
    *  wrapper that resolves the Cue name to its saved voice color, then defers
    *  to synthesizeWithVoice. */
-  synthesize(text: string, cue: string, adlib?: VoiceAdlib): Promise<TtsAudio | null> {
-    return this.synthesizeWithVoice(text, this.cfg.cueVoice?.[cue], adlib);
+  synthesize(text: string, cue: string): Promise<TtsAudio | null> {
+    return this.synthesizeWithVoice(text, this.cfg.cueVoice?.[cue]);
+  }
+
+  /**
+   * 文字列 → TSML（エンジン自身の「この日本語をこう読む」という理解）→ 演出を
+   * 当てた TSML。**AI に TSML を書かせない**のがここの肝で、`pos` や `phoneme` は
+   * エンジンが決めることなので、必ず解析させてから差分だけを当てる。
+   *
+   * 失敗したら null を返す：抑揚が付かないのは劣化だが、喋らないのは故障。
+   */
+  private async analyzed(
+    spoken: string,
+    targets: string[],
+    lexicon: LexiconEntry[],
+  ): Promise<string | null> {
+    const key = `${spoken}\u0000${targets.join('\u0001')}`;
+    const hit = this.tsmlCache.get(key);
+    if (hit !== undefined) return hit;
+    try {
+      const res = await fetch(`${this.base()}/text-analyses`, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({
+          force_enqueue: true,
+          language: this.cfg.language ?? 'ja_JP',
+          text: spoken,
+        }),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) return null;
+      const { uuid } = (await res.json()) as { uuid: string };
+      const deadline = Date.now() + SYNTH_TIMEOUT_MS;
+      let info: { state: string; analyzed_text?: string };
+      for (;;) {
+        info = await this.get(`/text-analyses/${uuid}`);
+        if (info.state === 'succeeded') break;
+        if (info.state === 'failed') return null;
+        if (Date.now() > deadline) return null;
+        await sleep(POLL_INTERVAL_MS);
+      }
+      // 使い終わった依頼は残さない（合成側と同じ後始末）。
+      fetch(`${this.base()}/text-analyses/${uuid}`, {
+        method: 'DELETE',
+        headers: this.headers(),
+      }).catch(() => {});
+      let tsml = info.analyzed_text;
+      if (!tsml) return null;
+      tsml = applyLexicon(tsml, lexicon);
+      for (const t of targets) tsml = emphasize(tsml, t);
+      if (this.tsmlCache.size >= TSML_CACHE_MAX) {
+        this.tsmlCache.delete(this.tsmlCache.keys().next().value as string);
+      }
+      this.tsmlCache.set(key, tsml);
+      return tsml;
+    } catch {
+      return null;
+    }
   }
 
   /** Synthesize with an explicit voice color instead of a saved Cue name — used
@@ -209,20 +284,31 @@ export class VoiSonaTalkClient {
   async synthesizeWithVoice(
     text: string,
     cueVoice: CueVoice | undefined,
-    adlib?: VoiceAdlib,
   ): Promise<TtsAudio | null> {
     if (!this.cfg.enabled || !this.hasCredentials() || Date.now() < this.disabledUntil) return null;
     try {
       const voice = await this.resolveVoice();
+      // 記法の翻訳。太字も辞書語も無い行は、ここで何も起きず今までの経路を通る。
+      const spoken = forSpeech(text);
+      const lexicon = this.cfg.lexicon ?? [];
+      const tsml = needsTsml(text, lexicon)
+        ? await this.analyzed(spoken, emphasisTargets(text), lexicon)
+        : null;
+      // 語尾伸ばしは音素長で当てる。TSML から音素列を再現できるので、往復は
+      // 増えない（→ prosody.ts の phonemeSequence）。
+      // 伸ばし（`〜`）と詰め（`っ`）を1つの配列にまとめる。どちらも書き方が指示。
+      const stretch = tsml
+        ? buildDurations(tsml, {
+            ...(wantsStretch(text) ? { stretchSec: stretchSeconds(cueVoice?.style_weights) } : {}),
+          })
+        : null;
       const weights = voice ? this.styleWeights(cueVoice?.style_weights, voice) : undefined;
       const globalParameters = {
         ...(weights ? { style_weights: weights } : {}),
-        ...(cueVoice?.alp !== undefined ? { alp: cueVoice.alp } : {}),
-        ...(cueVoice?.huskiness !== undefined ? { huskiness: cueVoice.huskiness } : {}),
-        ...(adlib?.pitch !== undefined ? { pitch: adlib.pitch } : {}),
-        ...(adlib?.speed !== undefined ? { speed: adlib.speed } : {}),
-        ...(adlib?.volume !== undefined ? { volume: adlib.volume } : {}),
-        ...(adlib?.intonation !== undefined ? { intonation: adlib.intonation } : {}),
+        // 演技は全部ここで感情から導出する。Cue にも行にも数値は置かない。
+        intonation: intonationFor(this.cfg.intonation ?? 1.1, cueVoice?.style_weights),
+        speed: speedFor(cueVoice?.style_weights),
+        pitch: pitchFor(cueVoice?.style_weights),
       };
       const res = await fetch(`${this.base()}/speech-syntheses`, {
         method: 'POST',
@@ -231,7 +317,11 @@ export class VoiSonaTalkClient {
           force_enqueue: true,
           destination: 'memory',
           language: this.cfg.language ?? 'ja_JP',
-          text,
+          // analyzed_text を渡すと text は無視される。渡せなかったとき（解析
+          // 失敗・エンジンの機嫌）に黙って素の読みへ落ちるよう、text も必ず送る。
+          text: spoken,
+          ...(tsml ? { analyzed_text: tsml } : {}),
+          ...(stretch ? { phoneme_durations: stretch } : {}),
           ...(voice ? { voice_name: voice.voice_name, voice_version: voice.voice_version } : {}),
           ...(Object.keys(globalParameters).length > 0
             ? { global_parameters: globalParameters }

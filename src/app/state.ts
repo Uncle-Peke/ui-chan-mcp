@@ -14,9 +14,9 @@ import type {
   SpeechTimingConfig,
   SystemIdleConfig,
   TtsAudio,
-  VoiceAdlib,
 } from '../shared/types';
 import { DEFAULT_AFFINITY_STEPS, DEFAULT_CUE_NAME } from '../shared/types';
+import { forDisplay } from './prosody';
 
 const MAX_QUEUE = 20;
 
@@ -34,19 +34,6 @@ const SYSTEM_IDLE_POLL_MS = 1000;
 type EnqueueResult =
   | { ok: true; displayed: boolean; queue_length: number }
   | { ok: false; error: string };
-
-function pickAdlib(args: SetCueArgs): VoiceAdlib | undefined {
-  const { pitch, speed, volume, intonation } = args;
-  if (
-    pitch === undefined &&
-    speed === undefined &&
-    volume === undefined &&
-    intonation === undefined
-  ) {
-    return undefined;
-  }
-  return { pitch, speed, volume, intonation };
-}
 
 /** LEN(text): the one place a display duration gets guessed from text length
  *  alone. Used only when the caller didn't pin an explicit duration —
@@ -170,11 +157,7 @@ export class UiChanState {
     private config: MascotConfig,
     cues: Record<string, Cue>,
     private emit: (cmd: RenderCommand) => void,
-    private synthesize?: (
-      text: string,
-      cue: string,
-      adlib?: VoiceAdlib,
-    ) => Promise<TtsAudio | null>,
+    private synthesize?: (text: string, cue: string) => Promise<TtsAudio | null>,
     /** Seconds since the user last touched keyboard or mouse, OS-wide. Injected
      *  (Electron's powerMonitor in main.ts) so this class stays free of
      *  Electron; absent = the system-idle gate is simply off. */
@@ -363,7 +346,6 @@ export class UiChanState {
       const speechResult = this.enqueueSpeech(args.text, cueName, agent, {
         durationMs: args.duration_ms,
         reading: args.reading,
-        voice: pickAdlib(args),
       });
       this.scheduleIdleRevert();
       if (!speechResult.ok) {
@@ -404,17 +386,18 @@ export class UiChanState {
     opts?: {
       durationMs?: number;
       reading?: string;
-      voice?: VoiceAdlib;
       onComplete?: () => void;
     },
   ): EnqueueResult {
-    const { durationMs, reading, voice, onComplete } = opts ?? {};
+    const { durationMs, reading, onComplete } = opts ?? {};
     if (this.speechQueue.length >= MAX_QUEUE) {
       onComplete?.(); // don't strand a caller waiting on a line that never got queued
       return { ok: false, error: `speech queue is full (${MAX_QUEUE})` };
     }
-    const duration = durationMs ?? estimateSpeechDurationMs(text, this.config.speech);
-    this.speechQueue.push({ text, durationMs: duration, agent, reading, voice, cue, onComplete });
+    // 長さの見積もりは「表示される文字数」で。記法の印（**）を数えると、
+    // 強調を書いた行だけ不必要に長く表示される。
+    const duration = durationMs ?? estimateSpeechDurationMs(forDisplay(text), this.config.speech);
+    this.speechQueue.push({ text, durationMs: duration, agent, reading, cue, onComplete });
     const immediate = this.currentSpeech === null;
     this.pumpSpeech();
     return {
@@ -436,7 +419,7 @@ export class UiChanState {
     let audio: TtsAudio | null = null;
     if (this.synthesize) {
       const spoken = ttsTextFor(item.text, item.reading);
-      audio = await this.synthesize(spoken, item.cue, item.voice).catch(() => null);
+      audio = await this.synthesize(spoken, item.cue).catch(() => null);
     }
     if (this.currentSpeech !== item) return; // cleared while synthesizing
     const speech = this.config.speech;
@@ -445,8 +428,10 @@ export class UiChanState {
       : item.durationMs;
     this.emit({
       type: 'speech',
-      text: item.text,
-      reading: item.reading ?? null,
+      // 吹き出しと口パクには印を出さない。記法は喋り方の指定であって、
+      // 読まれる文章の一部ではない（→ app/prosody.ts）。
+      text: forDisplay(item.text),
+      reading: item.reading ? forDisplay(item.reading) : null,
       audio,
     });
     this.speechTimer = setTimeout(() => {
