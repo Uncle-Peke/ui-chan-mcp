@@ -1,3 +1,4 @@
+import fsSync from 'node:fs';
 import type { CueVoice, Delivery, LexiconEntry, TtsAudio, TtsConfig } from '../shared/types';
 import {
   applyEnding,
@@ -371,6 +372,21 @@ export class VoiSonaTalkClient {
 
       const durations = info.phoneme_durations ?? [];
       const durationMs = Math.round((info.duration ?? durations.reduce((a, b) => a + b, 0)) * 1000);
+      // 一時デバッグ: UI_CHAN_DUMP=1 のとき、送った内容と鳴らした音を落とす。
+      if (process.env.UI_CHAN_DUMP === '1') {
+        try {
+          const dir = '/tmp/ui-chan-dump';
+          fsSync.mkdirSync(dir, { recursive: true });
+          const stamp = String(Date.now());
+          fsSync.writeFileSync(`${dir}/${stamp}.wav`, wav);
+          fsSync.writeFileSync(
+            `${dir}/${stamp}.json`,
+            JSON.stringify({ spoken, tsml, stretch, globalParameters }, null, 2),
+          );
+        } catch {
+          /* ignore */
+        }
+      }
       this.lastError = null;
       this.lastSuccessAt = new Date().toISOString();
       this.engineUnreachable = false;

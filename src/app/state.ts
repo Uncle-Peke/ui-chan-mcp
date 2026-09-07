@@ -902,6 +902,15 @@ export class UiChanState {
     return { ok: true, name: item.name };
   }
 
+  /** Debug: 任意のステップ列をその場で再生する（固定セリフのチューニング用）。
+   *  設定ファイルに書いた delivery ごと、本番と同じ経路を通る。 */
+  previewSequence(steps: CueStep[], name?: string): { ok: true } | { ok: false; error: string } {
+    if (!steps?.length) return { ok: false, error: 'steps is empty' };
+    this.cancelSequence();
+    this.performSequence({ name, steps }, 'debug');
+    return { ok: true };
+  }
+
   /** Debug: list configured IdlingCues. */
   listIdle(): {
     idlingCues: {

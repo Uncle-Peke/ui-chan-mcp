@@ -454,6 +454,10 @@ export type DebugAction =
   | { type: 'list_event_cues' }
   | { type: 'trigger_event'; event: string }
   | { type: 'preview_cue'; cue: string }
+  /** 任意のステップ列をその場で再生する。固定セリフのチューニングでは「プールから
+   *  ランダムに1つ」ではなく**この行を今すぐ**鳴らす必要があるので、名前でも
+   *  イベント名でもなく、ステップ列そのものを受け取る。 */
+  | { type: 'preview_sequence'; steps: CueStep[]; name?: string }
   | { type: 'set_affinity'; value: number }
   | { type: 'interact'; kind?: string }
   /** 更新の有無を強制する（撮影と手元確認用。実際の判定は6時間ごとの

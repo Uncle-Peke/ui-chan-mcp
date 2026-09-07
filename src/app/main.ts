@@ -117,7 +117,10 @@ const state = new UiChanState(
   config,
   cues,
   sendToRenderer,
-  tts ? (text, cue) => (muted ? Promise.resolve(null) : tts.synthesize(text, cue)) : undefined,
+  tts
+    ? (text, cue, delivery) =>
+        muted ? Promise.resolve(null) : tts.synthesize(text, cue, delivery)
+    : undefined,
   // OS-wide "seconds since the user last touched keyboard or mouse" — what lets
   // Idling read the user's presence instead of only its own timers.
   () => powerMonitor.getSystemIdleTime(),
@@ -202,6 +205,11 @@ function handleDebug(_ws: WebSocket, req: WsRequest): WsResponse {
         // force: the dev asked for this one, so skip cooldown/chance — but the
         // affinity and time gates still apply, so what you see could really play.
         const result = state.fireEventCue(action.event, { force: true });
+        if (!result.ok) return { id: req.id, ok: false, error: result.error };
+        return { id: req.id, ok: true, result };
+      }
+      case 'preview_sequence': {
+        const result = state.previewSequence(action.steps, action.name);
         if (!result.ok) return { id: req.id, ok: false, error: result.error };
         return { id: req.id, ok: true, result };
       }
