@@ -123,8 +123,15 @@
       align-items: flex-end;
       font-size: 12px;
       color: #2e2a35;
+      /* 畳んでいても、この箱は本体（幅176px）ぶんの面積を持っている。背景が
+         透明でも要素は要素なので、外すのを忘れると elementFromPoint がここを
+         拾い、つまみの上に広がる不可視の長方形がまるごと「押せるもの」に
+         なる＝後ろのアプリのボタンが押せなくなる。押せるのはつまみと、開いて
+         いる本体だけ。 */
+      pointer-events: none;
     }
     #panel-tab {
+      pointer-events: auto;
       -webkit-app-region: no-drag;
       appearance: none;
       border: none;
