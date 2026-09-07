@@ -117,9 +117,7 @@ const state = new UiChanState(
   config,
   cues,
   sendToRenderer,
-  tts
-    ? (text, cue, adlib) => (muted ? Promise.resolve(null) : tts.synthesize(text, cue, adlib))
-    : undefined,
+  tts ? (text, cue) => (muted ? Promise.resolve(null) : tts.synthesize(text, cue)) : undefined,
   // OS-wide "seconds since the user last touched keyboard or mouse" — what lets
   // Idling read the user's presence instead of only its own timers.
   () => powerMonitor.getSystemIdleTime(),

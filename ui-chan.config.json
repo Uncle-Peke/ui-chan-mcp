@@ -474,11 +474,22 @@
     ]
   },
   "tts": {
+    "$comment_lexicon": "読みとアクセントを常に上書きする語。品詞解析が固有名詞を取り違える箇所を、行ごとの演出ではなくアプリ側の固定の直しとして持つ。hl はモーラごとの高低（l=低 h=高）で、読みのモーラ数と長さを合わせること。hlInCompound は複合語の前部要素になったときの型（日本語では複合語で前部要素のアクセントが消え、核が後部要素へ移る：うい＝頭高だが、ういビームでは平らになり山はビーム側）。接尾辞（ういちゃんの「ちゃん」）は複合語ではないので適用されない",
+    "lexicon": [
+      { "word": "うい", "pronunciation": "ウイ", "hl": "hl", "hlInCompound": "lh" },
+      { "word": "雨衣", "pronunciation": "ウイ", "hl": "hl", "hlInCompound": "lh" },
+      { "word": "はあ", "hlBeforeQuestion": "lh" },
+      { "word": "へえ", "hlBeforeQuestion": "lh" },
+      { "word": "ねえ", "hlMidSentence": "ll" },
+      { "word": "はい", "hlBeforeQuestion": "lh" }
+    ],
     "enabled": true,
     "provider": "voisona-talk",
     "url": "http://127.0.0.1:32766",
     "voice_name": "",
     "language": "ja_JP",
+    "$comment_intonation": "抑揚の振れ幅の既定値。感情を宣言していないCue（style_weightsなし）にだけ使われ、感情があるCueは style_weights から導出する（高覚醒＝喜び・怒りは広く、悲しみは狭い）。無感情の短い相槌がここに落ちるので、控えめにしておくこと",
+    "intonation": 1.1,
     "app_name": "VoiSona Talk"
   },
   "lipSync": {

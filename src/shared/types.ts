@@ -11,11 +11,16 @@ export interface LayerDirectives {
 
 /** Voice color baked into a Cue. Passed through to VoiSona Talk's
  *  global_parameters largely as-is. */
+/** このCue固有の声色。**感情スタイルの重みだけ**を持つ。
+ *
+ *  かつては alp（声質の歪め方）と huskiness（かすれ）も持てたが、81個のCueで
+ *  **一度も使われないまま**だった。声の色は5つの学習済みスタイルの混ぜ方で作る
+ *  のが正面玄関で、あの2つは届かない色を無理やり作る逃げ道でしかない。読み方
+ *  （間・強調・語尾）は数値ではなくセリフの記法と Cue の delivery から導出する。
+ *  → src/app/prosody.ts */
 export interface CueVoice {
   /** Style name -> weight, e.g. { "Happy": 0.7 }. */
   style_weights?: Record<string, number>;
-  alp?: number;
-  huskiness?: number;
 }
 
 /** One complete look + voice color — the single unit of visual operation.
@@ -285,17 +290,42 @@ export interface TtsConfig {
   voice_name?: string;
   voice_version?: string;
   language?: string;
+  /** ピッチ変動の倍率（0〜2、既定1）。**この子の声の性質**として1箇所だけで持つ。
+   *  Cue にも行にも数値を置かないのは意図的だが、これは「どの場面でどう変える
+   *  数値か」ではなく「この声はこういう声だ」という定数なので、声の設定として置く。
+   *
+   *  1 より上げているのは、上手い読みと下手な読みを比較した研究（郡史郎「ナレー
+   *  ションのじょうずさに関する一考察」）で、差が出るのは**際立たせ方の大きさ**
+   *  だと分かっているため。規則どおりに読むだけでは足りず、はっきりやるほうが
+   *  上手く聞こえる。 */
+  intonation?: number;
   /** Cue name -> baked voice color, loaded from each Cue file's `voice` field. */
   cueVoice?: Record<string, CueVoice>;
+  /** 読み・アクセントを常に上書きする語（固有名詞など）。「うい」は品詞解析で
+   *  連体詞に落ちて頭高になるので、名前が毎回わずかに変な抑揚で呼ばれる。行ごとの
+   *  演出ではなく固定の誤りなので、AI ではなくアプリが直す。→ app/prosody.ts */
+  lexicon?: LexiconEntry[];
 }
 
-/** Ad-lib voice parameters for a single line, from set_cue's optional
- *  arguments. Layered on top of the Cue's baked voice.style_weights/alp/huskiness. */
-export interface VoiceAdlib {
-  pitch?: number;
-  speed?: number;
-  volume?: number;
-  intonation?: number;
+export interface LexiconEntry {
+  word: string;
+  pronunciation?: string;
+  /** 通常（単独・助詞や接尾辞が続く場合）のモーラ単位の高低。 */
+  hl?: string;
+  /** **文頭でないとき**（前に語があるとき）の高低。同じ語でも位置で別物になる
+   *  ことがある：「ねえ」は単体・文頭なら呼びかけ（高→低）だが、文中・文末の
+   *  「〜だよねぇ？」は同意を求める平ら（低）になる。 */
+  hlMidSentence?: string;
+  /** **直後に `？` が続くとき**の高低。感動詞は表記が同じでも読みが複数あり、
+   *  エンジンは既定の型しか選べない。「はあ」の既定は `hl`（高→低）＝溜め息で、
+   *  威嚇の「はぁ？」（低→高）にはならない。`is_question` は付いていても、語自身が
+   *  下降型だと打ち消される。同じ問題は「へえ」「ふーん」「え」にもある。 */
+  hlBeforeQuestion?: string;
+  /** **複合語の前部要素になったとき**の高低。日本語では複合語で前部要素の
+   *  アクセントが消え、核が後部要素へ移る（「うい」＋「ビーム」＝ うい が平らに
+   *  なり山は「ビーム」側）。接尾辞（「ういちゃん」の「ちゃん」）は複合語では
+   *  ないので、ここには当てはめない。 */
+  hlInCompound?: string;
 }
 
 export interface TtsAudio {
@@ -310,7 +340,6 @@ export interface SpeechItem {
   durationMs: number;
   agent: string;
   reading?: string;
-  voice?: VoiceAdlib;
   /** The Cue this line's baked voice color synthesizes with — fixed to the
    *  Cue given in the same set_cue call that produced this line, so a later
    *  set_cue can't retroactively change an in-flight line's voice. */
