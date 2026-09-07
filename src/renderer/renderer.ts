@@ -493,7 +493,18 @@ function renderConnections(agents: PanelAgent[], active: number | null): void {
       text.append(s);
     }
     row.append(dot, text);
-    row.title = a.cwd ?? a.name;
+    // 押すとそのセッションのアプリが前面に出る。タブまでは選ばない——端末に
+    // よってはタブという概念すら無いので、「動いているものが前に出る」で足りる。
+    row.title = `クリックで前面に出す — ${a.cwd ?? a.name}`;
+    row.addEventListener('click', async () => {
+      const res = (await window.uiChan.panelAction('focus', a.id)) as { ok?: boolean };
+      // 前面化は「窓が来たかどうか」でしか結果が分からず、彼女の側からは
+      // 見えない。飛べなかったときだけ行を光らせて、無反応と区別する。
+      if (!res?.ok) {
+        row.classList.add('miss');
+        window.setTimeout(() => row.classList.remove('miss'), 700);
+      }
+    });
     panelList.append(row);
   }
 

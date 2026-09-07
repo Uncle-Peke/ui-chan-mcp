@@ -206,6 +206,18 @@
     .panel-row.active {
       background: rgba(78, 91, 181, 0.14);
     }
+    /* 行は押せる。押すとそのセッションのアプリが前面に出る。 */
+    .panel-row {
+      cursor: pointer;
+    }
+    .panel-row:hover {
+      background: rgba(78, 91, 181, 0.22);
+    }
+    /* 飛べなかったとき用。成功は窓が前に出ることで分かるので、光らせるのは
+       失敗のときだけでいい。 */
+    .panel-row.miss {
+      background: rgba(180, 81, 94, 0.18);
+    }
     .panel-dot {
       width: 7px;
       height: 7px;

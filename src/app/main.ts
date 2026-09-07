@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { app, BrowserWindow, ipcMain, powerMonitor, screen } from 'electron';
@@ -376,6 +376,48 @@ function homePosition(): { x: number; y: number } {
   return { x: wa.x + wa.width - width - margin, y: wa.y + wa.height - height - margin };
 }
 
+/**
+ * セッション行を押されたとき、その相手のアプリを前面に出す。
+ *
+ * 手がかりは ConnectedAgent の pid ——ブリッジ（dist/mcp-server.js）のプロセス
+ * で、stdio の MCP サーバはクライアントの子なので、親をたどれば必ずクライアント
+ * 本体に行き着く。例：
+ *
+ *   node dist/mcp-server.js → claude → zsh → login → Ghostty.app
+ *   node dist/mcp-server.js → Claude.app（デスクトップ版はこれだけ）
+ *
+ * .app バンドルに当たったところで打ち切って `open -a` する。**タブまでは選ばない**
+ * ——同じ端末の別タブを撃ち分けるには AppleScript が要り、端末ごとに方言があり
+ * （Terminal/iTerm2 は tty、Ghostty は cwd しか持たない）、初回に自動化の許可
+ * ダイアログも出る。ターミナルで動くクライアントでは粒度が粗いままだが、
+ * デスクトップアプリ（Claude Desktop、Hermes）ではこれで十分に正確で、
+ * 「裏に埋もれた窓を前に出す」という用途は満たす。
+ */
+function parentOf(pid: number): { ppid: number; command: string } | null {
+  const r = spawnSync('ps', ['-o', 'ppid=,comm=', '-p', String(pid)], { encoding: 'utf-8' });
+  const line = r.stdout?.trim();
+  if (!line) return null;
+  const m = line.match(/^\s*(\d+)\s+(.*)$/);
+  return m ? { ppid: Number(m[1]), command: m[2] } : null;
+}
+
+function focusAgentApp(id: number): { ok: boolean; app?: string; error?: string } {
+  const agent = [...agents.values()].find((a) => a.id === id);
+  if (!agent?.pid) return { ok: false, error: 'pid unknown' };
+  let pid = agent.pid;
+  for (let i = 0; i < 8 && pid > 1; i++) {
+    const p = parentOf(pid);
+    if (!p) break;
+    const m = p.command.match(/^(.*\.app)\/Contents\/MacOS\//);
+    if (m) {
+      spawn('open', ['-a', m[1]], { detached: true, stdio: 'ignore' }).unref();
+      return { ok: true, app: m[1] };
+    }
+    pid = p.ppid;
+  }
+  return { ok: false, error: 'no .app ancestor' };
+}
+
 /** パネルのボタンの実体。IPC からも、デバッグ用の WS アクションからも同じ
  *  ものを呼ぶ——押した結果を確かめる方法が無いと、今回のように
  *  「押したのに何も起きない」不具合を見つけられない。 */
@@ -387,6 +429,8 @@ function panelAction(kind: string, value?: number): unknown {
       // be used to sneak past the asymmetric curve on her behalf.
       if (typeof value === 'number') state.setAffinity(value);
       return state.affinitySnapshot();
+    case 'focus':
+      return typeof value === 'number' ? focusAgentApp(value) : { ok: false };
     case 'affinity:get':
       return state.affinitySnapshot();
     case 'mute':
