@@ -69,8 +69,6 @@
           "steps": [
             {
               "cue": "mix_disgust_anger",
-              "$comment_delivery": "「……なに？」は問いではなく詰問なので、？が付いていても語尾を上げない。固定セリフだけに許される行ごとの演技指定（→ docs/design/PROSODY.md）",
-              "delivery": { "ending": "flat" },
               "text": "……なに？",
               "reading": "……なに？"
             }
@@ -82,11 +80,13 @@
           "steps": [
             {
               "cue": "sys_think",
+              "delivery": { "ending": "flat", "intonation": 1.5, "words": [{ "word": "な", "pronunciation": "ナー", "hl": "lh" }] },
               "text": "あれ、雨かな…？",
               "reading": "あれ、あめかな…？"
             },
             {
               "cue": "sys_rain",
+              "delivery": { "style_weights": { "Happy": 0.5, "Normal": 0.5 } },
               "text": "降ってきちゃった。",
               "reading": "ふってきちゃった。"
             },
@@ -719,6 +719,8 @@
             "steps": [
               {
                 "cue": "mix_disgust_anger",
+                "$comment_delivery": "「が？」は強気の見栄で、本気の敵意ではない。怒り100%だときつすぎる",
+                "delivery": { "style_weights": {"Angry": 0.6, "Normal": 0.4} },
                 "text": "おーい、確認だってさ。まだ止まってるが？",
                 "reading": "おーい、かくにんだってさ。まだとまってるが？"
               }
@@ -744,6 +746,8 @@
             "steps": [
               {
                 "cue": "sys_awkward",
+                "$comment_delivery": "拗ね。照れ(Bashful)だけだと甘えに寄りすぎるので、不満と寂しさを混ぜる",
+                "delivery": { "style_weights": {"Angry": 0.3, "Sad": 0.4, "Bashful": 0.3} },
                 "text": "おーい、置いてけぼりなんだけど？",
                 "reading": "おーい、おいてけぼりなんだけど？"
               }
@@ -764,6 +768,8 @@
             "steps": [
               {
                 "cue": "pose_arms_crossed",
+                "$comment_delivery": "「が？」の強気。腕組みの見た目に声を合わせる",
+                "delivery": { "style_weights": {"Angry": 0.5, "Normal": 0.5} },
                 "text": "ずっときみ待ちだが？",
                 "reading": "ずっときみまちだが？"
               }
@@ -780,6 +786,8 @@
             "steps": [
               {
                 "cue": "mix_surprise_sad",
+                "$comment_delivery": "素っ気ない実況。失望を強く乗せると他人事の軽さが消える",
+                "delivery": { "style_weights": {"Normal": 0.7, "Sad": 0.3} },
                 "text": "あ、こけた。",
                 "reading": "あ、こけた。"
               }
@@ -790,6 +798,8 @@
             "steps": [
               {
                 "cue": "emo_fear_lo",
+                "$comment_delivery": "「うわ」は驚きで高覚醒。恐れの色ではない",
+                "delivery": { "style_weights": {"Happy": 0.5, "Normal": 0.5} },
                 "text": "うわ、赤くなってるじゃん。",
                 "reading": "うわ、あかくなってるじゃん。"
               }
@@ -837,6 +847,8 @@
             "steps": [
               {
                 "cue": "sys_relief",
+                "$comment_delivery": "turn_done は結果を知らない。喜び100%だと成功を祝ってしまう",
+                "delivery": { "style_weights": {"Happy": 0.5, "Normal": 0.5} },
                 "text": "ひと段落したっぽいね。",
                 "reading": "ひとだんらくしたっぽいね。"
               }
@@ -847,6 +859,8 @@
             "steps": [
               {
                 "cue": "emo_joy_lo",
+                "$comment_delivery": "同上。労いだが、はしゃぐ場面ではない",
+                "delivery": { "style_weights": {"Happy": 0.6, "Normal": 0.4} },
                 "text": "おつかれ。ういは見てただけだけど。",
                 "reading": "おつかれ。ういはみてただけだけど。"
               }
@@ -953,6 +967,8 @@
             "steps": [
               {
                 "cue": "emo_surprise_lo",
+                "$comment_delivery": "「お、」は軽い驚き。きょとんではなく気づき",
+                "delivery": { "style_weights": {"Happy": 0.4, "Normal": 0.6} },
                 "text": "お、お手伝いの子が帰ってきた。",
                 "reading": "お、おてつだいのこがかえってきた。"
               }
@@ -963,6 +979,8 @@
             "steps": [
               {
                 "cue": "emo_trust_lo",
+                "$comment_delivery": "少し温かく。素のままだと事務的",
+                "delivery": { "style_weights": {"Normal": 0.7, "Happy": 0.3} },
                 "text": "お手伝いの子、戻ってきたよ。おかえりって言っといた。",
                 "reading": "おてつだいのこ、もどってきたよ。おかえりっていっといた。"
               }
