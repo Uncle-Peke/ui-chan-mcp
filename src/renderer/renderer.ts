@@ -358,7 +358,12 @@ function startAudioLipSync(
  *  after it (the usual trailing 。) doesn't produce a blank last line. An
  *  explicit \n in the text survives too, thanks to `white-space: pre-wrap`. */
 function bubbleText(text: string): string {
-  return text.replace(/([。！？!?]+)[ \u3000]*(?=[^」』）)】])/g, '$1\n');
+  // 先読みは「次の文が始まること」の確認。除外に句読点そのものを入れておかないと、
+  // 文末の「マジ！？」で ([。！？!?]+) が「！？」を掴んだあと先読みが文字を要求して
+  // 失敗し、バックトラックで「！」まで縮んだうえ「？」が除外に無いので条件を満たす
+  // ——！と？のあいだで改行される。閉じ括弧と同じく、句読点の続きも文の始まりでは
+  // ないので同列に置く。
+  return text.replace(/([。！？!?]+)[ \u3000]*(?=[^。！？!?」』）)】])/g, '$1\n');
 }
 
 let hideTextTimer: number | null = null;
