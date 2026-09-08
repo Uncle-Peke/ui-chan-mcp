@@ -398,10 +398,14 @@ not 「あたし」**) and for calling the user 「きみ」.
 With several hosts able to connect at once, the user needs to know *which*
 session a line belongs to — but a permanent HUD next to the mascot breaks the
 world, which is a hard non-functional requirement here. So the panel is
-collapsed to a small ribbon tab in the window's top-right corner: a **hamburger
-when 0–1 sessions are connected** (nothing to report; it is just a menu), the
-**session count when 2+** are. It opens on click, and opens *itself* only on a
-change into a multi-session state — the one thing the user cannot infer — then
+collapsed to a small ribbon tab in the window's bottom-right corner, at her
+feet: a **hamburger when 0–1 sessions are connected** (nothing to report; it is just a menu), the
+**session count when 2+** are. The tab stays pinned to the bottom edge and the
+body opens *upward* (`flex-direction: column-reverse`): at the top it fought the
+speech bubble for the same space, and the bubble is her voice, so the panel is
+always the one that yields — her feet are the one part no Cue touches, so
+covering them costs no expression. It opens on click, and opens *itself* only on
+a change into a multi-session state — the one thing the user cannot infer — then
 folds away after 6s unless they pinned it open by clicking.
 
 Identity comes from the bridge, not from guesswork: `hello` now carries the MCP
@@ -413,16 +417,21 @@ two windows of the same client apart. Each connection also gets an incrementing
 matching on `name` would light up two rows when the same client is connected
 twice. The list is pushed as an ordinary `RenderCommand` (`connections`) on
 connect/disconnect/tool call, so the panel can never show a stale session.
+Clicking a session row brings that client's app to the front: the pid is walked
+up its parent chain until an `.app` bundle turns up (`node dist/mcp-server.js →
+claude → zsh → login → Ghostty.app`), then `open -a`. Tabs are deliberately out
+of scope — picking one needs AppleScript with a per-terminal dialect and a
+permission dialog, and some terminals have no tabs at all.
 
 Its buttons (`ui-chan:panel-action`) are icon-only in one row — text there
 looked like an app toolbar, and icons keep the height fixed so the panel only
-ever grows downward with sessions. Left to right: しずかに (mutes the *voice*
+ever grows upward with sessions. Left to right: しずかに (mutes the *voice*
 only; the bubble stays, because a fully blank mascot reads as broken), ひといき
 (`clear` — stop talking and drop back to Idling), a **heart** that unfolds the
-affinity slider, a **house** = リセット, and — pushed to the right edge, away
-from the rest — おやすみ.
+affinity slider, a **circular arrow** = 起動しなおす, and — pushed to the right
+edge, away from the rest — おやすみ.
 
-Two of those icons say something the code has to keep true:
+Three of those icons say something the code has to keep true:
 
 - The heart is not a gear because affinity is the *only* thing behind it;
   naming it 設定 would promise a drawer that isn't there. If other settings
@@ -430,15 +439,17 @@ Two of those icons say something the code has to keep true:
   human sets affinity directly — the agent's `adjust_affinity` stays
   direction+magnitude, so this can't be used to sneak past the asymmetric curve
   on her behalf.
-- The house is the relaunch action, renamed: `createWindow` recomputes the
-  bottom-right position from the work area every time, so restarting *already*
-  put her back in her spot. The old circular arrow claimed "reload" while
-  quietly being the only way to recover a window dragged somewhere useless (or
-  stranded off-screen by a display change). The icon now says what it does. The `clear` icon is a **circle with a
-slash**: the action force-quits whatever is playing, which is neither muting
-nor undoing (an arrow), and a ■ only reads as "stop" next to ▶/⏸ — alone it is
-just a square. The prohibition sign carries "stop this" on its own, which is
-what a four-icon utility row needs.
+- The circular arrow is the relaunch action, and what it is *for* lives in its
+  tooltip (「起動しなおす（定位置に戻る）」) rather than in the glyph:
+  `createWindow` recomputes the bottom-right position from the work area every
+  time, so restarting is also the only way to recover a window dragged
+  somewhere useless (or stranded off-screen by a display change). An arrow
+  alone reads as "reload", which undersells that — hence the parenthesis in the
+  title attribute.
+- The `clear` icon is a **circle with a slash**: the action force-quits whatever
+  is playing, which is neither muting nor undoing (an arrow), and a ■ only reads
+  as "stop" next to ▶/⏸ — alone it is just a square. The prohibition sign
+  carries "stop this" on its own, which is what a four-icon utility row needs.
 
 **Who may launch the app** (`ensureConnected`'s `allowLaunch`). Only **bridge
 startup** does — ≈ session start, where configuring the MCP server is itself
