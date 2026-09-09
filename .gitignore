@@ -14,6 +14,13 @@ assets/*.png
 
 # Claude Code local runtime state (session-specific, not portable)
 .claude/
+
+# エージェント向けのローカルメモ。**このリポジトリは公開されている**ので、
+# 手元のマシン固有の事情（アカウントの使い分け、認証、個人の作業手順）は
+# ここに置き、リポジトリには入れない。誰の環境でも同じ設計の話は
+# docs/ARCHITECTURE.md へ。
+CLAUDE.md
+AGENTS.md
 cues.old/
 
 # 更新の記録（npm/コピー導入時にのみ作られる、その環境固有の値）
