@@ -53,7 +53,26 @@ export interface MascotConfig {
   assetsDir: string;
   cuesDir?: string;
   personaFile?: string;
-  window: { width: number; height: number; margin: number };
+  window: {
+    width: number;
+    height: number;
+    margin: number;
+    /** ドラッグを離したとき、いちばん近い画面の隅がこの距離以内なら、その隅の
+     *  定位置（`margin` を空けた位置）に吸い付く。px、0 で無効。既定 320。
+     *  距離は「彼女の実ピクセルの隅と、その隅の定位置」の間で測る
+     *  （→ `snapToCorner()`）。 */
+    snapDistance?: number;
+    /** 隅に吸い付いたとき、画面の左右の縁に **`margin` に加えて** 空ける逃げしろ
+     *  （px、既定 12）。彼女の身体の箱は `default` の見た目で一度だけ測って
+     *  固定してある（ポーズごとに測り直すと着地点が Cue 次第で変わるため）ので、
+     *  腕を広げる Cue はその箱より外へ出る——指先が画面の縁で欠けるのはこれ。
+     *  縦は下端揃えで伸びる余地がないので、横だけ。 */
+    snapGap?: number;
+    /** 吸い付きにかける時間（ms、既定 220、0 で即座に移動）。即座に飛ぶと
+     *  「窓が瞬間移動した」であって「吸い寄せられた」に見えないので、
+     *  easeOutCubic で寄せる（動き出しが速く、着地でふっと止まる）。 */
+    snapDurationMs?: number;
+  };
   port: number;
   lipSync?: LipSyncConfig;
   tts?: TtsConfig;
@@ -460,7 +479,13 @@ export type RenderCommand =
   /** Paint a backdrop behind her, for screenshots. The window is transparent by
    *  design, which makes a capture unusable anywhere that isn't white — so the
    *  backdrop is applied just long enough to take the picture. */
-  | { type: 'backdrop'; style: string | null };
+  | { type: 'backdrop'; style: string | null }
+  /** 彼女がいま画面のどちら側に居るか。見た目の3つを一度に決める：
+   *  接続パネルを同じ側へ寄せ、吹き出しを画面の内側へ伸ばし、左に居るときは
+   *  立ち絵を左右反転して画面の内側を向かせる。窓は隅に吸い付くと透明帯ぶん
+   *  画面外へはみ出すので、窓の縁を基準にした要素は放っておくと画面の外に
+   *  出てしまう——この一報がその全部の基準になる。 */
+  | { type: 'side'; side: 'left' | 'right' };
 
 // ---- Explicit per-tool result types (replaces the loose ToolResultInfo
 // index signature; each tool's actual return shape is now checked by tsc). ----

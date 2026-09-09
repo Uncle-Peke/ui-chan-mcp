@@ -393,13 +393,82 @@ actually blocked on them.
 Voice: `context/VOCABULARY.md` is authoritative for 一人称 (**「わたし」「うい」 —
 not 「あたし」**) and for calling the user 「きみ」.
 
+### 画面の隅への吸い付き（と、窓 ≠ 彼女）
+
+ドラッグして離すと、近ければ画面の**下の隅**へ吸い寄せられる。実装の全部が、
+一つの事実から出ている——**窓の矩形と「彼女に見える範囲」は全然違う**。
+
+窓は 420x680 だが、実測した透明帯は左100px・右119px・上175px・下7.5px。PSD が
+3541x5016 もあるのは万歳のように腕を広げるポーズのための幅で、`default` の彼女は
+その中央に立っているにすぎない。だから窓の右下を画面の右下に合わせても、彼女は
+隅から119px浮いて見える——「吸い付いた」と読めない距離で、最初の実装はこれで
+失敗した。目が見ているのは彼女であって窓ではないので、**着地点もしきい値も実
+ピクセルで測る**。
+
+その箱はレンダラが合成後のキャンバスのアルファを走査して出し
+（`PsdStage.contentInsets()`）、`ui-chan:body-box` で main に渡す。**一度きり**
+なのが肝で、ポーズごとに測り直すと万歳しているときとしていないときで着地点が
+変わる——同じ「右下」が Cue 次第で別の場所になるのは、位置としては壊れている。
+最初に当たる look は `default`（全 Cue の土台そのもの）なので、それを基準として
+固定する。
+
+**下2隅だけ**。上に詰められないのは、窓の上部120pxが吹き出しの居場所として常時
+確保されているから（`index.html` の `#bubble-area`）で、彼女の頭を画面上端に付け
+ると喋った瞬間に吹き出しが画面外へ出る。置けない場所を候補に出しても、寄せたのに
+何も起きないか、変な位置に落ちるかのどちらかにしかならない。
+
+#### 窓が画面外にはみ出す、という前提
+
+彼女を画面の縁に合わせる以上、**窓のほうは透明帯ぶん画面の外へ出る**。これが
+効いてくるのは、窓の縁を基準に置かれていた全部だ：接続パネル（`right: 6px`）も
+吹き出し（中央揃え）も、そのまま画面の外へ連れて行かれる。どちらも計測値
+（`--body-left` / `--body-right`）で内側に寄せて解決している。
+
+見た目は `RenderCommand` の **`side` 一報**（彼女が画面のどちら側に居るか）で
+まとめて決まる。判定は「作業領域の左右どちら寄りに身体があるか」なので、吸い
+付いていない位置でも破綻しない：
+
+- **パネル**は彼女と同じ側へ。画面の外側の縁に沿って開くので、デスクトップの
+  中央側——他のウィンドウが居る側——に張り出さない。
+- **吹き出し**は画面の内側へ伸びる（右下なら左へ、左下なら右へ）。伸びる向きと
+  反対側の端を身体の縁に合わせるので、長い行でも切れない。しっぽは箱の中央では
+  なく**彼女の頭の真上**を指す（`--tail-x`、行ごとに幅が変わるので毎回置き直す）。
+- **立ち絵**は左下にいるとき左右反転し、画面の内側を向く。
+
+反転には、目に見えない落とし穴が2つある。`getBoundingClientRect()` は CSS の
+`transform` を見ないので、**当たり判定だけは自分で座標を折り返す**必要がある
+（`PsdStage.mirrored`）——入れないと、つつく場所とクリック透過の判定が左右逆に
+なる。もう一つは Cue のクロスフェード用オーバーレイで、同じ変換をかけ忘れると
+**切り替えの一瞬だけ反転前の絵＝左向きが素で見える**。
+
+#### 数字と、動き
+
+- `window.snapDistance`（既定 320px）— この距離以内なら吸い付く。
+- `window.snapGap`（既定 12px）— 左右の縁に `margin` に**加えて**空ける逃げしろ。
+  箱は `default` で測って固定してあるので、腕を広げる Cue はそれより外へ出る。
+  指先が画面の縁で欠けるのはこれで、縦は下端揃えなので横だけ。
+- `window.snapDurationMs`（既定 220ms）— `glideTo()` の easeOutCubic。一発で
+  `setPosition` すると「窓が瞬間移動した」であって「吸い寄せられた」に見えず、
+  逆に macOS 任せの `animate: true` は遅くて重い。あいだを取って自前で刻む。
+  寄っている途中に掴まれたらドラッグを優先する（`drag-start` で中断）。
+
+`homePosition()`（起動位置とリセット）も同じ基準を見る。**リセットと吸い付きが
+別の場所に着地しないこと**が条件だからで、起動直後だけはまだ測れていないので窓の
+矩形で置き、測れた時点で——ユーザーがまだ動かしていなければ——置き直す。
+
+最後に一つ、地雷を踏んだ記録として：**`win.setPosition()` は整数しか受け取らない**。
+実ピクセルの計測値は dpr 由来で `7.5` のような小数になるので、丸め忘れると
+main プロセスごと落ちる（"conversion failure" のダイアログが出て、位置直しは
+一度も効かない）。
+
 ### The connections panel (who is she talking to?)
 
 With several hosts able to connect at once, the user needs to know *which*
 session a line belongs to — but a permanent HUD next to the mascot breaks the
 world, which is a hard non-functional requirement here. So the panel is
-collapsed to a small ribbon tab in the window's bottom-right corner, at her
-feet: a **hamburger when 0–1 sessions are connected** (nothing to report; it is just a menu), the
+collapsed to a small ribbon tab at her feet — in the window's bottom-right
+corner, or bottom-left when she is snapped to the left edge (see 「画面の隅への
+吸い付き」above; the tab follows her so it can never end up off-screen): a **hamburger when 0–1 sessions are connected** (nothing to report; it is just a menu), the
 **session count when 2+** are. The tab stays pinned to the bottom edge and the
 body opens *upward* (`flex-direction: column-reverse`): at the top it fought the
 speech bubble for the same space, and the bubble is her voice, so the panel is

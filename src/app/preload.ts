@@ -13,4 +13,6 @@ contextBridge.exposeInMainWorld('uiChan', {
   setClickThrough: (on: boolean) => ipcRenderer.send('ui-chan:click-through', on),
   dragStart: () => ipcRenderer.send('ui-chan:drag-start'),
   dragEnd: () => ipcRenderer.send('ui-chan:drag-end'),
+  reportBodyBox: (insets: { left: number; top: number; right: number; bottom: number }) =>
+    ipcRenderer.send('ui-chan:body-box', insets),
 });

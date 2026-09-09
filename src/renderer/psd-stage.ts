@@ -289,6 +289,11 @@ export class PsdStage {
   /** Alpha (0–255) of the composited image at a client (viewport) point, for
    *  hit-testing "is the pointer actually over her body" vs the transparent
    *  margins. Maps client → canvas pixel coords via the element's box. */
+  /** 立ち絵を左右反転して描いているか。反転は CSS（`#canvas` の scaleX(-1)）で
+   *  かけるが、`getBoundingClientRect()` は変換後も同じ箱を返すので、当たり判定
+   *  だけは自分で座標を折り返さないと左右が入れ替わったまま当たる。 */
+  mirrored = false;
+
   alphaAt(clientX: number, clientY: number): number {
     const rect = this.canvas.getBoundingClientRect();
     if (
@@ -301,13 +306,62 @@ export class PsdStage {
     ) {
       return 0;
     }
-    const px = Math.floor(((clientX - rect.left) / rect.width) * this.canvas.width);
+    let px = Math.floor(((clientX - rect.left) / rect.width) * this.canvas.width);
+    if (this.mirrored) px = this.canvas.width - 1 - px;
     const py = Math.floor(((clientY - rect.top) / rect.height) * this.canvas.height);
     try {
       return this.ctx.getImageData(px, py, 1, 1).data[3];
     } catch {
       return 0;
     }
+  }
+
+  /**
+   * いま描かれている絵の**不透明な部分**が、canvas 要素の箱の中でどこにあるかを
+   * CSS px の内側余白（inset）で返す。読めなければ null。
+   *
+   * これが要る理由：窓（420x680）と「彼女に見える範囲」は全然違う。PSD は
+   * 3541x5016 あるが、実際に絵があるのはその中央あたりだけで、左右に 785px /
+   * 954px の余白がある（万歳など腕を広げるポーズのために取ってある幅）。
+   * 表示スケールに直すと片側 90〜110px。窓の矩形を画面の隅に合わせても、
+   * 彼女は隅から100px浮いて見える——「吸い付いた」と読めない距離。
+   */
+  contentInsets(
+    alphaThreshold = 8,
+  ): { left: number; top: number; right: number; bottom: number } | null {
+    const { canvas } = this;
+    if (canvas.width === 0 || canvas.height === 0) return null;
+    let data: Uint8ClampedArray;
+    try {
+      data = this.ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    } catch {
+      return null;
+    }
+    let minX = canvas.width;
+    let minY = canvas.height;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = 0; y < canvas.height; y++) {
+      const row = y * canvas.width * 4;
+      for (let x = 0; x < canvas.width; x++) {
+        if (data[row + x * 4 + 3] < alphaThreshold) continue;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        maxY = y;
+      }
+    }
+    if (maxX < 0) return null; // 完全に透明＝測るものがない
+    // canvas のバッキングストアは dpr 倍。CSS px に戻して返す。
+    const rect = canvas.getBoundingClientRect();
+    const sx = rect.width / canvas.width;
+    const sy = rect.height / canvas.height;
+    return {
+      left: minX * sx,
+      top: minY * sy,
+      right: (canvas.width - 1 - maxX) * sx,
+      bottom: (canvas.height - 1 - maxY) * sy,
+    };
   }
 
   // ---- temporary-overlay visibility snapshot/restore (used by blink) ----
