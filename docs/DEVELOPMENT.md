@@ -1,6 +1,6 @@
 # 開発ガイド
 
-> **ういちゃんMCP そのものを直すとき**に読みます。設計判断とその理由は [../CLAUDE.md](../CLAUDE.md)、用語は [../VISION.md](../VISION.md) に。
+> **ういちゃんMCP そのものを直すとき**に読みます。設計判断とその理由は [ARCHITECTURE.md](ARCHITECTURE.md)、用語は [../VISION.md](../VISION.md) に。
 
 ---
 
@@ -143,8 +143,8 @@ flowchart LR
   VoiSona Talk は MCP 起動時と `set_cue` のたびに、落ちていれば起こし直されます
 - **エージェント名** — MCP クライアント情報から自動取得（`UI_CHAN_AGENT_NAME` で上書き可）
 
-より詳しい実装のガイドは [CLAUDE.md](../CLAUDE.md) を参照。
+より詳しい実装のガイドは [ARCHITECTURE.md](ARCHITECTURE.md) を参照。
 
 ---
 
-<sub>次に読むなら [../CLAUDE.md](../CLAUDE.md)（実装ガイド） / [STYLE.md](STYLE.md)（ドキュメントを書くとき）</sub>
+<sub>次に読むなら [ARCHITECTURE.md](ARCHITECTURE.md)（実装ガイド） / [STYLE.md](STYLE.md)（ドキュメントを書くとき）</sub>

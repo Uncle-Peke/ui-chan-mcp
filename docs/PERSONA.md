@@ -58,4 +58,4 @@ MCP が渡せるのはツール（＝身体）だけです。**キャラクタ�
 
 ---
 
-<sub>次に読むなら [TOOLS.md](TOOLS.md)（人格が使うツール） / [../CLAUDE.md](../CLAUDE.md)（実装の詳細）</sub>
+<sub>次に読むなら [TOOLS.md](TOOLS.md)（人格が使うツール） / [ARCHITECTURE.md](ARCHITECTURE.md)（実装の詳細）</sub>

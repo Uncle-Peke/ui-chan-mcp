@@ -164,6 +164,7 @@ VoiSona Talk が起きてないか、REST API が有効になってないか、�
 | 新しい表情を作りたい | [docs/CUE_AUTHORING.md](docs/CUE_AUTHORING.md) |
 | わたしの性格を変えたい | [docs/PERSONA.md](docs/PERSONA.md) |
 | **中のコードを直したい** | [docs/](docs/README.md) — 開発者向けの資料はこっちに全部ある |
+| なぜこの設計なのか知りたい | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 設計判断と、そう決めた理由 |
 | 手伝ってくれるなら | [CONTRIBUTING.md](CONTRIBUTING.md) — 歓迎するもの／お断りするもの |
 
 ---

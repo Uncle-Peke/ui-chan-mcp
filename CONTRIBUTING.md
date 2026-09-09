@@ -22,7 +22,7 @@
 
 ## `03` 設計上、再提案をお断りしているもの
 
-過去に検討して却下したものがあります。理由は [CLAUDE.md](CLAUDE.md) の "Rejected designs" に
+過去に検討して却下したものがあります。理由は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) の "Rejected designs" に
 書いてありますので、提案の前に目を通してください。
 
 - Cue 間の継承（`extends`）
@@ -47,7 +47,7 @@ npm run validate-cues               # Cue のスキーマ検証
 npm run check-package               # 配布物に素材が混ざっていないか
 ```
 
-詳しくは [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)、設計の背景は [CLAUDE.md](CLAUDE.md)、
+詳しくは [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)、設計の背景は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、
 ドキュメントを書くときは [docs/STYLE.md](docs/STYLE.md) を参照してください。
 
 ## `05` コミットメッセージ
