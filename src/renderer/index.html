@@ -29,11 +29,25 @@
       align-items: flex-end;
       justify-content: center;
       padding: 8px 10px 0;
+      /* 左右の余白は「彼女の実ピクセルの外側」ぶん。隅に吸い付くと窓はその
+         ぶん画面外へはみ出しているので、ここを空けておかないと吹き出しが
+         画面の外へ伸びて切れる。--body-* は renderer.ts が計測して入れる。 */
       box-sizing: border-box;
       /* キャラクターの頭上（PSDの傘用余白ぶん）まで吹き出しを下げる */
       transform: translateY(46px);
       z-index: 1;
       position: relative;
+    }
+    /* 右下に居るなら左へ、左下に居るなら右へ——画面の内側へ向かって伸ばす。
+       伸びる向きと反対側の端を彼女の身体の縁に合わせるので、長い行でも
+       画面からはみ出さない。 */
+    #stage.side-right #bubble-area {
+      justify-content: flex-end;
+      padding-right: calc(10px + var(--body-right, 0px));
+    }
+    #stage.side-left #bubble-area {
+      justify-content: flex-start;
+      padding-left: calc(10px + var(--body-left, 0px));
     }
     #bubble {
       position: relative;
@@ -59,11 +73,14 @@
       opacity: 1;
       transform: translateY(0);
     }
+    /* しっぽは吹き出しの中央ではなく**彼女の頭の真上**を指す。吹き出しの箱は
+       画面の内側へ寄るので、中央固定だと指す先が彼女から外れる。位置は
+       renderer.ts が測って --tail-x に入れる（既定は従来どおり中央）。 */
     #bubble::after {
       content: '';
       position: absolute;
       bottom: -9px;
-      left: 50%;
+      left: var(--tail-x, 50%);
       margin-left: -7px;
       border-width: 9px 7px 0;
       border-style: solid;
@@ -81,6 +98,14 @@
       inset: 0;
       width: 100%;
       height: 100%;
+    }
+    /* 左下に居るときは、画面の内側（右）を向かせる。当たり判定は CSS の変換を
+       見ていないので、PsdStage.mirrored 側でも折り返している。 */
+    /* #cue-overlay は renderer.ts が差し込むクロスフェード用のキャンバス。
+       本体と同じ変換をかけないと、切り替えの一瞬だけ反転前の絵が見える。 */
+    #stage.side-left #canvas,
+    #stage.side-left #cue-overlay {
+      transform: scaleX(-1);
     }
     #placeholder {
       display: none;
@@ -116,7 +141,12 @@
     #panel {
       position: absolute;
       bottom: 6px;
-      right: 6px;
+      /* 窓の縁ではなく**彼女の実ピクセルの縁**を基準にする。隅への吸い付きは
+         彼女を画面の縁に合わせるので、窓のほうは画面外に100px以上はみ出す
+         （PSDの左右の透明帯ぶん）。窓の右端に貼り付けたままだと、パネルは
+         その一緒に画面の外へ出て押せなくなる。余白は renderer.ts が
+         計測して --body-right / --body-left に入れる。 */
+      right: calc(6px + var(--body-right, 0px));
       z-index: 5;
       display: flex;
       flex-direction: column-reverse;
@@ -129,6 +159,13 @@
          なる＝後ろのアプリのボタンが押せなくなる。押せるのはつまみと、開いて
          いる本体だけ。 */
       pointer-events: none;
+    }
+    /* 彼女が画面の左下に居るときは、パネルも左へ。彼女の立ち位置と同じ側の縁に
+       沿わせるので、開いたパネルがデスクトップの中央側へ張り出さない。 */
+    #panel.left {
+      right: auto;
+      left: calc(6px + var(--body-left, 0px));
+      align-items: flex-start;
     }
     #panel-tab {
       pointer-events: auto;
@@ -195,6 +232,9 @@
       opacity: 1;
       transform: translateY(0) scale(1);
       pointer-events: auto;
+    }
+    #panel.left #panel-body {
+      transform-origin: bottom left;
     }
     .panel-row {
       display: flex;

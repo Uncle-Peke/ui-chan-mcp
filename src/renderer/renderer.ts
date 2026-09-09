@@ -21,6 +21,7 @@ interface UiChanApi {
   setClickThrough(on: boolean): void;
   dragStart(): void;
   dragEnd(): void;
+  reportBodyBox(insets: { left: number; top: number; right: number; bottom: number }): void;
 }
 
 declare global {
@@ -48,6 +49,68 @@ function reportWarnings(): void {
   window.uiChan.reportWarnings(stage.getWarnings());
 }
 
+// ---- 「彼女に見える範囲」を一度だけ測って main に渡す ----
+// 隅への吸い付き（main.ts の snapToCorner）が使う。窓の矩形ではなく実ピクセルの
+// 位置で合わせないと、画面の隅に寄せたつもりが100px浮く（→ contentInsets の説明）。
+//
+// **一度きり**なのが肝。ポーズごとに測り直すと、万歳しているときとしていない
+// ときで着地点が変わる——同じ「右下」が Cue 次第で別の場所になるのは、位置と
+// しては壊れている。最初に当たる look は `default`（state.ts が起動時に置く、
+// 全 Cue の土台そのもの）なので、それを彼女の定位置の基準として固定する。
+let bodyBoxSent = false;
+/** 計測した生の余白（反転前）。`side` が決まるたび実効値に組み替えて配る。 */
+let rawInsets: { left: number; top: number; right: number; bottom: number } | null = null;
+let bodySide: 'left' | 'right' = 'right';
+const stageEl = document.getElementById('stage') as HTMLDivElement;
+
+/** `side` と計測値から、見た目3つ（パネルの寄せ・吹き出しの伸びる向き・反転）を
+ *  まとめて反映する。左に居るときは立ち絵を反転するので、身体の左右の余白も
+ *  入れ替わる——CSS変数に入れるのは入れ替えたあとの値。 */
+function applySide(): void {
+  stageEl.classList.toggle('side-left', bodySide === 'left');
+  stageEl.classList.toggle('side-right', bodySide === 'right');
+  stage.mirrored = bodySide === 'left';
+  if (!rawInsets) return;
+  const left = bodySide === 'left' ? rawInsets.right : rawInsets.left;
+  const right = bodySide === 'left' ? rawInsets.left : rawInsets.right;
+  stageEl.style.setProperty('--body-left', `${left}px`);
+  stageEl.style.setProperty('--body-right', `${right}px`);
+  positionTail();
+}
+
+/** しっぽを彼女の頭の真上に置く。吹き出しの箱は画面の内側へ寄るので、中央
+ *  固定のままだと指す先が身体から外れる。吹き出しより外は指せないので、両端は
+ *  角丸に食われない位置で止める。 */
+function positionTail(): void {
+  if (!rawInsets) return;
+  const left = bodySide === 'left' ? rawInsets.right : rawInsets.left;
+  const right = bodySide === 'left' ? rawInsets.left : rawInsets.right;
+  const headX = left + (window.innerWidth - left - right) / 2;
+  const r = bubble.getBoundingClientRect();
+  if (r.width === 0) return;
+  const x = Math.min(Math.max(headX - r.left, 16), r.width - 16);
+  bubble.style.setProperty('--tail-x', `${x}px`);
+}
+
+function reportBodyBoxOnce(): void {
+  if (bodyBoxSent || !stage.loaded) return;
+  const box = stage.contentInsets();
+  if (!box) return;
+  // canvas は #canvas-wrap の中（上に吹き出し領域ぶんの隙間がある）なので、
+  // canvas 基準の余白を窓の内側基準に積み直す。main が知りたいのは窓との差。
+  const rect = canvas.getBoundingClientRect();
+  const insets = {
+    left: rect.left + box.left,
+    top: rect.top + box.top,
+    right: window.innerWidth - rect.right + box.right,
+    bottom: window.innerHeight - rect.bottom + box.bottom,
+  };
+  bodyBoxSent = true;
+  rawInsets = insets;
+  applySide();
+  window.uiChan.reportBodyBox(insets);
+}
+
 // ---- Cue-transition crossfade (tween) ----
 // Because a look is discrete sprite swaps (a mouth あ→ん can't be interpolated),
 // we tween at the raster level: freeze the pre-change frame onto an overlay
@@ -56,6 +119,9 @@ function reportWarnings(): void {
 // (which repaint the main canvas) show through the fading overlay fine.
 // Duration comes from config.ambient.cueFadeMs (0 = hard cut).
 const overlay = document.createElement('canvas');
+// 反転（#stage.side-left）を本体キャンバスと一緒に受けるための id。付け忘れると
+// クロスフェードの一瞬だけ、凍らせた**反転前**のフレームが素で見える＝左を向く。
+overlay.id = 'cue-overlay';
 overlay.style.cssText =
   'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0';
 const overlayCtx = overlay.getContext('2d');
@@ -372,6 +438,7 @@ function setSpeech(text: string | null): void {
   if (text !== null) {
     bubble.textContent = bubbleText(text);
     bubble.classList.add('visible');
+    positionTail(); // 行ごとに幅が変わるので、そのたび指し直す
   } else {
     bubble.classList.remove('visible');
     hideTextTimer = window.setTimeout(() => {
@@ -619,6 +686,11 @@ async function init(): Promise<void> {
       reportWarnings();
       lipCurrentMouth = null; // let the next lip tick re-assert its mouth
       draw();
+      reportBodyBoxOnce();
+    } else if (cmd.type === 'side') {
+      bodySide = cmd.side;
+      panelEl.classList.toggle('left', cmd.side === 'left');
+      applySide();
     } else if (cmd.type === 'backdrop') {
       // Named presets keep the common cases short; anything else is passed to
       // CSS as-is, so a caller can hand over a gradient or an image.
