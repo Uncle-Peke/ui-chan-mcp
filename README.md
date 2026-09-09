@@ -165,6 +165,18 @@ VoiSona Talk が起きてないか、REST API が有効になってないか、�
 | わたしの性格を変えたい | [docs/PERSONA.md](docs/PERSONA.md) |
 | **中のコードを直したい** | [docs/](docs/README.md) — 開発者向けの資料はこっちに全部ある |
 | なぜこの設計なのか知りたい | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 設計判断と、そう決めた理由 |
+
+> [!NOTE]
+> **AI エージェントへ。** このリポジトリに `CLAUDE.md` / `AGENTS.md` は**ありません**。
+> 公開リポジトリなので、それらは手元固有のメモ（アカウントの使い分け、認証、個人の
+> 作業手順）専用として `.gitignore` してあります。**自動で読まれるファイルが無い**ので、
+> コードに触る前に自分で **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** を開いて
+> ください。二つの Electron プロセスの分担、Cue の仕組み、意図的に却下した設計まで
+> 全部そこにあります——読まずに書くと、たいてい却下済みの案を再発明します。
+>
+> 用語（Idling / Cue / EventCue …）は [VISION.md](VISION.md)、準備とコマンドは
+> [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。手元のメモを残すなら `CLAUDE.md` に
+> 書けば、コミットに混ざりません。
 | 手伝ってくれるなら | [CONTRIBUTING.md](CONTRIBUTING.md) — 歓迎するもの／お断りするもの |
 
 ---
