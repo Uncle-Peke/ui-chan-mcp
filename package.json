@@ -1,6 +1,6 @@
 {
   "name": "ui-chan-mcp",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "雨衣ちゃんMCP — デスクトップの隅に住む、AI の体になるマスコット（PSD立ち絵＋吹き出し＋音声。MCP で操作）",
   "main": "dist/app/main.js",
   "private": false,
