@@ -118,8 +118,7 @@ const state = new UiChanState(
   cues,
   sendToRenderer,
   tts
-    ? (text, cue, delivery) =>
-        muted ? Promise.resolve(null) : tts.synthesize(text, cue, delivery)
+    ? (text, cue, delivery) => (muted ? Promise.resolve(null) : tts.synthesize(text, cue, delivery))
     : undefined,
   // OS-wide "seconds since the user last touched keyboard or mouse" — what lets
   // Idling read the user's presence instead of only its own timers.
