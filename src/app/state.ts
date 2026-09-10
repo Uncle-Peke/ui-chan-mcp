@@ -6,8 +6,10 @@ import type {
   CueSequence,
   CueState,
   CueStep,
+  CueVoice,
   Delivery,
   LayerDirectives,
+  Look,
   MascotConfig,
   RenderCommand,
   SetCueResult,
@@ -160,7 +162,7 @@ export class UiChanState {
     private emit: (cmd: RenderCommand) => void,
     private synthesize?: (
       text: string,
-      cue: string,
+      voice: CueVoice | undefined,
       delivery?: Delivery,
     ) => Promise<TtsAudio | null>,
     /** Seconds since the user last touched keyboard or mouse, OS-wide. Injected
@@ -349,6 +351,7 @@ export class UiChanState {
 
     if (args.text) {
       const speechResult = this.enqueueSpeech(args.text, cueName, agent, {
+        voice: this.cues[cueName]?.voice,
         durationMs: args.duration_ms,
         reading: args.reading,
       });
@@ -389,6 +392,8 @@ export class UiChanState {
     cue: string,
     agent: string,
     opts?: {
+      /** この行の声色。積んだ時点で解決したものを最後まで使う。 */
+      voice?: CueVoice;
       durationMs?: number;
       reading?: string;
       /** 固定セリフ（IdlingCue / EventCue / FidgetCue）だけが持つ行ごとの演技指定。
@@ -397,7 +402,7 @@ export class UiChanState {
       onComplete?: () => void;
     },
   ): EnqueueResult {
-    const { durationMs, reading, delivery, onComplete } = opts ?? {};
+    const { voice, durationMs, reading, delivery, onComplete } = opts ?? {};
     if (this.speechQueue.length >= MAX_QUEUE) {
       onComplete?.(); // don't strand a caller waiting on a line that never got queued
       return { ok: false, error: `speech queue is full (${MAX_QUEUE})` };
@@ -412,6 +417,7 @@ export class UiChanState {
       reading,
       delivery,
       cue,
+      voice,
       onComplete,
     });
     const immediate = this.currentSpeech === null;
@@ -435,7 +441,7 @@ export class UiChanState {
     let audio: TtsAudio | null = null;
     if (this.synthesize) {
       const spoken = ttsTextFor(item.text, item.reading);
-      audio = await this.synthesize(spoken, item.cue, item.delivery).catch(() => null);
+      audio = await this.synthesize(spoken, item.voice, item.delivery).catch(() => null);
     }
     if (this.currentSpeech !== item) return; // cleared while synthesizing
     const speech = this.config.speech;
@@ -741,6 +747,7 @@ export class UiChanState {
     this.applyCueLook(cueName, source);
     if (step.text) {
       this.enqueueSpeech(step.text, cueName, source, {
+        voice: this.cues[cueName]?.voice,
         reading: step.reading,
         delivery: step.delivery,
         onComplete: advance,
@@ -762,21 +769,26 @@ export class UiChanState {
    *  to default's own blink when the selected Cue doesn't say either way, so
    *  a new Cue file that simply omits `blink` inherits the base look's blink
    *  behavior instead of silently going blink-less. */
-  private composeDirectives(cueName: string): { directives: LayerDirectives; blink: boolean } {
+  private composeDirectives(look: Look): { directives: LayerDirectives; blink: boolean } {
     const base = this.cues[DEFAULT_CUE_NAME] ?? {};
-    const cue = this.cues[cueName] ?? base;
     return {
       directives: {
-        select: [...(base.select ?? []), ...(cue.select ?? [])],
-        show: [...(base.show ?? []), ...(cue.show ?? [])],
-        hide: [...(base.hide ?? []), ...(cue.hide ?? [])],
+        select: [...(base.select ?? []), ...(look.select ?? [])],
+        show: [...(base.show ?? []), ...(look.show ?? [])],
+        hide: [...(base.hide ?? []), ...(look.hide ?? [])],
       },
-      blink: cue.blink ?? base.blink ?? false,
+      blink: look.blink ?? base.blink ?? false,
     };
   }
 
+  /** Cue 名から見た目＋声を引く。無い名前は default（composeDirectives の
+   *  base と重ねると default そのものになる）。 */
+  private lookOf(cueName: string): Look {
+    return this.cues[cueName] ?? this.cues[DEFAULT_CUE_NAME] ?? {};
+  }
+
   applyVisual(): void {
-    const { directives, blink } = this.composeDirectives(this.cueState.cue);
+    const { directives, blink } = this.composeDirectives(this.lookOf(this.cueState.cue));
     this.emit({ type: 'apply', directives, blink });
   }
 
@@ -945,7 +957,7 @@ export class UiChanState {
   } {
     const exists = Boolean(this.cues[cueName]);
     const targetCue = exists ? cueName : DEFAULT_CUE_NAME;
-    const { directives, blink } = this.composeDirectives(targetCue);
+    const { directives, blink } = this.composeDirectives(this.lookOf(targetCue));
     return {
       cue: cueName,
       exists,

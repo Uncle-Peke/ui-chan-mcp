@@ -172,5 +172,5 @@ ipcMain.handle('editor:cue-refs', (_ev, name: string): string[] => {
 ipcMain.handle('editor:list-styles', () => (tts ? tts.listStyles() : null));
 
 ipcMain.handle('editor:synthesize', (_ev, text: string, voice: Cue['voice']) =>
-  tts ? tts.synthesizeWithVoice(text, voice) : null,
+  tts ? tts.synthesize(text, voice) : null,
 );

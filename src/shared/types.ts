@@ -23,13 +23,20 @@ export interface CueVoice {
   style_weights?: Record<string, number>;
 }
 
+/** 見た目（レイヤー指定＋まばたき）と声色のひとまとまり。`default` の上に
+ *  重ねて描く差分として持つ。Cue はこれに名前とカタログ用の情報を足したもの。
+ *  「Cue 名で引いてくる」のは set_cue だけの事情なので、見た目と声の本体は
+ *  名前から切り離しておく。 */
+export interface Look extends LayerDirectives {
+  blink?: boolean;
+  voice?: CueVoice;
+}
+
 /** One complete look + voice color — the single unit of visual operation.
  *  1 file = 1 Cue, fully self-contained, no inheritance. Mirrors
  *  cue.schema.json exactly; that schema is the source of truth for the wire
  *  format, this interface just gives it a TypeScript shape. */
-export interface Cue extends LayerDirectives {
-  blink?: boolean;
-  voice?: CueVoice;
+export interface Cue extends Look {
   /** Logical name (human-readable, unique) — the file name is the structural,
    *  sortable id (emo_anger_hi); this is its readable alias (e.g. 「激おこ」). */
   label?: string;
@@ -359,8 +366,6 @@ export interface TtsConfig {
    *  だと分かっているため。規則どおりに読むだけでは足りず、はっきりやるほうが
    *  上手く聞こえる。 */
   intonation?: number;
-  /** Cue name -> baked voice color, loaded from each Cue file's `voice` field. */
-  cueVoice?: Record<string, CueVoice>;
   /** 読み・アクセントを常に上書きする語（固有名詞など）。「うい」は品詞解析で
    *  連体詞に落ちて頭高になるので、名前が毎回わずかに変な抑揚で呼ばれる。行ごとの
    *  演出ではなく固定の誤りなので、AI ではなくアプリが直す。→ app/prosody.ts */
@@ -402,10 +407,11 @@ export interface SpeechItem {
   reading?: string;
   /** 固定セリフだけが持つ、この行の演技指定。 */
   delivery?: Delivery;
-  /** The Cue this line's baked voice color synthesizes with — fixed to the
-   *  Cue given in the same set_cue call that produced this line, so a later
-   *  set_cue can't retroactively change an in-flight line's voice. */
+  /** The Cue this line was spoken under — a label for get_state. */
   cue: string;
+  /** この行を合成する声色。**積んだ時点で**解決して持たせる——後から別の
+   *  set_cue が来ても、読み上げ待ちの行の声が塗り替わらないように。 */
+  voice?: CueVoice;
   /** Internal bookkeeping only — not part of the wire format (JSON.stringify
    *  drops function values, so it never reaches get_state's output). Lets an
    *  IdlingCue step advance exactly when THIS line actually finishes playing

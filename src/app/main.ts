@@ -15,7 +15,7 @@ import type {
   WsResponse,
 } from '../shared/types';
 import { findPsd as findPsdIn } from './assets';
-import { extractCueVoice, loadCues, watchCues } from './cues';
+import { loadCues, watchCues } from './cues';
 import { UiChanState } from './state';
 import { VoiSonaTalkClient } from './tts';
 
@@ -36,7 +36,6 @@ let cueErrors: string[] = [];
 function loadCurrentCues(): Record<string, Cue> {
   const set = loadCues(cuesDir, cueSchemaPath);
   cueErrors = set.errors;
-  if (config.tts) config.tts.cueVoice = extractCueVoice(set);
   for (const err of set.errors) console.error(`[ui-chan] cue error: ${err}`);
   return set.cues;
 }
@@ -118,7 +117,8 @@ const state = new UiChanState(
   cues,
   sendToRenderer,
   tts
-    ? (text, cue, delivery) => (muted ? Promise.resolve(null) : tts.synthesize(text, cue, delivery))
+    ? (text, voice, delivery) =>
+        muted ? Promise.resolve(null) : tts.synthesize(text, voice, delivery)
     : undefined,
   // OS-wide "seconds since the user last touched keyboard or mouse" — what lets
   // Idling read the user's presence instead of only its own timers.

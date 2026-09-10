@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020.js';
-import type { Cue, CueVoice } from '../shared/types';
+import type { Cue } from '../shared/types';
 import { DEFAULT_CUE_NAME } from '../shared/types';
 
 export interface CueSet {
@@ -88,12 +88,4 @@ export function watchCues(dirs: string | string[], onChange: () => void): void {
   for (const dir of Array.isArray(dirs) ? dirs : [dirs]) {
     if (fs.existsSync(dir)) fs.watch(dir, fire);
   }
-}
-
-export function extractCueVoice(set: CueSet): Record<string, CueVoice> {
-  const out: Record<string, CueVoice> = {};
-  for (const [name, cue] of Object.entries(set.cues)) {
-    if (cue.voice) out[name] = cue.voice;
-  }
-  return out;
 }

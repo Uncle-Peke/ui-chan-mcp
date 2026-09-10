@@ -217,14 +217,6 @@ export class VoiSonaTalkClient {
     return vec.some((w) => w !== 0) ? vec : undefined;
   }
 
-  /** Synthesize one line of speech in the given Cue's baked voice color,
-   *  layered with this line's ad-lib pitch/speed/volume/intonation. Thin
-   *  wrapper that resolves the Cue name to its saved voice color, then defers
-   *  to synthesizeWithVoice. */
-  synthesize(text: string, cue: string, delivery?: Delivery): Promise<TtsAudio | null> {
-    return this.synthesizeWithVoice(text, this.cfg.cueVoice?.[cue], delivery);
-  }
-
   /**
    * 文字列 → TSML（エンジン自身の「この日本語をこう読む」という理解）→ 演出を
    * 当てた TSML。**AI に TSML を書かせない**のがここの肝で、`pos` や `phoneme` は
@@ -285,9 +277,10 @@ export class VoiSonaTalkClient {
     }
   }
 
-  /** Synthesize with an explicit voice color instead of a saved Cue name — used
-   *  by the editor's "試し喋り" to preview an in-progress, not-yet-saved voice. */
-  async synthesizeWithVoice(
+  /** 1行を、渡された声色で合成する。声は呼び出し側が解決して渡す——
+   *  マスコットは積んだ時点の Cue から、エディタは編集中のスライダーから。
+   *  Cue 名から引く口は持たない（名前を知っているのは set_cue だけなので）。 */
+  async synthesize(
     text: string,
     cueVoice: CueVoice | undefined,
     delivery?: Delivery,
