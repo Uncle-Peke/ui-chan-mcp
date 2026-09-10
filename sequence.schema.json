@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ui-chan-mcp.local/schema/sequence.schema.json",
+  "title": "CueSequence",
+  "description": "IdlingCue / EventCue / FidgetCue の1本ぶん。1ファイル=1シーケンスで、ファイル名がそのまま名前になる。どのプールに属するかはディレクトリで決まる（idling/・presence/away.json・presence/wake.json・fidget/poke/・fidget/spam/・event/<イベント名>/）。各ステップは見た目と声色を**自分で持つ**——エージェント向けの Cue（cues/）を名前で参照する口は無い。汎用 Cue を借りていた頃は、エージェント向けに Cue の声を直すと固定セリフの声まで黙って変わっていた（62行中33行）。",
+  "type": "object",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^\\$comment": {}
+  },
+  "required": ["steps"],
+  "properties": {
+    "weight": {
+      "type": "number",
+      "minimum": 0,
+      "description": "同じプールの中での選ばれやすさ（相対値）。省略時 1。"
+    },
+    "minAffinity": {
+      "type": "number",
+      "description": "好感度がこの値以上のときだけ選ばれる。"
+    },
+    "maxAffinity": {
+      "type": "number",
+      "description": "好感度がこの値以下のときだけ選ばれる。"
+    },
+    "hours": {
+      "type": "array",
+      "description": "[開始時, 終了時]（0〜23、両端を含む）。開始 > 終了なら日付をまたぐ（[22, 4] = 22:00〜04:59）。",
+      "items": { "type": "integer", "minimum": 0, "maximum": 23 },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/step" }
+    }
+  },
+  "$defs": {
+    "look": {
+      "type": "object",
+      "description": "見た目と声色。default Cue からの差分として書く（Cue ファイルと同じ形から、名前とカタログ情報を除いたもの）。",
+      "additionalProperties": false,
+      "properties": {
+        "select": { "$ref": "cue.schema.json#/properties/select" },
+        "show": { "$ref": "cue.schema.json#/properties/show" },
+        "hide": { "$ref": "cue.schema.json#/properties/hide" },
+        "blink": { "$ref": "cue.schema.json#/properties/blink" },
+        "voice": { "$ref": "cue.schema.json#/properties/voice" }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^\\$comment": {}
+      },
+      "properties": {
+        "look": {
+          "$ref": "#/$defs/look",
+          "description": "このステップの見た目と声色。**省略すると直前のステップの見た目と声のまま**続く。{} は default そのもの。"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "喋るセリフ。あると、そのセリフを喋り終えたところで次のステップへ進む。"
+        },
+        "reading": {
+          "type": "string",
+          "description": "ひらがなの読み（口パク用。英字・数字を含む行では読み上げ音声そのものになる）。"
+        },
+        "holdMs": {
+          "type": "number",
+          "minimum": 0,
+          "description": "セリフの無いステップを続ける時間（ms、省略時 2000）。セリフのあるステップでは使われない。"
+        },
+        "delivery": { "$ref": "#/$defs/delivery" }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "description": "この一行だけの演技指定。書かなかったものは感情からの導出値のまま（→ docs/design/PROSODY.md）。声色はここではなく look.voice で持つ。",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^\\$comment": {}
+      },
+      "properties": {
+        "intonation": { "type": "number", "minimum": 0, "maximum": 2 },
+        "speed": { "type": "number", "minimum": 0.2, "maximum": 5 },
+        "pitch": { "type": "number", "minimum": -600, "maximum": 600 },
+        "volume": { "type": "number", "minimum": -8, "maximum": 8 },
+        "stretchSec": { "type": "number", "minimum": 0 },
+        "clipSec": { "type": "number", "minimum": 0 },
+        "ending": { "enum": ["flat", "rise"] },
+        "words": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/lexiconEntry" }
+        }
+      }
+    },
+    "lexiconEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["word"],
+      "properties": {
+        "word": { "type": "string", "minLength": 1 },
+        "pronunciation": { "type": "string" },
+        "hl": { "type": "string" },
+        "hlMidSentence": { "type": "string" },
+        "hlBeforeQuestion": { "type": "string" },
+        "hlInCompound": { "type": "string" }
+      }
+    }
+  }
+}

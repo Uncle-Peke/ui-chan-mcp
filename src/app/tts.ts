@@ -294,7 +294,7 @@ export class VoiSonaTalkClient {
       // 語の上書きは config のあとに置く——applyLexicon は順に当てるので、
       // 同じ語があれば後勝ち＝行の指定のほうが強い。
       const lexicon = [...(this.cfg.lexicon ?? []), ...(delivery?.words ?? [])];
-      const styles = delivery?.style_weights ?? cueVoice?.style_weights;
+      const styles = cueVoice?.style_weights;
       const needs = needsTsml(text, lexicon) || !!delivery?.ending || !!delivery?.words?.length;
       const tsml = needs
         ? await this.analyzed(spoken, emphasisTargets(text), lexicon, delivery?.ending)

@@ -75,17 +75,3 @@ export function validateCueObject(obj: unknown, schemaPath: string): string | nu
   if (validate(obj)) return null;
   return (validate.errors ?? []).map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ');
 }
-
-export function watchCues(dirs: string | string[], onChange: () => void): void {
-  let timer: NodeJS.Timeout | null = null;
-  const fire = () => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => {
-      timer = null;
-      onChange();
-    }, 300);
-  };
-  for (const dir of Array.isArray(dirs) ? dirs : [dirs]) {
-    if (fs.existsSync(dir)) fs.watch(dir, fire);
-  }
-}

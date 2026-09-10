@@ -38,6 +38,11 @@ export interface UiChanPaths {
   /** Where a newly saved cue is written (the last existing dir above). */
   cueWriteDir: string;
   cueSchemaFile: string;
+  /** 固定セリフ（sequences/）の読み込み順（後が勝つ）と、保存先・スキーマ。
+   *  規則は cues と同じ。 */
+  sequenceDirs: string[];
+  sequenceWriteDir: string;
+  sequenceSchemaFile: string;
   /** Asset dirs in search order. */
   assetsDirs: string[];
   personaFile: string;
@@ -164,6 +169,11 @@ export function resolvePaths(pkgRoot: string): UiChanPaths {
         ? (cueDirs[cueDirs.length - 1] ?? path.join(pkgRoot, config.cuesDir ?? 'cues'))
         : path.join(home, 'cues'),
     cueSchemaFile: path.join(pkgRoot, 'cue.schema.json'),
+    sequenceDirs: existingDirs([path.join(pkgRoot, 'sequences'), path.join(home, 'sequences')]),
+    // 保存先の考え方は cueWriteDir と同じ（クローンならカタログ本体、それ以外はホーム）。
+    sequenceWriteDir:
+      kind === 'git' ? path.join(pkgRoot, 'sequences') : path.join(home, 'sequences'),
+    sequenceSchemaFile: path.join(pkgRoot, 'sequence.schema.json'),
     assetsDirs: existingDirs([
       path.join(home, config.assetsDir ?? 'assets'),
       path.join(pkgRoot, config.assetsDir ?? 'assets'),

@@ -150,25 +150,6 @@ ipcMain.handle('editor:delete-cue', (_ev, name: string): EditorWriteResult => {
   }
 });
 
-// CueSequence names (IdlingCues + FidgetCues) whose steps reference this
-// cue — a delete-safety warning so removing a cue used by a sequence doesn't
-// silently break it.
-ipcMain.handle('editor:cue-refs', (_ev, name: string): string[] => {
-  const pools: { label: string; items?: { name?: string; steps?: { cue?: string }[] }[] }[] = [
-    { label: 'idling', items: config.idle?.idlingCues?.items },
-    { label: 'poke', items: config.interactions?.poke },
-  ];
-  const refs: string[] = [];
-  for (const { label, items } of pools) {
-    (items ?? []).forEach((item, i) => {
-      if ((item.steps ?? []).some((s) => s.cue === name)) {
-        refs.push(`${label}:${item.name ?? `#${i}`}`);
-      }
-    });
-  }
-  return refs;
-});
-
 ipcMain.handle('editor:list-styles', () => (tts ? tts.listStyles() : null));
 
 ipcMain.handle('editor:synthesize', (_ev, text: string, voice: Cue['voice']) =>

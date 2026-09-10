@@ -5,13 +5,13 @@ import type {
   Cue,
   CueSequence,
   CueState,
-  CueStep,
   CueVoice,
   Delivery,
   LayerDirectives,
   Look,
   MascotConfig,
   RenderCommand,
+  SequenceStep,
   SetCueResult,
   SpeechItem,
   SpeechTimingConfig,
@@ -20,6 +20,7 @@ import type {
 } from '../shared/types';
 import { DEFAULT_AFFINITY_STEPS, DEFAULT_CUE_NAME } from '../shared/types';
 import { forDisplay } from './prosody';
+import type { SequenceSet } from './sequences';
 
 const MAX_QUEUE = 20;
 
@@ -123,6 +124,10 @@ function dedupeSelectsByGroup(selects: string[]): string[] {
 
 export class UiChanState {
   private cues: Record<string, Cue>;
+  /** 固定セリフ（IdlingCue / EventCue / FidgetCue）。ファイルから読んだもの。 */
+  private sequences: SequenceSet;
+  /** シーケンスのステップが自前で持つ見た目。null なら cueState.cue の Cue。 */
+  private inlineLook: Look | null = null;
   private cueState: CueState;
   private speechQueue: SpeechItem[] = [];
   private currentSpeech: SpeechItem | null = null;
@@ -159,6 +164,7 @@ export class UiChanState {
   constructor(
     private config: MascotConfig,
     cues: Record<string, Cue>,
+    sequences: SequenceSet,
     private emit: (cmd: RenderCommand) => void,
     private synthesize?: (
       text: string,
@@ -171,6 +177,7 @@ export class UiChanState {
     private systemIdleSec?: () => number,
   ) {
     this.cues = cues;
+    this.sequences = sequences;
     this.cueState = { cue: DEFAULT_CUE_NAME, agent: null };
     this.affinity = this.clampAffinity(config.affinity?.default ?? 30);
     this.scheduleIdlingCue();
@@ -184,11 +191,18 @@ export class UiChanState {
    *  itself survives, even as an empty Cue). */
   setCues(cues: Record<string, Cue>): void {
     this.cues = cues;
-    if (!this.cues[this.cueState.cue]) {
+    if (!this.inlineLook && !this.cues[this.cueState.cue]) {
       this.lastCueWarning = `cue "${this.cueState.cue}" disappeared on reload — fell back to "${DEFAULT_CUE_NAME}".`;
       this.setCueState(DEFAULT_CUE_NAME, this.cueState.agent);
     }
     this.applyVisual();
+  }
+
+  /** 固定セリフを読み直したとき（エディタで保存したときなど）。再生中の
+   *  シーケンスはそのまま最後まで続く——手元に持っている配列が別物になるだけ。 */
+  setSequences(sequences: SequenceSet): void {
+    this.sequences = sequences;
+    this.scheduleIdlingCue();
   }
 
   listCues(): string[] {
@@ -376,8 +390,22 @@ export class UiChanState {
   /** Switch to a Cue and render it — the visual half of "apply a Cue",
    *  shared by set_cue and every CueSequence step. */
   private applyCueLook(cueName: string, agent: string | null): void {
+    this.inlineLook = null;
     this.setCueState(cueName, agent);
     this.applyVisual();
+  }
+
+  /** シーケンスのステップが持つ見た目をそのまま着る。`label` は get_state に
+   *  出る名前（`<シーケンス名>#<何番目>`）で、Cue 名ではない。 */
+  private applyInlineLook(label: string, look: Look, agent: string): void {
+    this.inlineLook = look;
+    this.setCueState(label, agent);
+    this.applyVisual();
+  }
+
+  /** いま着ている見た目と声。 */
+  private activeLook(): Look {
+    return this.inlineLook ?? this.lookOf(this.cueState.cue);
   }
 
   /** Queue a line without touching the idle timers (used by CueSequence steps).
@@ -548,7 +576,7 @@ export class UiChanState {
   }
 
   private eligibleIdlingCues(): CueSequence[] {
-    return this.eligible(this.config.idle?.idlingCues?.items ?? []);
+    return this.eligible(this.sequences.idling);
   }
 
   /** A direct physical interaction (the fidget). FidgetCues PREEMPT whatever's
@@ -572,8 +600,9 @@ export class UiChanState {
     if (now - this.lastInteractionAt < (cfg?.cooldownMs ?? 600)) return;
 
     const pestered = this.recentPokes.length >= (spam?.count ?? 3);
-    const pool = pestered ? (spam?.pool ?? []) : [];
-    const item = weightedPick(this.eligible(pool)) ?? weightedPick(this.eligible(cfg?.poke ?? []));
+    const pool = pestered ? this.sequences.spam : [];
+    const item =
+      weightedPick(this.eligible(pool)) ?? weightedPick(this.eligible(this.sequences.poke));
     if (!item?.steps?.length) return;
     // Reacting to the pestering resets the tally, so she snaps once and then
     // has to be pestered again — not once per poke forever.
@@ -607,7 +636,7 @@ export class UiChanState {
   private scheduleIdlingCue(): void {
     this.idlingCueTimer = clearTimeoutSafe(this.idlingCueTimer);
     const idlingCues = this.config.idle?.idlingCues;
-    if (!idlingCues?.enabled || !idlingCues.items?.length) return;
+    if (!idlingCues?.enabled || !this.sequences.idling.length) return;
     if (this.systemIdleGate()) {
       this.idlingThresholdSec =
         this.readSystemIdleSec() + randomDelaySec(idlingCues.minSec, idlingCues.maxSec);
@@ -654,7 +683,7 @@ export class UiChanState {
   private tickIdling(): void {
     const gate = this.systemIdleGate();
     const idlingCues = this.config.idle?.idlingCues;
-    if (!gate || !idlingCues?.enabled || !idlingCues.items?.length) {
+    if (!gate || !idlingCues?.enabled || !this.sequences.idling.length) {
       this.idlingTickTimer = clearIntervalSafe(this.idlingTickTimer);
       return;
     }
@@ -674,7 +703,7 @@ export class UiChanState {
       // never retry it, leaving her silently "away" with no visible reason.
       if (this.isBusy()) return;
       this.userAway = true;
-      if (gate.awayCue) this.performSequence(gate.awayCue, 'idling-cue');
+      if (this.sequences.away) this.performSequence(this.sequences.away, 'idling-cue');
       return;
     }
     if (idleSec < this.idlingThresholdSec) return;
@@ -697,9 +726,9 @@ export class UiChanState {
       // and a wake-up that waits politely for the snoring to finish isn't a
       // reaction to anything. It still yields to the agent — effectivePriority
       // is only `idle` when nothing above idle filler is playing.
-      if (gate.wakeCue && this.effectivePriority() <= PRIORITY.idle) {
+      if (this.sequences.wake && this.effectivePriority() <= PRIORITY.idle) {
         this.preempt();
-        this.performSequence(gate.wakeCue, 'idling-cue');
+        this.performSequence(this.sequences.wake, 'idling-cue');
       }
     }
     this.idlingThresholdSec = randomDelaySec(gate.minSec, gate.firstMaxSec ?? gate.minSec);
@@ -721,7 +750,7 @@ export class UiChanState {
             : PRIORITY.idle;
     this.idleTimer = clearTimeoutSafe(this.idleTimer);
     this.sequenceActive = true;
-    this.playSequenceStep(cue.steps, 0, source);
+    this.playSequenceStep(cue, 0, source);
   }
 
   /** Advance one step of a CueSequence. A step with `text` waits for that
@@ -730,7 +759,8 @@ export class UiChanState {
    *  speaking step, so there is no separately-guessed number that can drift
    *  out of sync with what's really being said. A silent step (no `text`)
    *  has nothing to wait for, so `holdMs` (default 2000) is what times it. */
-  private playSequenceStep(steps: CueStep[], i: number, source: string): void {
+  private playSequenceStep(seq: CueSequence, i: number, source: string): void {
+    const steps = seq.steps;
     // cancelled by real activity while waiting between steps
     if (!this.sequenceActive) return;
     if (i >= steps.length) {
@@ -741,13 +771,13 @@ export class UiChanState {
       return;
     }
     const step = steps[i];
-    const cueName = step.cue && this.cues[step.cue] ? step.cue : this.cueState.cue;
-    const advance = () => this.playSequenceStep(steps, i + 1, source);
+    const advance = () => this.playSequenceStep(seq, i + 1, source);
 
-    this.applyCueLook(cueName, source);
+    // 見た目を持たないステップは、直前のステップの見た目と声のまま続ける。
+    if (step.look) this.applyInlineLook(`${seq.name ?? 'sequence'}#${i + 1}`, step.look, source);
     if (step.text) {
-      this.enqueueSpeech(step.text, cueName, source, {
-        voice: this.cues[cueName]?.voice,
+      this.enqueueSpeech(step.text, this.cueState.cue, source, {
+        voice: this.activeLook().voice,
         reading: step.reading,
         delivery: step.delivery,
         onComplete: advance,
@@ -788,7 +818,7 @@ export class UiChanState {
   }
 
   applyVisual(): void {
-    const { directives, blink } = this.composeDirectives(this.lookOf(this.cueState.cue));
+    const { directives, blink } = this.composeDirectives(this.activeLook());
     this.emit({ type: 'apply', directives, blink });
   }
 
@@ -814,15 +844,17 @@ export class UiChanState {
     const cfg = this.config.eventCues;
     if (cfg?.enabled === false) return { ok: true, spoke: false, reason: 'eventCues disabled' };
 
-    const group = cfg?.events?.[event];
-    if (!group) {
-      const known = Object.keys(cfg?.events ?? {});
+    const settings = cfg?.events?.[event];
+    const items = this.sequences.events[event];
+    if (!settings && !items) {
+      const known = this.eventNames();
       return {
         ok: false,
         error: `unknown event "${event}". known: ${known.join(', ') || '(none)'}`,
       };
     }
 
+    const group = settings ?? {};
     const key = group.throttleKey ?? event;
     const cooldownMs = (group.cooldownSec ?? 90) * 1000;
     const lastAt = this.eventCueLastAt.get(key);
@@ -833,7 +865,7 @@ export class UiChanState {
       return { ok: true, spoke: false, reason: 'chance' };
     }
 
-    const item = weightedPick(this.eligible(group.items ?? []));
+    const item = weightedPick(this.eligible(items ?? []));
     if (!item?.steps?.length) return { ok: true, spoke: false, reason: 'no eligible EventCue' };
 
     // An EventCue reports something real, so it outranks idle filler — but it
@@ -864,14 +896,30 @@ export class UiChanState {
     const cfg = this.config.eventCues;
     return {
       enabled: cfg?.enabled !== false,
-      events: Object.entries(cfg?.events ?? {}).map(([event, group]) => ({
-        event,
-        count: group.items?.length ?? 0,
-        cooldownSec: group.cooldownSec ?? 90,
-        chance: group.chance ?? 1,
-        names: (group.items ?? []).map((i) => i.name).filter((n): n is string => Boolean(n)),
-      })),
+      events: this.eventNames().map((event) => {
+        const group = cfg?.events?.[event] ?? {};
+        const items = this.sequences.events[event] ?? [];
+        return {
+          event,
+          count: items.length,
+          cooldownSec: group.cooldownSec ?? 90,
+          chance: group.chance ?? 1,
+          names: items.map((i) => i.name).filter((n): n is string => Boolean(n)),
+        };
+      }),
     };
+  }
+
+  /** 知っているイベント名：設定（cooldown など）があるものと、セリフの
+   *  ディレクトリ（sequences/event/<名前>/）があるものの和。どちらか片方だけでも
+   *  成り立つ——設定を書かなければ既定値で動く。 */
+  private eventNames(): string[] {
+    return [
+      ...new Set([
+        ...Object.keys(this.config.eventCues?.events ?? {}),
+        ...Object.keys(this.sequences.events),
+      ]),
+    ].sort();
   }
 
   /** Every sequence `idle <name>` can force, including the two the system-idle
@@ -881,18 +929,15 @@ export class UiChanState {
    *  performance you can only see by waiting a quarter hour never gets looked
    *  at. */
   private namedIdleSequences(): CueSequence[] {
-    const idlingCues = this.config.idle?.idlingCues;
-    const gate = idlingCues?.systemIdle;
-    return [...(idlingCues?.items ?? []), gate?.awayCue, gate?.wakeCue].filter(
-      (a): a is CueSequence => !!a,
-    );
+    const { idling, away, wake } = this.sequences;
+    return [...idling, away, wake].filter((a): a is CueSequence => !!a);
   }
 
   /** Debug: force-run one IdlingCue immediately (or the named one).
    *  Honors minAffinity/weight filters unless a specific name is requested. */
   triggerIdleAction(name?: string): { ok: true; name?: string } | { ok: false; error: string } {
     const idlingCues = this.config.idle?.idlingCues;
-    if (!idlingCues?.enabled || !idlingCues.items?.length) {
+    if (!idlingCues?.enabled || !this.sequences.idling.length) {
       return { ok: false, error: 'idlingCues are disabled or empty' };
     }
     let item: CueSequence | undefined;
@@ -916,7 +961,10 @@ export class UiChanState {
 
   /** Debug: 任意のステップ列をその場で再生する（固定セリフのチューニング用）。
    *  設定ファイルに書いた delivery ごと、本番と同じ経路を通る。 */
-  previewSequence(steps: CueStep[], name?: string): { ok: true } | { ok: false; error: string } {
+  previewSequence(
+    steps: SequenceStep[],
+    name?: string,
+  ): { ok: true } | { ok: false; error: string } {
     if (!steps?.length) return { ok: false, error: 'steps is empty' };
     this.cancelSequence();
     this.performSequence({ name, steps }, 'debug');

@@ -21,7 +21,6 @@ contextBridge.exposeInMainWorld('uiEditor', {
     ipcRenderer.invoke('editor:write-cue', name, cue),
   deleteCue: (name: string): Promise<EditorWriteResult> =>
     ipcRenderer.invoke('editor:delete-cue', name),
-  cueRefs: (name: string): Promise<string[]> => ipcRenderer.invoke('editor:cue-refs', name),
   listStyles: (): Promise<EditorStyles | null> => ipcRenderer.invoke('editor:list-styles'),
   synthesize: (text: string, voice: Cue['voice']): Promise<TtsAudio | null> =>
     ipcRenderer.invoke('editor:synthesize', text, voice),

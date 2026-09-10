@@ -101,8 +101,6 @@ export interface MascotConfig {
  *  affinity-gated, so touching her reads the relationship's temperature.
  *  See VISION.md. */
 export interface InteractionsConfig {
-  /** FidgetCue pool for a poke (click on her actual pixels). */
-  poke?: FidgetCue[];
   /** Minimum gap between reactions, ms. Default 600. Stops mashing from
    *  spamming interruptions. */
   cooldownMs?: number;
@@ -118,10 +116,6 @@ export interface SpamInteractionConfig {
   count?: number;
   /** The window those pokes have to fall in, ms. Default 4000. */
   withinMs?: number;
-  /** Pool used instead of `poke` once the threshold is crossed. Same shape as
-   *  `poke` (weights + affinity gates), so the *flavour* of the irritation can
-   *  still follow the relationship. */
-  pool?: FidgetCue[];
 }
 
 /** Timing for the speech bubble/queue when `set_cue`'s `duration_ms` is
@@ -201,8 +195,6 @@ export interface IdlingCuesConfig {
   /** Random idle gap before playing one, in seconds: picked uniformly in [minSec, maxSec]. Resets on any activity. */
   minSec: number;
   maxSec: number;
-  /** Pool of IdlingCues to pick from. */
-  items: IdlingCue[];
   /** Optional: also require the *user* to be idle (see SystemIdleConfig). */
   systemIdle?: SystemIdleConfig;
 }
@@ -229,12 +221,6 @@ export interface SystemIdleConfig {
    *  stay silent until input comes back. 0 / omitted disables the away state
    *  (and with it the "keeps talking to an empty chair" half of the fix). */
   awaySec?: number;
-  /** Played once on crossing into away — she nods off rather than just going
-   *  quiet, so the away state is visible instead of indistinguishable from a
-   *  long gap. */
-  awayCue?: CueSequence;
-  /** Played once when input comes back after being away. */
-  wakeCue?: CueSequence;
 }
 
 /** A CueSequence is a whole little performance — Cue and (optionally) speech
@@ -244,10 +230,10 @@ export interface SystemIdleConfig {
  *  (self-initiated during Idling) or as a FidgetCue (fired by a poke).
  *  Same data, same playback; only the trigger and priority differ. */
 export interface CueSequence {
-  /** Optional label, for logs / debug triggering (`idle <name>`). */
+  /** ファイル名（拡張子なし）。ローダが埋める——ファイルの中には書かない。 */
   name?: string;
   /** Ordered steps, played one after another. */
-  steps: CueStep[];
+  steps: SequenceStep[];
   /** Relative selection weight. Default 1. Higher = picked more often. */
   weight?: number;
   /** Only play when affinity >= this value. */
@@ -282,8 +268,9 @@ export interface EventCuesConfig {
   events: Record<string, EventCueGroup>;
 }
 
+/** EventCue のイベントごとの設定。セリフそのものは
+ *  sequences/event/<イベント名>/ に置く（→ src/app/sequences.ts）。 */
 export interface EventCueGroup {
-  items: EventCue[];
   /** Minimum seconds between two lines from this throttle group. Default 90. */
   cooldownSec?: number;
   /** Probability (0–1) that a fire actually speaks. Default 1. Use it for
@@ -295,9 +282,12 @@ export interface EventCueGroup {
   throttleKey?: string;
 }
 
-export interface CueStep {
-  /** Cue to switch to for this step (must exist in the loaded Cue set). Omitted = keep whatever Cue the previous step left. */
-  cue?: string;
+/** シーケンスの1ステップ。見た目と声色は**自分で持つ**——エージェント向けの
+ *  Cue を名前で参照する口は無い（→ src/app/sequences.ts）。 */
+export interface SequenceStep {
+  /** このステップの見た目と声色（default からの差分）。**省略すると直前の
+   *  ステップの見た目と声のまま**続く。`{}` は default そのもの。 */
+  look?: Look;
   /** Optional line to speak on this step. reading is the hiragana for lip-sync. */
   text?: string;
   reading?: string;
@@ -323,9 +313,6 @@ export interface CueStep {
  * でそのまま指定できるので、ここには無い。→ docs/design/PROSODY.md
  */
 export interface Delivery {
-  /** 声色を Cue のものから差し替える（この行だけ別の感情で言わせたいとき）。
-   *  抑揚・話速の導出もこの値を基準に行う。 */
-  style_weights?: Record<string, number>;
   /** ピッチ変動の倍率（0〜2）。導出値を上書き。 */
   intonation?: number;
   /** 話速（0.2〜5）。導出値を上書き。 */
@@ -482,7 +469,7 @@ export type DebugAction =
   /** 任意のステップ列をその場で再生する。固定セリフのチューニングでは「プールから
    *  ランダムに1つ」ではなく**この行を今すぐ**鳴らす必要があるので、名前でも
    *  イベント名でもなく、ステップ列そのものを受け取る。 */
-  | { type: 'preview_sequence'; steps: CueStep[]; name?: string }
+  | { type: 'preview_sequence'; steps: SequenceStep[]; name?: string }
   | { type: 'set_affinity'; value: number }
   | { type: 'interact'; kind?: string }
   /** 更新の有無を強制する（撮影と手元確認用。実際の判定は6時間ごとの

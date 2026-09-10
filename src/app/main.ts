@@ -15,9 +15,11 @@ import type {
   WsResponse,
 } from '../shared/types';
 import { findPsd as findPsdIn } from './assets';
-import { loadCues, watchCues } from './cues';
+import { loadCues } from './cues';
+import { resolveSequences, type SequenceSet } from './sequences';
 import { UiChanState } from './state';
 import { VoiSonaTalkClient } from './tts';
+import { watchDirs } from './watch';
 
 const projectRoot = path.resolve(__dirname, '..', '..');
 
@@ -40,6 +42,29 @@ function loadCurrentCues(): Record<string, Cue> {
   return set.cues;
 }
 let cues = loadCurrentCues();
+
+let sequenceErrors: string[] = [];
+/** 固定セリフを読む。旧形式の読み替えは Cue の見た目を引くので、Cue を読み
+ *  直したときもこちらを読み直す。 */
+function loadCurrentSequences(): SequenceSet {
+  const set = resolveSequences({
+    dirs: paths.sequenceDirs,
+    schemaFile: paths.sequenceSchemaFile,
+    cueSchemaFile: cueSchemaPath,
+    config,
+    cues,
+  });
+  sequenceErrors = [
+    ...set.errors.map((e) => `sequence: ${e}`),
+    ...(set.legacyPools.length
+      ? [
+          `旧形式のセリフが config にあります（${set.legacyPools.join(', ')}）。sequences/ に移すまではこちらが使われます`,
+        ]
+      : []),
+  ];
+  for (const err of sequenceErrors) console.error(`[ui-chan] ${err}`);
+  return set;
+}
 
 let win: BrowserWindow | null = null;
 let rendererReady = false;
@@ -115,6 +140,7 @@ let muted = false;
 const state = new UiChanState(
   config,
   cues,
+  loadCurrentSequences(),
   sendToRenderer,
   tts
     ? (text, voice, delivery) =>
@@ -161,6 +187,7 @@ function buildSnapshot(): MascotStateSnapshot {
       ...setupWarnings(psdFile),
       ...rendererWarnings,
       ...cueErrors,
+      ...sequenceErrors,
       ...(cueWarning ? [cueWarning] : []),
     ],
     affinity: state.affinitySnapshot(),
@@ -678,11 +705,20 @@ if (!gotLock) {
     // enough that a long-running mascot notices a release.
     setTimeout(checkForUpdate, 8_000);
     setInterval(checkForUpdate, 6 * 60 * 60 * 1000);
-    watchCues(cuesDir, () => {
+    watchDirs(cuesDir, () => {
       cues = loadCurrentCues();
       state.setCues(cues);
+      state.setSequences(loadCurrentSequences());
       console.error('[ui-chan] cues reloaded');
     });
+    watchDirs(
+      paths.sequenceDirs,
+      () => {
+        state.setSequences(loadCurrentSequences());
+        console.error('[ui-chan] sequences reloaded');
+      },
+      { recursive: true },
+    );
   });
 
   app.on('window-all-closed', () => app.quit());

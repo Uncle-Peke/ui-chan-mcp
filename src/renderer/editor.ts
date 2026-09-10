@@ -16,7 +16,6 @@ interface UiEditorApi {
   readDefault(): Promise<Cue>;
   writeCue(name: string, cue: Cue): Promise<{ ok: true } | { ok: false; error: string }>;
   deleteCue(name: string): Promise<{ ok: true } | { ok: false; error: string }>;
-  cueRefs(name: string): Promise<string[]>;
   listStyles(): Promise<EditorStyles | null>;
   synthesize(text: string, voice: Cue['voice']): Promise<TtsAudio | null>;
 }
@@ -363,11 +362,8 @@ async function save(): Promise<void> {
 
 async function del(): Promise<void> {
   if (!currentName) return;
-  const refs = await window.uiEditor.cueRefs(currentName);
-  const warn = refs.length
-    ? `\n\n⚠ このCueは次のシーケンス(IdlingCue/FidgetCue)から参照されています: ${refs.join(', ')}\n削除するとそれらが壊れます。`
-    : '';
-  if (!confirm(`${currentName} を削除しますか？${warn}`)) return;
+  // 固定セリフ（sequences/）は見た目を自前で持つので、Cue を消しても壊れない。
+  if (!confirm(`${currentName} を削除しますか？`)) return;
   const res = await window.uiEditor.deleteCue(currentName);
   if (!res.ok) {
     setStatus(res.error, 'err');
