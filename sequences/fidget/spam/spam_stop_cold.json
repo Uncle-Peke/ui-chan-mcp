@@ -1,0 +1,22 @@
+{
+  "weight": 5,
+  "maxAffinity": 49,
+  "steps": [
+    {
+      "look": {
+        "select": [
+          "!眉/*怒り1",
+          "!口/*む"
+        ],
+        "blink": true,
+        "voice": {
+          "style_weights": {
+            "Angry": 1
+          }
+        }
+      },
+      "text": "ちょっと。触んないでって。",
+      "reading": "ちょっと。さわんないでって。"
+    }
+  ]
+}

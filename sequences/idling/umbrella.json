@@ -1,0 +1,66 @@
+{
+  "weight": 10,
+  "steps": [
+    {
+      "look": {
+        "select": [
+          "!手前の腕/*考える",
+          "!口/*んー",
+          "!目/*上向き1"
+        ],
+        "voice": {
+          "style_weights": {
+            "Normal": 0.7,
+            "Sad": 0.3
+          }
+        }
+      },
+      "text": "あれ、雨かな…？",
+      "reading": "あれ、あめかな…？",
+      "delivery": {
+        "ending": "flat",
+        "intonation": 1.5,
+        "words": [
+          {
+            "word": "な",
+            "pronunciation": "ナー",
+            "hl": "lh"
+          }
+        ]
+      }
+    },
+    {
+      "look": {
+        "select": [
+          "!目/*にっこり1",
+          "!口/*ほほえみ",
+          "!奥の腕/*傘",
+          "!手前の腕/*基本"
+        ],
+        "voice": {
+          "style_weights": {
+            "Happy": 0.5,
+            "Normal": 0.5
+          }
+        }
+      },
+      "text": "降ってきちゃった。",
+      "reading": "ふってきちゃった。"
+    },
+    {
+      "look": {
+        "select": [
+          "!奥の腕/*傘",
+          "!手前の腕/*基本"
+        ],
+        "blink": true,
+        "voice": {
+          "style_weights": {
+            "Normal": 1
+          }
+        }
+      },
+      "holdMs": 3000
+    }
+  ]
+}

@@ -137,9 +137,9 @@ export function loadSequences(
 // ---- 旧形式（config の配列）からの変換 ----
 //
 // 以前のセリフは ui-chan.config.json に入っていて、各ステップは汎用 Cue を名前で
-// 参照していた。変換は2か所で使う：一回限りの移行（tools/migrate-sequences.mjs）
-// と、home の config.json に旧形式が残っている人のための読み込み時の読み替え。
-// 一つの実装なので、移行した結果と読み替えた結果が食い違うことはない。
+// 参照していた。変換は2か所で使った：このリポジトリの config を sequences/ に
+// 移したときの一回限りの移行と、home の config.json に旧形式が残っている人の
+// ための読み込み時の読み替え。一つの実装なので、両者の結果は食い違わない。
 
 type LegacyDelivery = Delivery & { style_weights?: Record<string, number> };
 interface LegacyStep {
@@ -234,11 +234,11 @@ export function legacyPools(
     names.push('idle.idlingCues.items');
   }
   if (idle?.systemIdle?.awayCue) {
-    set.away = conv({ name: 'away', ...idle.systemIdle.awayCue });
+    set.away = conv({ ...idle.systemIdle.awayCue, name: 'away' });
     names.push('idle.idlingCues.systemIdle.awayCue');
   }
   if (idle?.systemIdle?.wakeCue) {
-    set.wake = conv({ name: 'wake', ...idle.systemIdle.wakeCue });
+    set.wake = conv({ ...idle.systemIdle.wakeCue, name: 'wake' });
     names.push('idle.idlingCues.systemIdle.wakeCue');
   }
   if (c.interactions?.poke) {

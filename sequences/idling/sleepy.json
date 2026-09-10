@@ -1,0 +1,21 @@
+{
+  "weight": 2,
+  "steps": [
+    {
+      "look": {
+        "select": [
+          "!目/*ーー",
+          "!口/*ん"
+        ],
+        "voice": {
+          "style_weights": {
+            "Sad": 0.4,
+            "Normal": 0.6
+          }
+        }
+      },
+      "text": "……ふぁ〜あ。ねむ。",
+      "reading": "……ふぁ〜あ。ねむ。"
+    }
+  ]
+}

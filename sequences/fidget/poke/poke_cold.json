@@ -1,0 +1,24 @@
+{
+  "weight": 6,
+  "maxAffinity": 34,
+  "steps": [
+    {
+      "look": {
+        "select": [
+          "!目/*ジト目",
+          "!口/*えー"
+        ],
+        "show": [
+          "!汗・涙/汗1"
+        ],
+        "voice": {
+          "style_weights": {
+            "Angry": 1
+          }
+        }
+      },
+      "text": "……え、なに？",
+      "reading": "……え、なに？"
+    }
+  ]
+}

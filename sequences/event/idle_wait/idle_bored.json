@@ -1,0 +1,22 @@
+{
+  "steps": [
+    {
+      "look": {
+        "select": [
+          "!奥の腕/*(非表示)",
+          "!手前の腕/*腕組み(奥の腕は非表示)"
+        ],
+        "blink": true,
+        "voice": {
+          "style_weights": {
+            "Angry": 0.5,
+            "Normal": 0.5
+          }
+        }
+      },
+      "text": "ずっときみ待ちだが？",
+      "reading": "ずっときみまちだが？",
+      "$comment_delivery": "「が？」の強気。腕組みの見た目に声を合わせる"
+    }
+  ]
+}

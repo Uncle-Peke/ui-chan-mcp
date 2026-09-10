@@ -1,0 +1,51 @@
+{
+  "weight": 10,
+  "steps": [
+    {
+      "look": {
+        "select": [
+          "!手前の腕/*考える",
+          "!口/*んー",
+          "!目/*上向き1"
+        ],
+        "voice": {
+          "style_weights": {
+            "Normal": 0.7,
+            "Sad": 0.3
+          }
+        }
+      },
+      "text": "次、なにしよっかな。",
+      "reading": "つぎ、なにしよっかな。"
+    },
+    {
+      "look": {
+        "select": [
+          "!手前の腕/*考える",
+          "!目/*上向き1"
+        ],
+        "voice": {
+          "style_weights": {
+            "Normal": 0.7,
+            "Sad": 0.3
+          }
+        }
+      },
+      "holdMs": 2000
+    },
+    {
+      "look": {
+        "select": [
+          "!目/*にっこり1",
+          "!口/*ほほえみ"
+        ],
+        "voice": {
+          "style_weights": {
+            "Happy": 1
+          }
+        }
+      },
+      "holdMs": 1200
+    }
+  ]
+}

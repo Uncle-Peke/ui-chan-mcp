@@ -1,0 +1,26 @@
+{
+  "weight": 6,
+  "minAffinity": 35,
+  "maxAffinity": 69,
+  "steps": [
+    {
+      "look": {
+        "select": [
+          "!奥の腕/*基本",
+          "!手前の腕/*基本",
+          "!目/*○○",
+          "!口/*お"
+        ],
+        "blink": true,
+        "voice": {
+          "style_weights": {
+            "Normal": 0.8,
+            "Bashful": 0.2
+          }
+        }
+      },
+      "text": "え、なに？",
+      "reading": "え、なに？"
+    }
+  ]
+}

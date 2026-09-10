@@ -1,0 +1,24 @@
+{
+  "weight": 5,
+  "minAffinity": 50,
+  "steps": [
+    {
+      "look": {
+        "select": [
+          "!眉/*困り",
+          "!目/*基本目セット/*目そらし2",
+          "!口/*ゆ",
+          "!頬・顔色/*頬赤め1"
+        ],
+        "blink": true,
+        "voice": {
+          "style_weights": {
+            "Bashful": 1
+          }
+        }
+      },
+      "text": "ひゃっ……なに、急に。",
+      "reading": "ひゃっ……なに、きゅうに。"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "weight": 1,
+  "minAffinity": 50,
+  "steps": [
+    {
+      "look": {
+        "select": [
+          "!目/*にっこり1",
+          "!口/*ほほえみ"
+        ],
+        "voice": {
+          "style_weights": {
+            "Happy": 1
+          }
+        }
+      },
+      "text": "ここにいるよ。ゆっくりでいいからね。",
+      "reading": "ここにいるよ。ゆっくりでいいからね。"
+    }
+  ]
+}
