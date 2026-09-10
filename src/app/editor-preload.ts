@@ -15,8 +15,11 @@ import type {
 // Bridge for the Cue editor renderer (editor.ts). Mirrors preload.ts's shape
 // but exposes editor-only, file-mutating operations under window.uiEditor.
 contextBridge.exposeInMainWorld('uiEditor', {
-  getInit: (): Promise<{ psdAvailable: boolean; lipSync: LipSyncConfig | null }> =>
-    ipcRenderer.invoke('editor:get-init'),
+  getInit: (): Promise<{
+    psdAvailable: boolean;
+    lipSync: LipSyncConfig | null;
+    intonationFallback: number;
+  }> => ipcRenderer.invoke('editor:get-init'),
   readPsd: (): Promise<Uint8Array | null> => ipcRenderer.invoke('editor:read-psd'),
   listCues: (): Promise<EditorCueListItem[]> => ipcRenderer.invoke('editor:list-cues'),
   readCue: (name: string): Promise<Cue | null> => ipcRenderer.invoke('editor:read-cue', name),

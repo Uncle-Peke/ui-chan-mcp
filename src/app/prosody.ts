@@ -430,6 +430,40 @@ export function applyEnding(tsml: string, ending: 'flat' | 'rise'): string {
   return tsml;
 }
 
+/** 抑揚の既定値。感情を宣言していない声（style_weights なし）に使う。config の
+ *  `tts.intonation` が無いときの値。 */
+export const INTONATION_FALLBACK = 1.1;
+
+/** 行ごとの演技指定（delivery）を書かなかったときに使われる値。 */
+export interface DerivedDelivery {
+  intonation: number;
+  speed: number;
+  pitch: number;
+  volume: number;
+  stretchSec: number;
+  clipSec: number;
+}
+
+/**
+ * 声色（style_weights）から導いた、演技の既定値の一式。合成（tts.ts）と
+ * エディタの表示が**同じこの関数**を見るので、エディタに出る「自動」の値と
+ * 実際に鳴る値はずれない。伸ばし・詰めは、その行に `〜`／語末の `っ` が
+ * あるときだけ効く。
+ */
+export function derivedDelivery(
+  styleWeights?: Record<string, number>,
+  intonationFallback = INTONATION_FALLBACK,
+): DerivedDelivery {
+  return {
+    intonation: intonationFor(intonationFallback, styleWeights),
+    speed: speedFor(styleWeights),
+    pitch: pitchFor(styleWeights),
+    volume: 0,
+    stretchSec: stretchSeconds(styleWeights),
+    clipSec: CLIP_SEC,
+  };
+}
+
 /** What the TTS engine should actually be handed for this line.
  *
  *  VoiSona reads Latin letters as English spelling — `zsh` comes out

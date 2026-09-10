@@ -15,7 +15,7 @@ import type {
 import { DEFAULT_CUE_NAME } from '../shared/types';
 import { findPsd } from './assets';
 import { loadCues, validateCueObject } from './cues';
-import { ttsTextFor } from './prosody';
+import { INTONATION_FALLBACK, ttsTextFor } from './prosody';
 import {
   isSafeSequenceRel,
   listSequenceFiles,
@@ -96,6 +96,8 @@ app.on('window-all-closed', () => app.quit());
 ipcMain.handle('editor:get-init', () => ({
   psdAvailable: findPsd(assetsDirs) !== null,
   lipSync: config.lipSync ?? null,
+  // 演技パネルの「自動」の値を合成と揃えるため（→ prosody.ts の derivedDelivery）。
+  intonationFallback: config.tts?.intonation ?? INTONATION_FALLBACK,
 }));
 
 ipcMain.handle('editor:read-psd', (): Uint8Array | null => {

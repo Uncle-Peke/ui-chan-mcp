@@ -15,7 +15,9 @@ export const shared: {
   baseline: Map<LNode, boolean>;
   styles: EditorStyles | null;
   lipConfig: LipSyncConfig | null;
-} = { defaultCue: {}, baseline: new Map(), styles: null, lipConfig: null };
+  /** config の tts.intonation（演技パネルの「自動」の計算に使う）。 */
+  intonationFallback: number;
+} = { defaultCue: {}, baseline: new Map(), styles: null, lipConfig: null, intonationFallback: 1.1 };
 
 let treeEdited: (() => void) | null = null;
 /** The active tab's hook for "the user changed a layer" (e.g. to mark its form

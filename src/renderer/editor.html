@@ -108,6 +108,17 @@
     .slider-row label { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
     .slider-row input[type=range] { width: 100%; }
     .slider-val { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* delivery panel: ticked = this line overrides; ◆ = the derived value */
+    .dl-row { display: grid; grid-template-columns: 16px 62px 1fr 38px; align-items: center; gap: 5px; }
+    .dl-row label { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .dl-track { position: relative; }
+    .dl-track input[type=range] { width: 100%; }
+    .dl-mark { position: absolute; top: -8px; transform: translateX(-50%); font-size: 9px; color: #8f9bff; pointer-events: none; }
+    .dl-row.auto input[type=range] { opacity: .4; }
+    .dl-val { color: var(--fg); text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; }
+    .dl-row.auto .dl-val { color: var(--muted); }
+    .dl-hint { grid-column: 2 / -1; font-size: 10px; color: var(--muted); min-height: 2px; margin-bottom: 3px; }
     .muted { color: var(--muted); font-size: 12px; line-height: 1.4; }
     .row { display: flex; gap: 6px; }
     button.action {
@@ -233,10 +244,21 @@
             </div>
             <h2>声色 (voice)</h2>
             <div id="seq-voice-styles"></div>
-            <div class="field" style="margin-top:8px">
-              <label for="step-delivery">演技指定 delivery（JSON・この行だけ）</label>
-              <textarea id="step-delivery" rows="3" placeholder='{"ending": "flat"}'></textarea>
+            <h2 style="margin-top:12px">演技 delivery（この行だけ）</h2>
+            <div class="muted" style="margin-bottom:6px">チェックを入れた項目だけを上書きして保存します。◆ は声色から導いた自動の値。</div>
+            <div id="delivery-panel"></div>
+            <div class="field">
+              <label for="dl-ending">語尾</label>
+              <select id="dl-ending">
+                <option value="">自動（表記どおり）</option>
+                <option value="flat">平坦（？があっても上げない）</option>
+                <option value="rise">上げる（？が無くても）</option>
+              </select>
             </div>
+            <details class="field">
+              <summary>読み・アクセントの上書き words（JSON）</summary>
+              <textarea id="dl-words" rows="3" placeholder='[{"word": "な", "pronunciation": "ナー", "hl": "lh"}]'></textarea>
+            </details>
             <div class="row">
               <button type="button" class="action" id="step-play">▶ このステップ</button>
               <button type="button" class="action" id="step-up" title="前へ">↑</button>

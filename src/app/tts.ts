@@ -4,14 +4,12 @@ import {
   applyEnding,
   applyLexicon,
   buildDurations,
+  derivedDelivery,
   emphasisTargets,
   emphasize,
   forSpeech,
-  intonationFor,
+  INTONATION_FALLBACK,
   needsTsml,
-  pitchFor,
-  speedFor,
-  stretchSeconds,
   wantsStretch,
 } from './prosody';
 
@@ -295,6 +293,8 @@ export class VoiSonaTalkClient {
       // 同じ語があれば後勝ち＝行の指定のほうが強い。
       const lexicon = [...(this.cfg.lexicon ?? []), ...(delivery?.words ?? [])];
       const styles = cueVoice?.style_weights;
+      // 書かなかった項目の値。エディタの「自動」表示も同じ関数を見る。
+      const auto = derivedDelivery(styles, this.cfg.intonation ?? INTONATION_FALLBACK);
       const needs = needsTsml(text, lexicon) || !!delivery?.ending || !!delivery?.words?.length;
       const tsml = needs
         ? await this.analyzed(spoken, emphasisTargets(text), lexicon, delivery?.ending)
@@ -304,9 +304,7 @@ export class VoiSonaTalkClient {
       // 伸ばし（`〜`）と詰め（`っ`）を1つの配列にまとめる。どちらも書き方が指示。
       const stretch = tsml
         ? buildDurations(tsml, {
-            ...(wantsStretch(text)
-              ? { stretchSec: delivery?.stretchSec ?? stretchSeconds(styles) }
-              : {}),
+            ...(wantsStretch(text) ? { stretchSec: delivery?.stretchSec ?? auto.stretchSec } : {}),
             ...(delivery?.clipSec !== undefined ? { clipSec: delivery.clipSec } : {}),
           })
         : null;
@@ -314,9 +312,9 @@ export class VoiSonaTalkClient {
       const globalParameters = {
         ...(weights ? { style_weights: weights } : {}),
         // 演技は全部ここで感情から導出する。Cue にも行にも数値は置かない。
-        intonation: delivery?.intonation ?? intonationFor(this.cfg.intonation ?? 1.1, styles),
-        speed: delivery?.speed ?? speedFor(styles),
-        pitch: delivery?.pitch ?? pitchFor(styles),
+        intonation: delivery?.intonation ?? auto.intonation,
+        speed: delivery?.speed ?? auto.speed,
+        pitch: delivery?.pitch ?? auto.pitch,
         ...(delivery?.volume !== undefined ? { volume: delivery.volume } : {}),
       };
       const res = await fetch(`${this.base()}/speech-syntheses`, {

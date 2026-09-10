@@ -7,6 +7,7 @@ import type {
   SequenceStep,
 } from '../../shared/types';
 import { $, setStatus } from './bridge';
+import { deliveryPanel } from './delivery';
 import { speak, stopSpeaking } from './speak';
 import { applyLook, currentDirectives, onTreeEdit, shared } from './stage';
 import { voiceSliders } from './voice';
@@ -52,9 +53,9 @@ let playingAll = false;
 let stopRequested = false;
 let holdDone: (() => void) | null = null;
 const voice = voiceSliders($('seq-voice-styles'), 'seqstyle');
+const delivery = deliveryPanel();
 
 const input = (id: string) => $(id) as HTMLInputElement;
-const deliveryBox = () => $('step-delivery') as HTMLTextAreaElement;
 const current = (): Working | undefined => works[kind];
 const steps = (): SequenceStep[] => current()?.body.steps ?? [];
 const dirOf = (rel: string) => rel.slice(0, rel.lastIndexOf('/'));
@@ -277,9 +278,15 @@ function loadStep(i: number): void {
   input('step-text').value = st.text ?? '';
   input('step-reading').value = st.reading ?? '';
   input('step-hold').value = st.holdMs === undefined ? '' : String(st.holdMs);
-  deliveryBox().value = st.delivery ? JSON.stringify(st.delivery) : '';
+  refreshDerived();
+  delivery.load(st.delivery);
   $('step-title').textContent = `ステップ ${i + 1} / ${steps().length}`;
   renderSteps();
+}
+
+/** 演技パネルの「自動」の値を、いま画面にある声色とセリフで計算し直す。 */
+function refreshDerived(): void {
+  delivery.refresh(voice.read()?.style_weights, input('step-text').value);
 }
 
 function lookFromScreen(): Look {
@@ -311,21 +318,14 @@ function flushStep(): boolean {
   if (reading.trim()) next.reading = reading;
   const hold = input('step-hold').value.trim();
   if (hold) next.holdMs = Number(hold);
-  const raw = deliveryBox().value.trim();
-  if (raw) {
-    try {
-      const d = JSON.parse(raw);
-      if (!d || typeof d !== 'object' || Array.isArray(d))
-        throw new Error('オブジェクトではありません');
-      next.delivery = d as Delivery;
-    } catch (e) {
-      setStatus(
-        `ステップ ${w.step + 1} の delivery が JSON として読めません: ${e instanceof Error ? e.message : e}`,
-        'err',
-      );
-      return false;
-    }
+  let d: Delivery | undefined;
+  try {
+    d = delivery.read(st.delivery);
+  } catch (e) {
+    setStatus(`ステップ ${w.step + 1}: ${e instanceof Error ? e.message : e}`, 'err');
+    return false;
   }
+  if (d) next.delivery = d;
   for (const [k, v] of Object.entries(st)) if (!STEP_KEYS.includes(k)) next[k] = v;
   steps()[w.step] = next;
   return true;
@@ -375,6 +375,7 @@ function lookChanged(): void {
   if (!current()) return;
   lookTouched = true;
   input('step-inherit').checked = false;
+  refreshDerived();
   markDirty();
 }
 
@@ -384,6 +385,7 @@ function inheritToggled(): void {
   if (input('step-inherit').checked) {
     // 直前までの見た目を映す（自分の look は保存時に消える）。
     showLook(w.step > 0 ? effectiveLook(w.step - 1) : {});
+    refreshDerived();
     lookTouched = false;
   } else {
     lookTouched = true; // 見えている見た目を、このステップ自前の look にする
@@ -594,7 +596,6 @@ export async function initSequenceTabs(): Promise<void> {
     'step-text',
     'step-reading',
     'step-hold',
-    'step-delivery',
     'seq-name',
     'seq-weight',
     'seq-min',
@@ -604,6 +605,8 @@ export async function initSequenceTabs(): Promise<void> {
   ]) {
     $(id).addEventListener('input', markDirty);
   }
+  delivery.onChange(markDirty);
+  $('step-text').addEventListener('input', refreshDerived);
   $('step-blink').addEventListener('change', lookChanged);
   $('step-inherit').addEventListener('change', inheritToggled);
   $('seq-dir').addEventListener('change', () => {

@@ -13,7 +13,11 @@ import type {
 
 // ---- window bridge (editor-preload.ts) ----
 export interface UiEditorApi {
-  getInit(): Promise<{ psdAvailable: boolean; lipSync: LipSyncConfig | null }>;
+  getInit(): Promise<{
+    psdAvailable: boolean;
+    lipSync: LipSyncConfig | null;
+    intonationFallback: number;
+  }>;
   readPsd(): Promise<Uint8Array | null>;
   listCues(): Promise<EditorCueListItem[]>;
   readCue(name: string): Promise<Cue | null>;

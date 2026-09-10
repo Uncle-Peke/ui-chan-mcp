@@ -53,6 +53,7 @@ async function switchTab(next: Tab): Promise<void> {
 async function init(): Promise<void> {
   const initData = await window.uiEditor.getInit();
   shared.lipConfig = initData.lipSync;
+  shared.intonationFallback = initData.intonationFallback;
   if (!initData.psdAvailable) {
     setStatus('assets/ に .psd が見つかりません', 'err');
     return;
