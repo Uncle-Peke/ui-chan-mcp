@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020.js';
-import type { Cue, CueSequence, Delivery, Look, SequenceStep } from '../shared/types';
+import type { Cue, CueSequence, Delivery, Look, SequencePool, SequenceStep } from '../shared/types';
 
 /**
  * 固定セリフ（IdlingCue / EventCue / FidgetCue）の読み込み。
@@ -33,12 +33,12 @@ export interface SequenceSet {
   legacyPools: string[];
 }
 
-type Place =
-  | { pool: 'idling' | 'poke' | 'spam' | 'away' | 'wake' }
+export type SequencePlace =
+  | { pool: Exclude<SequencePool, 'event'> }
   | { pool: 'event'; event: string };
 
 /** 相対パス（`/` 区切り）→ どのプールの、何という名前のシーケンスか。 */
-function placeOf(rel: string): { place: Place; name: string } | null {
+export function sequencePlace(rel: string): { place: SequencePlace; name: string } | null {
   const parts = rel.replace(/\.json$/, '').split('/');
   const name = parts[parts.length - 1];
   const dir = parts.slice(0, -1).join('/');
@@ -50,6 +50,16 @@ function placeOf(rel: string): { place: Place; name: string } | null {
   if (parts.length === 3 && parts[0] === 'event')
     return { place: { pool: 'event', event: parts[1] }, name };
   return null;
+}
+
+const SEGMENT_RE = /^[A-Za-z0-9_-]+$/;
+
+/** エディタが書き込んでよい相対パスか：どこかのプールを指し、各階層が素直な
+ *  名前だけで出来ている（`..` や区切り文字で sequences/ の外へ抜けられない）。 */
+export function isSafeSequenceRel(rel: string): boolean {
+  if (!rel.endsWith('.json')) return false;
+  const segments = rel.slice(0, -'.json'.length).split('/');
+  return segments.every((s) => SEGMENT_RE.test(s)) && sequencePlace(rel) !== null;
 }
 
 function listJson(root: string, rel = ''): string[] {
@@ -95,10 +105,21 @@ export function emptySequenceSet(): SequenceSet {
   return { idling: [], poke: [], spam: [], events: {}, errors: [], legacyPools: [] };
 }
 
-function place(set: SequenceSet, where: Place, seq: CueSequence): void {
+function place(set: SequenceSet, where: SequencePlace, seq: CueSequence): void {
   if (where.pool === 'event') set.events[where.event] = [...(set.events[where.event] ?? []), seq];
   else if (where.pool === 'away' || where.pool === 'wake') set[where.pool] = seq;
   else set[where.pool].push(seq);
+}
+
+/** 相対パス → 実ファイル（相対パス順）。後のディレクトリが勝つ——home が
+ *  パッケージの同じファイルを上書きする。 */
+export function listSequenceFiles(dirs: string[]): Map<string, string> {
+  const winners = new Map<string, string>();
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue;
+    for (const rel of listJson(dir)) winners.set(rel, path.join(dir, rel));
+  }
+  return new Map([...winners].sort(([a], [b]) => a.localeCompare(b)));
 }
 
 export function loadSequences(
@@ -108,14 +129,8 @@ export function loadSequences(
 ): SequenceSet {
   const set = emptySequenceSet();
   const validate = getValidator(schemaFile, cueSchemaFile);
-  // 相対パス → 実ファイル。後のディレクトリが勝つ。
-  const winners = new Map<string, string>();
-  for (const dir of dirs) {
-    if (!fs.existsSync(dir)) continue;
-    for (const rel of listJson(dir)) winners.set(rel, path.join(dir, rel));
-  }
-  for (const [rel, file] of [...winners].sort(([a], [b]) => a.localeCompare(b))) {
-    const where = placeOf(rel);
+  for (const [rel, file] of listSequenceFiles(dirs)) {
+    const where = sequencePlace(rel);
     if (!where) {
       set.errors.push(`${rel}: 置き場所が不明（sequences/ の構成は src/app/sequences.ts を参照）`);
       continue;

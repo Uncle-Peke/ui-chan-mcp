@@ -597,3 +597,25 @@ export interface EditorStyles {
 }
 
 export type EditorWriteResult = { ok: true } | { ok: false; error: string };
+
+/** 固定セリフのプール。sequences/ のディレクトリと一対一（→ src/app/sequences.ts）。 */
+export type SequencePool = 'idling' | 'away' | 'wake' | 'poke' | 'spam' | 'event';
+
+/** エディタの固定セリフ一覧の1行。`rel` は sequences/ からの相対パスで、
+ *  これがシーケンスの識別子になる（名前だけだとイベントをまたいで重複しうる）。 */
+export interface EditorSequenceListItem {
+  rel: string;
+  pool: SequencePool;
+  /** pool が event のときのイベント名。 */
+  event?: string;
+  name: string;
+  /** ~/.ui-chan/sequences の版か（false ならパッケージ同梱の版）。 */
+  fromHome: boolean;
+  weight?: number;
+  minAffinity?: number;
+  maxAffinity?: number;
+  hours?: [number, number];
+  steps: number;
+  /** 最初にセリフのあるステップの text（一覧での見分け用）。 */
+  firstText?: string;
+}

@@ -1,7 +1,12 @@
 import type {
   Cue,
+  CueSequence,
+  Delivery,
   EditorCueListItem,
+  EditorSequenceListItem,
   EditorStyles,
+  EditorWriteResult,
+  EventCueGroup,
   LipSyncConfig,
   TtsAudio,
 } from '../../shared/types';
@@ -13,10 +18,20 @@ export interface UiEditorApi {
   listCues(): Promise<EditorCueListItem[]>;
   readCue(name: string): Promise<Cue | null>;
   readDefault(): Promise<Cue>;
-  writeCue(name: string, cue: Cue): Promise<{ ok: true } | { ok: false; error: string }>;
-  deleteCue(name: string): Promise<{ ok: true } | { ok: false; error: string }>;
+  writeCue(name: string, cue: Cue): Promise<EditorWriteResult>;
+  deleteCue(name: string): Promise<EditorWriteResult>;
   listStyles(): Promise<EditorStyles | null>;
-  synthesize(text: string, voice: Cue['voice']): Promise<TtsAudio | null>;
+  synthesize(
+    text: string,
+    voice: Cue['voice'],
+    delivery?: Delivery,
+    reading?: string,
+  ): Promise<TtsAudio | null>;
+  listSequences(): Promise<EditorSequenceListItem[]>;
+  readSequence(rel: string): Promise<CueSequence | null>;
+  writeSequence(rel: string, seq: Omit<CueSequence, 'name'>): Promise<EditorWriteResult>;
+  deleteSequence(rel: string): Promise<EditorWriteResult>;
+  eventSettings(): Promise<Record<string, EventCueGroup>>;
 }
 declare global {
   interface Window {

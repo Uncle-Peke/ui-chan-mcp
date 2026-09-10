@@ -2,10 +2,26 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { loadEnvFiles, resolvePaths } from '../shared/paths';
-import type { Cue, EditorCueListItem, EditorWriteResult, MascotConfig } from '../shared/types';
+import type {
+  Cue,
+  CueSequence,
+  Delivery,
+  EditorCueListItem,
+  EditorSequenceListItem,
+  EditorWriteResult,
+  EventCueGroup,
+  MascotConfig,
+} from '../shared/types';
 import { DEFAULT_CUE_NAME } from '../shared/types';
 import { findPsd } from './assets';
 import { loadCues, validateCueObject } from './cues';
+import { ttsTextFor } from './prosody';
+import {
+  isSafeSequenceRel,
+  listSequenceFiles,
+  sequencePlace,
+  validateSequenceObject,
+} from './sequences';
 import { VoiSonaTalkClient } from './tts';
 
 // Standalone Cue editor window. A separate Electron entry from the mascot app
@@ -152,6 +168,104 @@ ipcMain.handle('editor:delete-cue', (_ev, name: string): EditorWriteResult => {
 
 ipcMain.handle('editor:list-styles', () => (tts ? tts.listStyles() : null));
 
-ipcMain.handle('editor:synthesize', (_ev, text: string, voice: Cue['voice']) =>
-  tts ? tts.synthesize(text, voice) : null,
+// 本番（state.ts）と同じ規則で読む：英字・数字を含む行は reading を喋らせる。
+ipcMain.handle(
+  'editor:synthesize',
+  (_ev, text: string, voice: Cue['voice'], delivery?: Delivery, reading?: string) =>
+    tts ? tts.synthesize(ttsTextFor(text, reading), voice, delivery) : null,
+);
+
+// ---- 固定セリフ（sequences/） ----
+//
+// 識別子は sequences/ からの相対パス（`event/turn_done/done_ask.json`）。名前
+// だけだとイベントをまたいで重複しうるし、置き場所そのものがプールを決めるので。
+
+/** 探す順（後が勝つ）。起動時に固定せず呼ぶたびに作る——エディタで初めて
+ *  保存したときに作られた ~/.ui-chan/sequences も、次の一覧から拾えるように。 */
+function sequenceRoots(): string[] {
+  return [path.join(paths.pkgRoot, 'sequences'), path.join(paths.home, 'sequences')];
+}
+
+/** 保存先の実パス。プールを指さない相対パスや、外へ抜けるものは拒否する。 */
+function sequenceWritePath(rel: string): string | null {
+  return isSafeSequenceRel(rel) ? path.join(paths.sequenceWriteDir, rel) : null;
+}
+
+function readJsonFile<T>(file: string): T | null {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf-8')) as T;
+  } catch {
+    return null;
+  }
+}
+
+ipcMain.handle('editor:list-sequences', (): EditorSequenceListItem[] => {
+  const homeDir = path.join(paths.home, 'sequences') + path.sep;
+  const out: EditorSequenceListItem[] = [];
+  for (const [rel, file] of listSequenceFiles(sequenceRoots())) {
+    const where = sequencePlace(rel);
+    if (!where) continue;
+    // 壊れたファイルも一覧には出す（開いて直せるように）。
+    const seq = readJsonFile<Partial<CueSequence>>(file) ?? {};
+    const steps = Array.isArray(seq.steps) ? seq.steps : [];
+    out.push({
+      rel,
+      ...where.place,
+      name: where.name,
+      fromHome: file.startsWith(homeDir),
+      weight: seq.weight,
+      minAffinity: seq.minAffinity,
+      maxAffinity: seq.maxAffinity,
+      hours: seq.hours,
+      steps: steps.length,
+      firstText: steps.find((s) => s.text)?.text,
+    });
+  }
+  return out;
+});
+
+ipcMain.handle('editor:read-sequence', (_ev, rel: string): CueSequence | null => {
+  if (!isSafeSequenceRel(rel)) return null;
+  const file = listSequenceFiles(sequenceRoots()).get(rel);
+  return file ? readJsonFile<CueSequence>(file) : null;
+});
+
+ipcMain.handle('editor:write-sequence', (_ev, rel: string, seq: unknown): EditorWriteResult => {
+  const p = sequenceWritePath(rel);
+  if (!p) return { ok: false, error: `不正な置き場所: "${rel}"` };
+  const err = validateSequenceObject(seq, paths.sequenceSchemaFile, cueSchemaPath);
+  if (err) return { ok: false, error: `スキーマ検証エラー: ${err}` };
+  try {
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, `${JSON.stringify(seq, null, 2)}\n`, 'utf-8');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+});
+
+// 消せるのは保存先にある版だけ。npm 版でパッケージ同梱の行を消そうとした
+// ときは、パッケージの中には書けないので断る（手元の版を消せば同梱の版に戻る）。
+ipcMain.handle('editor:delete-sequence', (_ev, rel: string): EditorWriteResult => {
+  const p = sequenceWritePath(rel);
+  if (!p) return { ok: false, error: `不正な置き場所: "${rel}"` };
+  if (!fs.existsSync(p)) {
+    const exists = listSequenceFiles(sequenceRoots()).has(rel);
+    return {
+      ok: false,
+      error: exists ? `${rel} は同梱の版しか無いので消せません` : `存在しません: ${rel}`,
+    };
+  }
+  try {
+    fs.unlinkSync(p);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+});
+
+/** EventCue の出し方の設定（cooldown・chance）。エディタでは表示だけ。 */
+ipcMain.handle(
+  'editor:event-settings',
+  (): Record<string, EventCueGroup> => config.eventCues?.events ?? {},
 );

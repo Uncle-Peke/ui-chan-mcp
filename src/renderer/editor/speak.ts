@@ -1,4 +1,4 @@
-import type { Cue } from '../../shared/types';
+import type { Cue, Delivery } from '../../shared/types';
 import { shared, stage } from './stage';
 
 const LIP_MOUTH_FOLDER = '!口';
@@ -42,9 +42,9 @@ export function stopSpeaking(): void {
 export async function speak(
   text: string,
   voice: Cue['voice'],
-  opts: { onStart?: () => void } = {},
+  opts: { onStart?: () => void; delivery?: Delivery; reading?: string } = {},
 ): Promise<boolean> {
-  const audio = await window.uiEditor.synthesize(text, voice);
+  const audio = await window.uiEditor.synthesize(text, voice, opts.delivery, opts.reading);
   if (!audio) return false;
   stopSpeaking();
   const bytes = Uint8Array.from(atob(audio.wavBase64), (c) => c.charCodeAt(0));

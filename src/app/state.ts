@@ -19,7 +19,7 @@ import type {
   TtsAudio,
 } from '../shared/types';
 import { DEFAULT_AFFINITY_STEPS, DEFAULT_CUE_NAME } from '../shared/types';
-import { forDisplay } from './prosody';
+import { forDisplay, ttsTextFor } from './prosody';
 import type { SequenceSet } from './sequences';
 
 const MAX_QUEUE = 20;
@@ -46,22 +46,6 @@ type EnqueueResult =
 function estimateSpeechDurationMs(text: string, speech?: SpeechTimingConfig): number {
   const estimated = (speech?.baseMs ?? 1500) + text.length * (speech?.msPerChar ?? 120);
   return Math.min(Math.max(estimated, speech?.minMs ?? 2500), speech?.maxMs ?? 20000);
-}
-
-/** What the TTS engine should actually be handed for this line.
- *
- *  VoiSona reads Latin letters as English spelling — `zsh` comes out
- *  "ゼッドエスエイチ", `npm` as "エヌピーエム". The agent already supplies
- *  `reading` (full hiragana) for lip-sync, so that is the correct pronunciation
- *  to speak. We do NOT always prefer it, though: hiragana-only input costs the
- *  engine its kanji-based accent estimation, and most lines are pure Japanese
- *  where `text` reads better. So the swap is scoped to exactly the broken case
- *  — the line contains Latin letters (or digits, same problem) and a reading
- *  was given. The bubble still shows `text` either way. */
-function ttsTextFor(text: string, reading?: string): string {
-  const yomi = reading?.trim();
-  if (!yomi) return text;
-  return /[A-Za-z0-9]/.test(text) ? yomi : text;
 }
 
 /** Every idle timer in this class follows the same "hold an id, clear-then-null

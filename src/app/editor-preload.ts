@@ -1,9 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
   Cue,
+  CueSequence,
+  Delivery,
   EditorCueListItem,
+  EditorSequenceListItem,
   EditorStyles,
   EditorWriteResult,
+  EventCueGroup,
   LipSyncConfig,
   TtsAudio,
 } from '../shared/types';
@@ -22,6 +26,21 @@ contextBridge.exposeInMainWorld('uiEditor', {
   deleteCue: (name: string): Promise<EditorWriteResult> =>
     ipcRenderer.invoke('editor:delete-cue', name),
   listStyles: (): Promise<EditorStyles | null> => ipcRenderer.invoke('editor:list-styles'),
-  synthesize: (text: string, voice: Cue['voice']): Promise<TtsAudio | null> =>
-    ipcRenderer.invoke('editor:synthesize', text, voice),
+  synthesize: (
+    text: string,
+    voice: Cue['voice'],
+    delivery?: Delivery,
+    reading?: string,
+  ): Promise<TtsAudio | null> =>
+    ipcRenderer.invoke('editor:synthesize', text, voice, delivery, reading),
+  listSequences: (): Promise<EditorSequenceListItem[]> =>
+    ipcRenderer.invoke('editor:list-sequences'),
+  readSequence: (rel: string): Promise<CueSequence | null> =>
+    ipcRenderer.invoke('editor:read-sequence', rel),
+  writeSequence: (rel: string, seq: Omit<CueSequence, 'name'>): Promise<EditorWriteResult> =>
+    ipcRenderer.invoke('editor:write-sequence', rel, seq),
+  deleteSequence: (rel: string): Promise<EditorWriteResult> =>
+    ipcRenderer.invoke('editor:delete-sequence', rel),
+  eventSettings: (): Promise<Record<string, EventCueGroup>> =>
+    ipcRenderer.invoke('editor:event-settings'),
 });
