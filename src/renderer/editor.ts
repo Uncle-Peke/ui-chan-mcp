@@ -46,8 +46,6 @@ async function switchTab(next: Tab): Promise<void> {
   } else {
     await showSequenceTab(next);
   }
-  // The steps strip comes and goes under the preview, so the canvas size changed.
-  requestAnimationFrame(() => stage.draw());
 }
 
 async function init(): Promise<void> {
@@ -69,7 +67,9 @@ async function init(): Promise<void> {
   stage.applyDirectives(shared.defaultCue);
   shared.baseline = stage.snapshotVisibility();
   stage.draw();
-  window.addEventListener('resize', () => stage.draw());
+  // プレビューの枠が変わったら描き直す——窓のリサイズだけでなく、下のステップ
+  // 列が出入りしたときも。描き直さないと、canvas が引き伸ばされて見える。
+  new ResizeObserver(() => stage.draw()).observe($('preview-wrap'));
 
   shared.styles = await window.uiEditor.listStyles();
   await initCueTab();

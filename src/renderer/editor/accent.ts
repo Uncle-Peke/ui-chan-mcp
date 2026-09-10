@@ -32,6 +32,7 @@ export function accentLane(deps: {
   let shown: AccentWord[] = [];
 
   function note(message: string): void {
+    host.classList.remove('busy');
     const span = document.createElement('span');
     span.className = 'muted';
     span.textContent = message;
@@ -43,7 +44,9 @@ export function accentLane(deps: {
     if (!line) return note('');
     if (!line.text.trim()) return note('（セリフの無いステップ）');
     const mine = ++ticket;
-    note('解析中…');
+    // 中身は入れ替えずに薄くするだけ。「解析中…」に差し替えると、そのたびに
+    // レーンの見た目が跳ねる。
+    host.classList.add('busy');
     const words = await window.uiEditor.analyze(
       line.text,
       line.reading.trim() || undefined,
@@ -52,6 +55,7 @@ export function accentLane(deps: {
     if (mine !== ticket) return;
     if (!words) return note('TTSエンジンに接続できないので解析できません');
     shown = words;
+    host.classList.remove('busy');
     render();
   }
 
