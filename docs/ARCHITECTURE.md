@@ -150,8 +150,16 @@ Agent ──stdio──▶ dist/mcp-server.js ──WS(127.0.0.1:8123)──▶ 
   - **アイドリング / イベント / つつき** edit `sequences/` files. It is one editor
     (`editor/sequence-tab.ts`) that only changes how its list is grouped: pick a
     step on the strip under the preview, edit its look on the same tree, its
-    voice, text / reading / holdMs and `delivery` (raw JSON for now), and play
-    one step or the whole sequence the way the mascot would.
+    voice and text / reading / holdMs, and play one step or the whole sequence
+    the way the mascot would. `delivery` has two editors of its own: the
+    **delivery panel** (`editor/delivery.ts`) shows each knob's derived value (◆)
+    and writes only the ones you tick — "what you didn't write stays derived",
+    made visible — and the **ACC lane** (`editor/accent.ts`) draws the engine's
+    reading mora by mora, after the lexicon and the line's `words` are applied;
+    clicking a mora writes that word into `words`. The derived values come from
+    `prosody.ts`'s `derivedDelivery()`, the function the synthesizer itself uses,
+    so what the panel calls 自動 is exactly what plays. The lane is for words the
+    engine gets wrong, never for emphasis (see PROSODY.md).
 
   Both write with ajv validation and are picked up live by a running mascot
   (`watchDirs`). Looks are always the **diff vs `default`**
