@@ -72,7 +72,7 @@ npm run app        # build, then launch the Electron display app
 npm run stop       # kill a running ui-chan Electron app
 npm run restart    # stop + relaunch the app
 npm run mcp        # run the MCP server standalone (node dist/mcp-server.js)
-npm run editor     # launch the visual Cue editor (雨衣ちゃんのデバッグルーム)
+npm run editor     # launch the visual editor for Cues and fixed lines (雨衣ちゃんのデバッグルーム)
 npm run lint       # biome check .   (lint:fix / format to autofix)
 npm run dump-psd -- ~/.ui-chan/assets/ui_sozai.psd   # dump PSD layer tree
 ```
@@ -138,18 +138,29 @@ Agent ──stdio──▶ dist/mcp-server.js ──WS(127.0.0.1:8123)──▶ 
   the Cue editor share one implementation of the PSDTool layer semantics; it
   knows nothing of blink/lip-sync/bubble/IPC (those stay in `renderer.ts`). Also
   esbuild-bundled, not in the tsc graph.
-- **Cue editor** (`npm run editor`, "雨衣ちゃんのデバッグルーム") — a *separate*
+- **Editor** (`npm run editor`, "雨衣ちゃんのデバッグルーム") — a *separate*
   Electron entry (`src/app/editor-main.ts` + `editor-preload.ts` +
-  `src/renderer/editor.ts`/`editor.html`, own esbuild bundle), opaque/framed,
-  independent of the mascot app. Visually authors single Cues (表情): toggle the
-  raw PSD layer tree (PSDTool-style radios/checkboxes) over the `default` base
-  in a self-rendered preview, tune `voice` on sliders with a TTS 試し喋り button
-  (lip-sync included), and save the delta as a `cues/<name>.json` — CRUD, with
-  ajv validation on write and an IdlingCue-reference warning on delete. Saving
-  is picked up live by a running mascot via `watchCues`. Writes only the
-  **diff vs `default`** (`PsdStage.diffFrom`); `default` itself is the fixed
-  base and is never editable here. IdlingCue/sequence ("動き") editing is
-  deliberately out of scope (phase 2).
+  `src/renderer/editor.ts` + `editor/*.ts` / `editor.html`, own esbuild bundle),
+  opaque/framed, independent of the mascot app. Four tabs over one shared
+  preview and layer tree (`editor/stage.ts`):
+  - **Cue** authors single agent-facing Cues (表情): toggle the raw PSD layer tree
+    (PSDTool-style radios/checkboxes) over the `default` base, tune `voice` on
+    sliders with a TTS 試し喋り button (lip-sync included), and save the delta as
+    `cues/<name>.json`.
+  - **アイドリング / イベント / つつき** edit `sequences/` files. It is one editor
+    (`editor/sequence-tab.ts`) that only changes how its list is grouped: pick a
+    step on the strip under the preview, edit its look on the same tree, its
+    voice, text / reading / holdMs and `delivery` (raw JSON for now), and play
+    one step or the whole sequence the way the mascot would.
+
+  Both write with ajv validation and are picked up live by a running mascot
+  (`watchDirs`). Looks are always the **diff vs `default`**
+  (`PsdStage.diffFrom`); `default` itself is never editable here. The sequence
+  editor keeps two properties on purpose: a step whose look you didn't touch
+  saves its original `look` object verbatim, and keys are written in the
+  migration's order — so opening a file and saving it changes nothing (checked
+  over all 66). Working copies are kept per tab, so switching tabs never loses
+  an edit; only opening another file in the same tab asks.
 - `src/app/tts.ts` — VoiSona Talk REST client. `src/app/cues.ts` — loads,
   ajv-validates against `cue.schema.json`, and hot-watches `cues/*.json`.
   `src/shared/types.ts` — the RenderCommand / SpeechItem / Cue / config

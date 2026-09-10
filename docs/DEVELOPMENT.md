@@ -29,7 +29,7 @@ npx ui-chan use      # クライアントの参照先をこのクローンに向
 | `npm run doctor` | セットアップの事前チェック（＝`ui-chan doctor`） |
 | `npm run app` / `stop` / `restart` | Electron アプリの起動／終了／再起動 |
 | `npm run build` | `src/` を `dist/` にビルド（`npm install` 時に自動実行） |
-| `npm run editor` | Cue エディタ「雨衣ちゃんのデバッグルーム」 |
+| `npm run editor` | Cue と固定セリフのエディタ「雨衣ちゃんのデバッグルーム」 |
 | `npm run dump-psd -- assets/foo.psd` | PSD レイヤー構造のダンプ |
 | `npm run validate-cues` | `cues/*.json` のスキーマ検証 |
 | `npm run lint` / `lint:fix` / `format` | Biome |

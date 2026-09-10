@@ -1,9 +1,54 @@
-import { setStatus } from './editor/bridge';
+import { $, setStatus } from './editor/bridge';
 import { initCueTab } from './editor/cue-tab';
-import { shared, stage } from './editor/stage';
+import {
+  initSequenceTabs,
+  leaveSequenceTab,
+  type SequenceKind,
+  showSequenceTab,
+} from './editor/sequence-tab';
+import { stopSpeaking } from './editor/speak';
+import { buildTree, onTreeEdit, shared, stage } from './editor/stage';
+import type { LNode } from './psd-stage';
 
 // 雨衣ちゃんのデバッグルーム — entry point. Loads the PSD and the `default` look
-// once (every tab edits looks as a diff against it), then hands off to the tabs.
+// once (every tab edits looks as a diff against it), then hands off to the tabs:
+// Cue (agent-facing, cues/) and the three kinds of fixed lines (sequences/).
+
+type Tab = 'cue' | SequenceKind;
+let currentTab: Tab = 'cue';
+/** The Cue tab's state *is* the live tree (it has no working copy of its own),
+ *  so leaving it snapshots the tree and coming back restores it. */
+let cueLook: Map<LNode, boolean> | null = null;
+
+async function switchTab(next: Tab): Promise<void> {
+  if (next === currentTab) return;
+  if (currentTab !== 'cue' && !leaveSequenceTab()) return;
+  stopSpeaking();
+  if (currentTab === 'cue') cueLook = stage.snapshotVisibility();
+  currentTab = next;
+
+  for (const tab of document.querySelectorAll<HTMLButtonElement>('#tabs .tab')) {
+    tab.classList.toggle('active', tab.dataset.tab === next);
+  }
+  const isCue = next === 'cue';
+  $('cue-list-section').hidden = !isCue;
+  $('cue-form').hidden = !isCue;
+  $('seq-list-section').hidden = isCue;
+  $('seq-form').hidden = isCue;
+  if (isCue) {
+    $('steps-strip').hidden = true;
+    onTreeEdit(null);
+    if (cueLook) {
+      stage.restoreVisibility(cueLook);
+      buildTree();
+    }
+    setStatus('');
+  } else {
+    await showSequenceTab(next);
+  }
+  // The steps strip comes and goes under the preview, so the canvas size changed.
+  requestAnimationFrame(() => stage.draw());
+}
 
 async function init(): Promise<void> {
   const initData = await window.uiEditor.getInit();
@@ -27,6 +72,10 @@ async function init(): Promise<void> {
 
   shared.styles = await window.uiEditor.listStyles();
   await initCueTab();
+  await initSequenceTabs();
+  for (const tab of document.querySelectorAll<HTMLButtonElement>('#tabs .tab')) {
+    tab.addEventListener('click', () => void switchTab(tab.dataset.tab as Tab));
+  }
 }
 
 init().catch((e) => setStatus(String(e), 'err'));
