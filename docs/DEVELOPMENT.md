@@ -31,7 +31,7 @@ npx ui-chan use      # クライアントの参照先をこのクローンに向
 | `npm run build` | `src/` を `dist/` にビルド（`npm install` 時に自動実行） |
 | `npm run editor` | Cue と固定セリフのエディタ「雨衣ちゃんのデバッグルーム」 |
 | `npm run dump-psd -- assets/foo.psd` | PSD レイヤー構造のダンプ |
-| `npm run validate-cues` | `cues/*.json` のスキーマ検証 |
+| `npm run validate-content` | `cues/*.json` のスキーマ検証 |
 | `npm run lint` / `lint:fix` / `format` | Biome |
 | `node tools/mcp-test.mjs` | MCP stdio 経由の E2E テスト |
 

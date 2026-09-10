@@ -43,7 +43,7 @@ npx ui-chan use      # npm 版も入れている場合、参照先をこのク�
 ```bash
 npx tsc -p tsconfig.json --noEmit   # 型
 npx biome check .                   # lint / format
-npm run validate-cues               # Cue のスキーマ検証
+npm run validate-content               # Cue のスキーマ検証
 npm run check-package               # 配布物に素材が混ざっていないか
 ```
 

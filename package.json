@@ -15,7 +15,7 @@
     "restart": "npm run stop && npm run app",
     "mcp": "node dist/mcp-server.js",
     "dump-psd": "node tools/dump-psd.mjs",
-    "validate-cues": "node tools/validate-content.mjs",
+    "validate-content": "node tools/validate-content.mjs",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",

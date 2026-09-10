@@ -35,7 +35,7 @@ jobs:
         run: npx tsc -p tsconfig.json --noEmit
       - name: Lint / format
         run: npx biome check .
-      - name: Cue のスキーマ検証
-        run: npm run validate-cues
+      - name: Cue・固定セリフのスキーマ検証
+        run: npm run validate-content
       - name: 配布物の検査（ライセンス素材・秘密情報の混入）
         run: npm run check-package
