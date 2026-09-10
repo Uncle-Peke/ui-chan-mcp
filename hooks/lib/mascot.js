@@ -2,10 +2,10 @@
 // mascot and get out of the way.
 //
 // The hooks deliberately know nothing about *what* ういちゃん says. They name
-// the event ("tool_failure", "agent_back"); the app owns the lines, the
-// weights, the cooldowns and the affinity gates as `eventCues` in
-// ui-chan.config.json. That keeps one clock and one place to edit — the debug
-// console fires the same pools through the same path.
+// the event ("tool_failure", "agent_back"); the app owns the lines with their
+// weights and affinity gates (sequences/event/<name>/) and the cooldowns
+// (`eventCues` in ui-chan.config.json). That keeps one clock and one place to
+// edit — the WebSocket debug action fires the same pools through the same path.
 //
 // Every hook here runs inside Claude Code's critical path, so the rules are the
 // same for all of them: never block, never throw, never print to stdout (the

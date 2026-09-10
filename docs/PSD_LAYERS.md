@@ -14,7 +14,7 @@
 - 強さ違いは別の Cue 名（`emo_anger`→`emo_anger_hi`、`emo_joy`→`emo_joy_hi` のように）。intensityパラメータは無い
 - 新しいCueを作ったら、必ず`description`フィールドに「どんな場面・気持ちのCueか」を短く書く
   （これが唯一、AIに伝わる経路）
-- AIに直接選ばせたくない、IdlingCue専用の内部部品Cueには`"internal": true`を付ける（後述）。
+- AIに直接選ばせたくないCueには`"internal": true`を付ける。
   ファイル名のprefix等の暗黙の命名規則には頼らない — 明示的なフラグでのみ判定する
 
 ---
@@ -108,15 +108,12 @@
 
 ---
 
-## `03` IdlingCue専用Cue（`idling_*`）
+## `03` 固定セリフの見た目
 
-`cues/idling_yawn_1〜3` / `idling_lookaround_1〜3` / `idling_ponder` / `idling_doze_1〜3` /
-`idling_giggle_1〜2` / `idling_sigh_1〜2` は、`ui-chan.config.json` の `idle.idlingCues`
-（あくび・きょろきょろ・ぼんやり・うたた寝・くすくす・ため息）が内部的に参照する、無言の一瞬の
-表情変化用Cue。他のCueと形式は同じだが、単体で場面に当てる想定ではなく複数ステップの一部として
-使うために作られている。全ファイルに`"internal": true`を明示しており、`buildCueCatalog()`が
-AI向けの一覧生成時にこのフラグを見て除外している（ファイル名が`idling_`で始まることは判定条件では
-ない。たまたま命名が揃っているだけ）。`set_cue`から直接呼んでも動作はするが、通常は呼ばない。
+あくび・きょろきょろ・うたた寝のような、独り言や反応の途中の一瞬の表情は、Cue ではなく
+**シーケンスのステップ側**（`sequences/` の `look`）に直接書く。以前は `idling_*` という内部Cueを
+作ってシーケンスから名前で参照していたが、固定セリフはエージェント向けのCueから完全に切り離した
+（→ [CUE_AUTHORING.md](CUE_AUTHORING.md) の `02`）。レイヤー名の引き方はこのページのまま使える。
 
 ---
 

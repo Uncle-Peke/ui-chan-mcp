@@ -48,11 +48,11 @@ export interface Cue extends Look {
    *  reference doc can. */
   description?: string;
   /** True = excluded from that generated AI-facing catalog. Still fully
-   *  callable via set_cue (not an execution guard) — just signals "this is
-   *  an internal building block for the IdlingCue system, not meant to be
-   *  picked directly". An explicit flag on purpose, not a filename
-   *  convention (e.g. an "idling_" prefix), which would be an implicit,
-   *  easy-to-break signal. */
+   *  callable via set_cue (not an execution guard) — just signals "not meant
+   *  to be picked directly by the agent". An explicit flag on purpose, not a
+   *  filename convention, which would be an implicit, easy-to-break signal.
+   *  The shipped catalog no longer uses it: the fixed lines that once needed
+   *  building-block Cues now carry their own looks (sequences/). */
   internal?: boolean;
 }
 
@@ -217,7 +217,7 @@ export interface SystemIdleConfig {
    *  [minSec, firstMaxSec] of OS idle, so she doesn't come in on the exact
    *  same beat every time. Defaults to minSec (no jitter). */
   firstMaxSec?: number;
-  /** At this much OS idle the user counts as away: play `awayCue` once, then
+  /** At this much OS idle the user counts as away: play sequences/presence/away.json once, then
    *  stay silent until input comes back. 0 / omitted disables the away state
    *  (and with it the "keeps talking to an empty chair" half of the fix). */
   awaySec?: number;
@@ -256,15 +256,16 @@ export type FidgetCue = CueSequence;
  *  a command failed, a subagent came back, the agent is waiting on the user.
  *  The trigger lives outside the app (a Claude Code hook posts `event_cue`),
  *  but the *reaction* — which lines exist, how often she'll say one, whether
- *  affinity or the clock gates it — is config here, exactly like an IdlingCue.
+ *  affinity or the clock gates it — lives in the app (sequences/event/<name>/ plus
+ *  the settings below), exactly like an IdlingCue.
  *  See VISION.md. */
 export type EventCue = CueSequence;
 
-/** Named pools of EventCues, one per event the outside world can report. */
+/** EventCue settings, one per event the outside world can report. */
 export interface EventCuesConfig {
   /** Master switch. Default true. */
   enabled?: boolean;
-  /** Event name (`tool_failure`, `agent_back`, …) → its pool. */
+  /** Event name (`tool_failure`, `agent_back`, …) → how often it may speak. */
   events: Record<string, EventCueGroup>;
 }
 

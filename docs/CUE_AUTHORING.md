@@ -1,6 +1,6 @@
-# Cue を書く / 設定を変える
+# Cue・固定セリフを書く / 設定を変える
 
-> **新しい表情（Cue）を足すとき**と、**設定を調整するとき**に読みます。
+> **新しい表情（Cue）を足すとき**、**独り言や反応のセリフ（固定セリフ）を書くとき**、**設定を調整するとき**に読みます。
 > 使えるレイヤー名の早見表は [PSD_LAYERS.md](PSD_LAYERS.md)、カタログ全体の方針は [design/CUE_CATALOG.md](design/CUE_CATALOG.md)。
 
 ---
@@ -37,7 +37,8 @@
   ためだけに読まれる（手書きの早見表を持たないので、Cue追加時にドキュメント更新を忘れてズレる、
   ということが起きない）
 - `internal`（任意・真偽値） — `true`にすると、そのCueはAI向けカタログから除外される（`set_cue`で
-  直接呼べば動作はする）。IdlingCueが内部的に組み立てるための部品Cue（`cues/idling_*.json`）に付与
+  直接呼べば動作はする）。エージェントに直接選ばせたくないCueに付ける（同梱のCueには今は無い。
+  固定セリフの見た目はシーケンス側が自前で持つので、そのための部品Cueは要らない）
 
 Cue選定・PSDレイヤー名カタログなど、**新規Cue制作のための人間向け参照ドキュメント**は
 `docs/PSD_LAYERS.md` を参照。実行時にもAIのコンテキストにもロードされない（`context/`ではなく
@@ -45,18 +46,57 @@ Cue選定・PSDレイヤー名カタログなど、**新規Cue制作のための
 
 ---
 
-## `02` 設定（ui-chan.config.json）
+## `02` 固定セリフ（sequences/）
+
+アイドル中の独り言（IdlingCue）、作業中の反応（EventCue）、つつかれたときの反応（FidgetCue）は、
+**`sequences/` に 1 本 = 1 ファイル**で置きます（`sequence.schema.json` 準拠）。**ディレクトリで種類が
+決まり**、ファイル名がそのまま名前になります。保存すると即時リロードされます。
+
+| 置き場所 | 種類 |
+|---|---|
+| `sequences/idling/<名前>.json` | IdlingCue |
+| `sequences/presence/away.json` / `wake.json` | 離席したとき／戻ってきたとき |
+| `sequences/fidget/poke/<名前>.json` | つつかれたとき |
+| `sequences/fidget/spam/<名前>.json` | 何度もつつかれたとき |
+| `sequences/event/<イベント名>/<名前>.json` | EventCue |
+
+```jsonc
+{
+  "weight": 2,          // 出やすさ（省略時 1）
+  "maxAffinity": 34,    // 好感度がこれ以下のときだけ（minAffinity・hours もある）
+  "steps": [
+    {
+      "look": {         // 見た目と声色。Cue ファイルと同じ書き方（default からの差分）
+        "select": ["!目/*…"],
+        "voice": { "style_weights": { "Angry": 0.5, "Normal": 0.5 } }
+      },
+      "text": "……なに？",
+      "reading": "……なに？",
+      "delivery": { "ending": "flat" }  // この一行だけの演技指定
+    }
+  ]
+}
+```
+
+- **各ステップは見た目と声を自分で持ちます。** `cues/` の Cue を名前で借りる書き方はありません
+  ——借りていた頃は、エージェント向けに Cue を直すと固定セリフの声まで一緒に変わっていました
+- `look` を省略したステップは、直前のステップの見た目と声のまま続きます（`{}` は `default`）
+- `text` のあるステップはセリフを喋り終えてから次へ、無いステップは `holdMs`（既定 2000）だけ続きます
+- **`delivery`** は `ending` / `speed` / `pitch` / `stretchSec` / `words` など、その一行だけの演技指定。
+  `set_cue` には無い口で、**人が事前に書いた行**だけが持てる → [design/PROSODY.md](design/PROSODY.md)
+- 無言の仕草（あくび、きょろきょろなど）は `weight` を高く、レアな独り言や高好感度専用セリフは
+  `weight` を低く／`minAffinity` を高く、低好感度専用の冷たい反応は `maxAffinity` を低く設定する
+- ホーム（`~/.ui-chan/sequences/`）に同じ相対パスで置けば、そのファイルだけが差し替わります
+
+---
+
+## `03` 設定（ui-chan.config.json）
 
 - `assetsDir` — PSD を探すディレクトリ（最初に見つかった `.psd` を使用）
 - `window` — ウィンドウサイズ・画面端からのマージン
 - `cuesDir` — Cueのディレクトリ（デフォルト `cues`）
-- **固定セリフのステップには `delivery` を書ける**（`ending` / `speed` / `pitch` / `stretchSec` /
-  `words` など、その一行だけの演技指定）。`set_cue` には無い口で、IdlingCue・EventCue・
-  FidgetCue のように**人が事前に書いた行**だけが持てる → [design/PROSODY.md](design/PROSODY.md)
-- `idle.idlingCues` — アイドル中に自発的に再生される**IdlingCue**（Cue＋任意のセリフのステップ列）のプール。
-  `items[].steps[]`は`{ cue?, text?, reading?, holdMs? }`で、`cue`を省略すると直前のCueを維持する。
-  各 IdlingCue は `weight`（出やすさ、デフォルト 1）、`minAffinity`（必要な好感度）、`maxAffinity`（上限好感度）を持てる。
-  無言の仕草（あくび、きょろきょろなど）は `weight` を高く、レアな独り言や高好感度専用セリフは `weight` を低く／`minAffinity` を高く、低好感度専用の冷たい反応は `maxAffinity` を低く設定する。
+- `idle.idlingCues` / `interactions` / `eventCues` — 固定セリフの**出し方**（間隔、離席の判定、
+  連打の判定、`cooldownSec`・`chance`）。セリフそのものは `sequences/`（→ `02`）
 - `lipSync` — リップシンク設定。`mouths` は母音（a/e/i/o/u/n）→ 口レイヤー名、`charsPerSec` は口を
   動かす速度、`audioPollMs`（デフォルト33）は音声駆動リップシンクが再生位置をチェックする間隔。
   読みのかなを母音に変換して口形を切り替える。漢字など読めない文字はパクパク

@@ -6,7 +6,7 @@
 //
 // This file only decides *which event happened*. What she says about it — the
 // lines, the weights, how often she bothers, the affinity gates — is the
-// matching `eventCues.events` pool in ui-chan.config.json, and the app applies
+// matching pool in sequences/event/<name>/, and the app applies
 // the cooldown. The one piece of judgement that has to live here is which tool
 // results are worth reporting at all, because only the hook payload knows that.
 const { readPayload, fireEvent } = require('./lib/mascot');

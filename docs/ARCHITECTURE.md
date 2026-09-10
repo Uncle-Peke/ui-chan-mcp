@@ -128,8 +128,8 @@ Agent ──stdio──▶ dist/mcp-server.js ──WS(127.0.0.1:8123)──▶ 
   separate renderer-local "gesture" system with its own data file
   (`gestures.json`) and its own snapshot/restore mechanism; it's since been
   folded into `state.ts`'s IdlingCue mechanism (see below) — those motions are
-  now ordinary Cue files under `cues/idling_*.json`, hot-reloadable like any
-  other Cue. Bundled separately by esbuild (browser IIFE) — it is not part of
+  now ordinary IdlingCue files under `sequences/idling/`, hot-reloadable like
+  any other content. Bundled separately by esbuild (browser IIFE) — it is not part of
   the tsc build graph.
 - `src/renderer/psd-stage.ts` — the reusable PSD compositing core (`PsdStage`):
   parse PSD → layer tree, apply `select`/`show`/`hide`, paint to a canvas, plus
@@ -199,8 +199,9 @@ that). This is the only cross-folder name dependency in the PSD.
   only agent-facing visual tool, and it takes the Cue and the (optional) line
   to speak in the same call — see "timing model" below for why.
 - Each Cue may carry an optional `description` (what scene/feeling it's for)
-  and `internal` (excludes it from the AI-facing catalog below — used for the
-  IdlingCue building-block Cues, `cues/idling_*.json`). Neither field affects
+  and `internal` (excludes it from the AI-facing catalog below — for a Cue the
+  agent shouldn't pick directly; the shipped catalog has none left, since fixed
+  lines carry their own looks — see below). Neither field affects
   `set_cue`/`composeDirectives()` at all; they exist solely for the persona
   text's generated Cue catalog (see below).
 - `docs/PSD_LAYERS.md` is a hand-maintained reference catalog (raw PSD layer paths
@@ -212,15 +213,59 @@ that). This is the only cross-folder name dependency in the PSD.
   agent) is writing a *new* Cue file, not for the roleplay agent calling
   `set_cue`. It is **not** loaded at runtime or injected into any prompt.
 
+### Fixed lines live in `sequences/`, with their own looks
+
+IdlingCue, EventCue and FidgetCue are all the same `CueSequence` shape, and all
+three are **authored ahead of time** — no agent is involved. They live one file
+per sequence under `sequences/`, and the **directory is the pool**:
+
+| path | pool |
+|---|---|
+| `sequences/idling/<name>.json` | IdlingCue |
+| `sequences/presence/away.json`, `wake.json` | the system-idle gate's doze / wake-up |
+| `sequences/fidget/poke/<name>.json`, `fidget/spam/<name>.json` | FidgetCue |
+| `sequences/event/<event>/<name>.json` | EventCue |
+
+The file name is the sequence's name (`trigger_idle umbrella`). Package and
+`~/.ui-chan/sequences` are both read, and **the same relative path in home
+wins** — the rule `cues/` already had. `ui-chan.config.json` keeps only *how*
+they play (intervals, the system-idle window, `cooldownSec`/`chance`); the lines
+themselves are content, not settings. Validated by `sequence.schema.json` (its
+look fields `$ref` `cue.schema.json`), hot-reloaded by a recursive watch.
+
+Two decisions, both forced by something that went wrong:
+
+- **Not in config.** They used to be arrays in `ui-chan.config.json`, and the
+  home override replaces arrays wholesale (`deepMerge`): tuning one line from an
+  npm install copied its whole pool into `~/.ui-chan/config.json`, where it never
+  saw a package update again. Config wasn't hot-reloaded either. Per file, only
+  the file you touched becomes yours.
+- **Steps own their look.** A step is `{look?, text?, reading?, holdMs?, delivery?}`,
+  where `look` is a Cue's `select/show/hide/blink/voice` without the name — there
+  is **no way to reference an agent-facing Cue by name**. Borrowing them (68
+  references to 31 generic Cues) meant that retuning a Cue's voice for the agent
+  silently changed the fixed lines too: one pass over 36 Cues moved 33 of 62
+  lines. The per-line voice patch that grew as a workaround
+  (`delivery.style_weights`) is gone; a step's voice is its `look.voice`. The cost
+  is duplication — fixing `emo_anger_lo`'s face no longer reaches the steps that
+  copied it — accepted because it is the same "no inheritance, self-contained"
+  trade the Cue catalog already made. Omitting `look` keeps the previous step's
+  look and voice; `look: {}` is `default`.
+
+A home `config.json` that still carries the old arrays keeps working:
+`legacyPools()` converts them (resolving the old Cue names) and each replaces the
+matching pool — exactly the old semantics — with a warning in `get_state`.
+
 ### IdlingCue: self-initiated Cue+line sequences during Idling
 
 Per VISION.md's ubiquitous language, **Idling** is the base "nothing being
 performed" state, and an **IdlingCue** is a short Cue-based performance
 occasionally played during Idling — a subtype of Cue, not a separate
-mechanism. `state.ts` implements this as one pool (`idle.idlingCues` in
-`ui-chan.config.json`) with weighted random selection and affinity gating:
+mechanism. `state.ts` implements this as one pool (`sequences/idling/`, paced
+by `idle.idlingCues` in `ui-chan.config.json`) with weighted random selection
+and affinity gating:
 
-- Each item is an `IdlingCue`: `{name?, steps: [{cue?, text?, reading?, holdMs?}], weight?, minAffinity?, maxAffinity?}`.
+- Each file is an `IdlingCue`: `{steps: [{look?, text?, reading?, holdMs?, delivery?}], weight?, minAffinity?, maxAffinity?, hours?}`.
 - `weight` controls rarity (higher = picked more often). Use it to make ambient
   motion common and longer chatter lines rare without needing a second timer.
 - `minAffinity` gates an item so it only plays when affinity is high enough.
@@ -231,7 +276,7 @@ mechanism. `state.ts` implements this as one pool (`idle.idlingCues` in
   old separate `idle.chatter` pool has been merged into this one pool.
 
 `source` is `'idling-cue'` for auto-scheduled steps and `'debug'` for steps
-forced via the debug console, for `cue.agent` / speech `agent` bookkeeping.
+forced over the WebSocket `debug` action, for `cue.agent` / speech `agent` bookkeeping.
 
 #### The system-idle gate (`idle.idlingCues.systemIdle`)
 
@@ -248,11 +293,11 @@ It is a **window**, not a threshold, and both edges are load-bearing:
 |---|---|---|
 | `t < minSec` (60s) | working | stay quiet |
 | `minSec ≤ t < awaySec` | hands off the keys | play IdlingCues |
-| `t ≥ awaySec` (15min) | away | `awayCue` once, then silence |
-| `t` drops | they're back | `wakeCue` once |
+| `t ≥ awaySec` (15min) | away | `presence/away` once, then silence |
+| `t` drops | they're back | `presence/wake` once |
 
 A lower bound alone would still leave her performing to an empty desk, which is
-the whole reason `awaySec` exists; `awayCue` is a *doze* rather than plain
+the whole reason `awaySec` exists; `away` is a *doze* rather than plain
 silence so the away state is visible instead of indistinguishable from a long
 gap, and the wake-up on the way back is the payoff that state buys.
 
@@ -272,8 +317,8 @@ Implementation notes, all in `tickIdling()` (1s poll, armed only when gated):
   doze and never retry), while waking **preempts** via `preempt()` — but only
   when `effectivePriority() <= PRIORITY.idle`, so it cuts off her own snoring
   and never the agent.
-- `awayCue`/`wakeCue` are ordinary `CueSequence`es in config. They're reachable
-  by name over the WebSocket `debug` action (`trigger_idle` with their name),
+- `presence/away.json` / `wake.json` are ordinary sequences. They're reachable
+  by name over the WebSocket `debug` action (`trigger_idle` `away` / `wake`),
   but excluded from the random pick — their real triggers are 15
   minutes away, and a performance you can only see by waiting a quarter hour
   never gets looked at.
@@ -287,14 +332,14 @@ remaining gap where a multi-step sequence could switch Cue while the previous
 line's audio was still playing: `enqueueSpeech()` is the single place a
 speech duration is ever resolved (`durationMs` argument if given, else LEN(text)
 via `estimateSpeechDurationMs`, refined again by `startSpeech()` once real
-audio length is known), and `playIdlingCueStep()`'s `onComplete` callback is
+audio length is known), and `playSequenceStep()`'s `onComplete` callback is
 what actually advances the sequence — never a second, independently-guessed
 timer. `holdMs` still fully controls steps with no `text` (there's nothing to
 wait for otherwise).
 
 ### FidgetCue: being touched
 
-Clicking her actual pixels fires a FidgetCue from `interactions.poke`, which
+Clicking her actual pixels fires a FidgetCue from `sequences/fidget/poke/`, which
 preempts whatever is playing. Two rules learned by getting them wrong:
 
 - **Every entry says something.** Silent "just change the face" entries read as
@@ -304,8 +349,8 @@ preempts whatever is playing. Two rules learned by getting them wrong:
   the 「触んないで」 entries were gated `maxAffinity: 34`, so the one reaction
   people actually poke her to see could never fire. Being prodded *repeatedly*
   is annoying at any temperature, and it is the one irritation the user creates
-  on purpose — so `interactions.spam` (default: 3 pokes within 4s) swaps in its
-  own pool, with the flavour still following affinity. Reacting resets the
+  on purpose — so `interactions.spam` (default: 3 pokes within 4s) swaps in
+  `sequences/fidget/spam/`, with the flavour still following affinity. Reacting resets the
   tally, so she snaps once rather than once per poke. Every poke counts toward
   it, including ones the cooldown swallows: the cooldown exists to stop
   *reactions* piling up, not to forgive the prodding.
@@ -330,14 +375,16 @@ Hermes' plugin runtime isn't JavaScript, so it spawns `hooks/fire-event.js`
 — the same last step, exposed for any host that can only run a command. All post
 `{tool: 'event_cue', args: {event}}` over the WebSocket. That is *all* a trigger
 decides — which is what keeps two hosts from drifting into different lines. Everything else — which lines exist, weights, affinity/time gates, the
-cooldown, and the chance roll — is `eventCues.events.<name>` in
-`ui-chan.config.json`, resolved by `state.ts`'s `fireEventCue()`.
+cooldown, and the chance roll — belongs to the app: the lines in
+`sequences/event/<name>/`, the throttle in `eventCues.events.<name>` of
+`ui-chan.config.json`, both resolved by `state.ts`'s `fireEventCue()`. An event
+exists if either side names it; with no settings it runs on the defaults.
 
 The split matters: hooks are separate short-lived processes, so any throttle
 they own has to be invented (a temp file) and is invisible to every other
-trigger. Keeping it in the app means one clock shared by hooks, the debug
-console, and anything added later, and it means editing what she says is a JSON
-edit with no hook code involved.
+trigger. Keeping it in the app means one clock shared by hooks, the WebSocket
+debug action, and anything added later, and it means editing what she says is a
+JSON edit with no hook code involved.
 
 - `cooldownSec` is shared by every event with the same `throttleKey` (default:
   the event's own name). Ambient commentary (`tool_failure`, `turn_done`,
@@ -354,8 +401,8 @@ edit with no hook code involved.
 
 #### Writing EventCue lines: who is speaking, and what they're allowed to know
 
-Two rules, both learned by getting them wrong. Every line in `eventCues` (and
-`idlingCues`) has to satisfy both.
+Two rules, both learned by getting them wrong. Every line in `sequences/event/`
+(and `sequences/idling/`) has to satisfy both.
 
 **1. うい is the observer, never the worker.** Per the persona boundary, the
 work is done by Claude (or a subagent); ういちゃん watches from the side and

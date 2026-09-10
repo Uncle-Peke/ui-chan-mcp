@@ -18,7 +18,7 @@
     },
     "internal": {
       "type": "boolean",
-      "description": "trueなら、このCueはAI向けのCue一覧（persona プロンプトが生成するset_cue用カタログ）から除外される。set_cueで直接指定すれば動作はする（実行を禁止するフラグではない）が、単体で場面に当てる想定ではなく、IdlingCue（ui-chan.config.jsonのidle.idlingCues/idle.chatter）が複数ステップの一部として内部的に参照するためだけのCueであることを示す。ファイル名のprefix等の暗黙の命名規則ではなく、この明示的なフラグで判定する。省略時はfalse扱い。",
+      "description": "trueなら、このCueはAI向けのCue一覧（persona プロンプトが生成するset_cue用カタログ）から除外される。set_cueで直接指定すれば動作はする（実行を禁止するフラグではない）。エージェントに直接選ばせたくないCueに付ける。固定セリフ（sequences/）の見た目はシーケンスのステップ側が自前で持つので、そのための部品Cueは作らない。ファイル名のprefix等の暗黙の命名規則ではなく、この明示的なフラグで判定する。省略時はfalse扱い。",
       "default": false
     },
     "select": {

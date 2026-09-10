@@ -3,7 +3,7 @@ and plugins/opencode/ui-chan.mjs (OpenCode), in Hermes' plugin dialect.
 
 Like both of those, this file decides exactly one thing: **which event
 happened**. What ういちゃん says about it — the lines, weights, cooldowns and
-affinity gates — lives in ``eventCues`` in ui-chan.config.json and is resolved
+affinity gates — lives in sequences/event/<name>/ and ``eventCues`` in ui-chan.config.json, and is resolved
 by the app, so three different hosts can never drift into saying different
 things, and editing her reactions stays a JSON edit with no plugin code.
 

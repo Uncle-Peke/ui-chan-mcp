@@ -31,8 +31,8 @@ const CUE_GROUP_TITLE: Record<string, string> = {
 
 /** The AI-facing Cue catalog, generated fresh from `cues/` on every call — so
  *  adding a Cue file can never leave a hand-written list out of date. Cues
- *  marked `internal: true` are excluded: they're IdlingCue building blocks
- *  (state.ts), not expressions to pick with set_cue. */
+ *  marked `internal: true` are excluded: the author doesn't want the agent to
+ *  pick them directly. */
 export function buildCueCatalog(paths: UiChanPaths): string {
   const { cues, errors } = loadCues(paths.cueDirs, paths.cueSchemaFile);
 

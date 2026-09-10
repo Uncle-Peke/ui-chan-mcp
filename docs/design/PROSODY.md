@@ -169,15 +169,15 @@ Cue にも行にも数値は書かない。`src/app/prosody.ts` の表が実体�
 
 ## `06` 固定セリフだけの演技指定（`delivery`）
 
-IdlingCue / EventCue / FidgetCue と `awayCue` / `wakeCue` のステップには、
-**その一行だけの演技指定**を書ける。`ui-chan.config.json` の `steps[]` に置く。
+固定セリフ（`sequences/` の IdlingCue / EventCue / FidgetCue と `presence/away`・`wake`）の
+ステップには、**その一行だけの演技指定**を書ける。ステップの `delivery` に置く。
 
-```json
+```jsonc
 {
-  "cue": "mix_disgust_anger",
-  "delivery": { "ending": "flat" },
+  "look": { "select": ["…"], "voice": { "style_weights": { "Angry": 0.5, "Normal": 0.5 } } },
   "text": "……なに？",
-  "reading": "……なに？"
+  "reading": "……なに？",
+  "delivery": { "ending": "flat" }
 }
 ```
 
@@ -189,7 +189,6 @@ IdlingCue / EventCue / FidgetCue と `awayCue` / `wakeCue` のステップには
 
 | 項目 | 効果 |
 |---|---|
-| `style_weights` | 声色を Cue のものから差し替える（抑揚・話速の導出もこの値が基準になる） |
 | `intonation` / `speed` / `pitch` / `volume` | 導出値を**上書き**（加算ではない） |
 | `stretchSec` | `〜` で伸ばす母音の長さ（秒） |
 | `clipSec` | 語末 `っ` で詰める母音の長さ（秒） |
@@ -198,6 +197,10 @@ IdlingCue / EventCue / FidgetCue と `awayCue` / `wakeCue` のステップには
 
 **書かなかったものは導出値のまま**。強調（`**語**`）・間（`、` `…`）・伸ばし（`〜`）・
 詰め（`っ`）は `text` にそのまま書けるので、ここには無い。
+
+**声色は `delivery` ではなく、そのステップの `look.voice` で持つ**（抑揚・話速の導出もこの値が
+基準になる）。以前あった `delivery.style_weights` は、固定セリフが汎用 Cue を名前で借りていた頃に、
+声だけ差し替えるための回避策だった。
 
 > [!TIP]
 > 効き目を確かめるには、デバッグ経路でその IdlingCue を名指しで鳴らすのが早い。
@@ -317,7 +320,7 @@ TTS は平均に回帰する。外さないが、際立たない。ナレーシ�
 | IdlingCue | 21 | `salty` `umbrella` の2件が調整ずみ。`thinking` は方向だけ決めて未確定 |
 | EventCue | 24 | 声色の不一致9行を修正（`permission` `idle_wait` `tool_failure` `turn_done` `agent_back`） |
 | FidgetCue | 数件 | 未着手 |
-| `awayCue` / `wakeCue` | 2 | 未着手 |
+| `presence`（away / wake） | 2 | 未着手 |
 
 `thinking`（「次、なにしよっかな。」）で出た要望は「**えーっと**と同じ悩んでいる響き」。
 読みを `ツーギ` に伸ばして全体を下げる方向まで出したが、値は未確定でリセットしてある。
@@ -327,8 +330,8 @@ TTS は平均に回帰する。外さないが、際立たない。ナレーシ�
 1. **アプリを起動**（`npm run app`）。デバッグ用に送信内容と音声を残すなら
    `UI_CHAN_DUMP=1 npx electron .` で起動する（`/tmp/ui-chan-dump/` に wav と、
    実際にエンジンへ送った TSML・パラメータが落ちる）
-2. **順に鳴らす。** WebSocket の `preview_sequence` にステップ列をそのまま渡すと、
-   本番と同じ経路（Cue → 感情の導出 → TSML → VoiSona）で再生される。
+2. **順に鳴らす。** WebSocket の `preview_sequence` に `sequences/` のファイルの `steps` を
+   そのまま渡すと、本番と同じ経路（見た目と声 → 感情の導出 → TSML → VoiSona）で再生される。
    プールからランダムに選ぶのではなく**この行を今すぐ**鳴らせるのがこの口の役割
 3. **候補を作って1つずつ聞かせる。** まとめて7本鳴らすと覚えていられないので、**1語・1行ずつ**
 4. 選ばれた値を `delivery` に書く（→ `06`）

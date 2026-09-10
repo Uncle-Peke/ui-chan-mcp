@@ -39,8 +39,8 @@ npm で入れたなら要らないよ。ビルド済みのものが届くから�
 <details>
 <summary><b>アイドル中の独り言がうるさい／静かすぎる</b></summary>
 
-`idle.idlingCues` の `minSec` / `maxSec`（既定 120〜300秒）で間隔、`weight` で出やすさ。
-好感度で出し分けたいなら `minAffinity` / `maxAffinity`。
+`idle.idlingCues` の `minSec` / `maxSec`（既定 120〜300秒）で間隔。セリフごとの出やすさは
+`sequences/idling/` の各ファイルの `weight`、好感度で出し分けたいなら `minAffinity` / `maxAffinity`。
 
 なお、キー入力やマウス操作がある間は黙っています。15分離席すると寝て、戻ると起きます
 （`idle.idlingCues.systemIdle`）。
@@ -49,9 +49,9 @@ npm で入れたなら要らないよ。ビルド済みのものが届くから�
 <details>
 <summary><b>作業中の反応（失敗した・サブエージェントが帰ってきた 等）を変えたい</b></summary>
 
-`ui-chan.config.json` の `eventCues.events`。イベントごとにセリフのプールがあって、
-`cooldownSec` でうるささを、`chance` で「毎回言うか、たまにか」を決められるよ。
-中身は IdlingCue と同じ形だから `weight` / `minAffinity` / `maxAffinity` / `hours` も効く。
+セリフは `sequences/event/<イベント名>/` に1本1ファイル、うるささは `ui-chan.config.json` の
+`eventCues.events`。`cooldownSec` でうるささを、`chance` で「毎回言うか、たまにか」を決められるよ。
+セリフのファイルは IdlingCue と同じ形だから `weight` / `minAffinity` / `maxAffinity` / `hours` も効く。
 
 用意してあるのは `permission`（許可待ち）、`idle_wait`（入力待ち）、`tool_failure`（こけた）、
 `turn_done`（終わった）、`compact`、`agent_out`（お手伝いの子を送り出した）、`agent_back`（帰ってきた）。

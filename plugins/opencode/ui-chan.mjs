@@ -3,8 +3,8 @@
 //
 // Like the Claude Code hooks, this file decides exactly one thing: **which
 // event happened**. What ういちゃん says about it (the lines, weights,
-// cooldowns, affinity gates) stays in `eventCues.events` in
-// ui-chan.config.json, resolved by the app — so the two hosts can never drift
+// cooldowns, affinity gates) stays in
+// sequences/event/<name>/ and ui-chan.config.json's `eventCues`, resolved by the app — so the two hosts can never drift
 // into saying different things, and editing her reactions is still a JSON edit
 // with no plugin code involved.
 //

@@ -159,9 +159,9 @@
 `smug_arms_crossed` / `smug_hands_on_hips`（ドヤ独り言） / `normal_think`（頬杖考え）
 → 「感情」ではなく「感情＋ポーズ」の組。カタログ上は感情スロットに紐づけつつ、*ポーズ変種*として別扱い。
 
-### 内部（IdlingCueのビルディングブロック・AI非公開）
-`idling_yawn_1..3` / `idling_doze_1..3` / `idling_lookaround_1..3` / `idling_giggle_1..2` /
-`idling_sigh_1..2` / `idling_ponder` — `internal: true`。カタログ対象外。
+### 内部（IdlingCueのビルディングブロック）
+廃止。固定セリフの見た目はシーケンスのステップが自前で持つ（`sequences/`）ので、`idling_*` の
+部品Cueは作らない。
 
 ---
 
@@ -228,7 +228,6 @@
 
 `normal`(素・相槌) / `magao`(無・真顔) / `thinking`(思考)（merge: kangae→） / `setsumei`(説明) / `toujou`(登場) / `yobikake`(語りかけ) / `haishin`(配信) / `sleepy`(眠気)（merge: nemui→） / `dizzy`(混乱)（merge: panic→） / `awawa`(焦り) / `troubled`(困り・気まずい・差別化: suimasenne=申し訳) / `hoke`(脱力) / `fukumiwarai`(含み笑い) / `relief`(安心) / `bakushou`(爆笑) / `success`(作業成功) / `ame`(雨・情景) / `beam`(ういビーム) / `kotowaru`(ビーム拒否)
 **[pose]** `normal_arms_crossed` / `normal_umbrella` / `happy_banzai` / `normal_think`
-**[internal]** `idling_*`（AI非公開・IdlingCue部品）
 
 ## 統合サマリ（この目標セットで消えるCue = 5個）
 
