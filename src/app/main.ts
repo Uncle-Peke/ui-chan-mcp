@@ -378,8 +378,122 @@ function startWsServer(): void {
  *  ここを見るので、「起動し直さないと位置が戻らない」ということはない。 */
 function homePosition(): { x: number; y: number } {
   const { width, height, margin } = config.window;
+  // 実ピクセルの余白が分かっていればそれで合わせる。分かるのは PSD を描いた
+  // あとなので、起動直後の一発目だけは窓の矩形で置き、測れた時点で
+  // `ui-chan:body-box` が置き直す。リセットと吸い付きが別の場所に着地しない
+  // ように、両方ここを見る。
+  const ins = bodyInsets ?? { left: 0, top: 0, right: 0, bottom: 0 };
+  const gap = config.window.snapGap ?? 12;
   const wa = screen.getPrimaryDisplay().workArea;
-  return { x: wa.x + wa.width - width - margin, y: wa.y + wa.height - height - margin };
+  // setPosition は整数しか受け取らない（小数を渡すと main プロセスごと落ちる）。
+  // 実ピクセルの計測は dpr 由来で小数になるので、ここで必ず丸める。
+  return {
+    x: Math.round(wa.x + wa.width - margin - gap - width + ins.right),
+    y: Math.round(wa.y + wa.height - margin - height + ins.bottom),
+  };
+}
+
+/** レンダラが測った「彼女に見える範囲」の、窓の内側からの余白（CSS px）。
+ *  測れるのは PSD を描いたあとなので、それまでは null＝窓の矩形で代用する。 */
+let bodyInsets: { left: number; top: number; right: number; bottom: number } | null = null;
+
+/**
+ * ドラッグを離したとき、近ければ画面の下の隅へ吸い付ける。
+ *
+ * **下2隅だけ**なのは、上に詰められないから。窓の上部120pxは吹き出しの居場所
+ * として常時確保されていて（`index.html` の `#bubble-area`）、彼女の頭を画面
+ * 上端に付けると、喋った瞬間に吹き出しが画面の外へ出る。置けない場所を候補に
+ * 出しても、寄せたのに何も起きないか、変な位置に落ちるかのどちらかになる。
+ *
+ * **窓の矩形ではなく彼女の実ピクセルで合わせる。** 窓は420x680だが絵はその一部
+ * で、左右に90〜110pxの透明な余白がある（→ `PsdStage.contentInsets`）。矩形で
+ * 揃えると、画面の隅に吸い付いたはずが彼女は隅から100px浮いて見える——目が見て
+ * いるのは彼女であって窓ではないので、しきい値もこの実ピクセルの隅で測る。
+ *
+ * 見る画面は主ディスプレイではなく **窓がいま乗っている画面**（ドラッグは画面を
+ * またげる）。
+ */
+function cornerTargets(): {
+  left: { x: number; y: number };
+  right: { x: number; y: number };
+} | null {
+  if (!win) return null;
+  const { width, height, margin } = config.window;
+  const gap = config.window.snapGap ?? 12;
+  const ins = bodyInsets ?? { left: 0, top: 0, right: 0, bottom: 0 };
+  const wa = screen.getDisplayMatching(win.getBounds()).workArea;
+  // 「彼女の左端／右端／下端が、画面の縁から margin」になる窓の座標に直す。
+  // 整数必須（→ homePosition の同じ注記）。
+  const y = Math.round(wa.y + wa.height - margin - height + ins.bottom);
+  // 左下に着地すると立ち絵は反転する（画面の内側を向かせるため）ので、そのとき
+  // 身体の左の余白は「反転前の右の余白」になる。入れ替えないと、左に吸い付いた
+  // ときだけ画面の縁との間隔が19pxずれる。
+  return {
+    left: { x: Math.round(wa.x + margin + gap - ins.right), y },
+    right: { x: Math.round(wa.x + wa.width - margin - gap - width + ins.right), y },
+  };
+}
+
+/** 吸い付きの移動そのもの。`setPosition` を1発撃つと瞬間移動になって「寄せられ
+ *  た」感が出ず、逆に macOS 任せの `animate: true` は遅くて重い。あいだを取って
+ *  自前で easeOutCubic を刻む。 */
+let snapTimer: NodeJS.Timeout | null = null;
+function cancelSnap(): void {
+  if (snapTimer) {
+    clearInterval(snapTimer);
+    snapTimer = null;
+  }
+}
+function glideTo(x: number, y: number): void {
+  if (!win) return;
+  cancelSnap();
+  const durationMs = config.window.snapDurationMs ?? 220;
+  if (durationMs <= 0) {
+    win.setPosition(x, y);
+    return;
+  }
+  const from = win.getBounds();
+  const startedAt = Date.now();
+  snapTimer = setInterval(() => {
+    if (!win) return cancelSnap();
+    const t = Math.min(1, (Date.now() - startedAt) / durationMs);
+    const e = 1 - (1 - t) ** 3;
+    win.setPosition(Math.round(from.x + (x - from.x) * e), Math.round(from.y + (y - from.y) * e));
+    if (t >= 1) cancelSnap();
+  }, 16);
+}
+
+function snapToCorner(): void {
+  if (!win) return;
+  const { snapDistance = 320 } = config.window;
+  if (snapDistance <= 0) return;
+  const targets = cornerTargets();
+  if (!targets) return;
+  const b = win.getBounds();
+  const best = [targets.left, targets.right]
+    .map((t) => ({ ...t, d: Math.hypot(b.x - t.x, b.y - t.y) }))
+    .sort((a, c) => a.d - c.d)[0];
+  if (best.d > snapDistance || (best.x === b.x && best.y === b.y)) return;
+  glideTo(best.x, best.y);
+  // 向き・パネル・吹き出しは動き終わりを待たずに切り替える。移動の途中で
+  // 反転したほうが「引き寄せられて向き直った」と読める。
+  updatePanelSide();
+}
+
+/** 彼女が画面のどちら側に居るかをレンダラへ伝える（パネルの寄せ・吹き出しの
+ *  伸びる向き・立ち絵の反転がこれで決まる）。吸い付いていない位置でも破綻
+ *  しないよう、判定は「作業領域の左右どちら寄りに身体があるか」で行う。 */
+let panelSide: 'left' | 'right' | null = null;
+function updatePanelSide(): void {
+  if (!win) return;
+  const b = win.getBounds();
+  const wa = screen.getDisplayMatching(b).workArea;
+  const ins = bodyInsets ?? { left: 0, top: 0, right: 0, bottom: 0 };
+  const bodyCenter = b.x + ins.left + (b.width - ins.left - ins.right) / 2;
+  const side = bodyCenter < wa.x + wa.width / 2 ? 'left' : 'right';
+  if (side === panelSide) return;
+  panelSide = side;
+  sendToRenderer({ type: 'side', side });
 }
 
 /**
@@ -618,9 +732,12 @@ if (!gotLock) {
   // fidget input). While the button is held over her body, the window follows
   // the cursor at a fixed grab offset.
   let dragTimer: NodeJS.Timeout | null = null;
+  let dragOrigin: { x: number; y: number } | null = null;
   ipcMain.on('ui-chan:drag-start', () => {
     if (!win) return;
+    cancelSnap(); // 寄っている途中で掴まれたら、そちらが優先
     const start = screen.getCursorScreenPoint();
+    dragOrigin = start;
     const [wx, wy] = win.getPosition();
     const offX = start.x - wx;
     const offY = start.y - wy;
@@ -636,7 +753,34 @@ if (!gotLock) {
       clearInterval(dragTimer);
       dragTimer = null;
     }
+    // drag-start は押した時点で飛んでくるので、つつかれただけ（＝動かして
+    // いない）のときにまで吸い付くと、触っただけで窓が跳ぶ。実際に動いた
+    // ときだけ整える。
+    const p = screen.getCursorScreenPoint();
+    const moved = dragOrigin && Math.hypot(p.x - dragOrigin.x, p.y - dragOrigin.y) > 4;
+    dragOrigin = null;
+    if (moved) snapToCorner();
   });
+
+  ipcMain.on(
+    'ui-chan:body-box',
+    (_ev, insets: { left: number; top: number; right: number; bottom: number }) => {
+      const wasHome = (() => {
+        if (!win) return false;
+        const h = homePosition(); // まだ bodyInsets 未設定なので「矩形で置いた定位置」
+        const b = win.getBounds();
+        return b.x === h.x && b.y === h.y;
+      })();
+      bodyInsets = insets;
+      // 起動位置から動かされていなければ、測れた値で置き直す。動かされていたら
+      // 触らない——ユーザーが置いた場所を、計測の都合で奪わない。
+      if (wasHome && win) {
+        const h = homePosition();
+        win.setPosition(h.x, h.y);
+      }
+      updatePanelSide();
+    },
+  );
 
   ipcMain.on('ui-chan:warnings', (_ev, warnings: string[]) => {
     // The renderer reports its full warning set on every applyDirectives()

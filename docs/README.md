@@ -22,7 +22,7 @@
 | やりたいこと | 読むもの |
 |---|---|
 | 開発を始める（準備・コマンド・全体像） | [DEVELOPMENT.md](DEVELOPMENT.md) |
-| コードを直す（設計判断と、その理由） | [../CLAUDE.md](../CLAUDE.md) |
+| コードを直す（設計判断と、その理由） | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | 用語を確認する（Idling / Cue / EventCue …） | [../VISION.md](../VISION.md) |
 | 新しい表情（Cue）を足す | [CUE_AUTHORING.md](CUE_AUTHORING.md) → レイヤー名は [PSD_LAYERS.md](PSD_LAYERS.md) |
 | 性格・口調を変える | [PERSONA.md](PERSONA.md) |

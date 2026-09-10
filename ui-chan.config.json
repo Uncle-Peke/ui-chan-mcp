@@ -4,7 +4,10 @@
   "window": {
     "width": 420,
     "height": 680,
-    "margin": 16
+    "margin": 16,
+    "snapDistance": 320,
+    "snapGap": 12,
+    "snapDurationMs": 220
   },
   "port": 8123,
   "idle": {
