@@ -6,6 +6,7 @@ import type {
   Look,
   SequenceStep,
 } from '../../shared/types';
+import { accentLane } from './accent';
 import { $, setStatus } from './bridge';
 import { deliveryPanel } from './delivery';
 import { speak, stopSpeaking } from './speak';
@@ -60,6 +61,44 @@ const current = (): Working | undefined => works[kind];
 const steps = (): SequenceStep[] => current()?.body.steps ?? [];
 const dirOf = (rel: string) => rel.slice(0, rel.lastIndexOf('/'));
 const nameOf = (rel: string) => rel.slice(rel.lastIndexOf('/') + 1, -'.json'.length);
+
+const accent = accentLane({
+  line() {
+    const w = current();
+    if (!w) return null;
+    let d: Delivery | undefined;
+    try {
+      d = delivery.read(steps()[w.step]?.delivery);
+    } catch {
+      d = undefined; // words が壊れている間は、上書き無しの読みを見せる
+    }
+    return { text: input('step-text').value, reading: input('step-reading').value, delivery: d };
+  },
+  overrides() {
+    try {
+      return delivery.words();
+    } catch {
+      return [];
+    }
+  },
+  setOverride(surface, hl) {
+    let list: ReturnType<typeof delivery.words>;
+    try {
+      list = delivery.words();
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : String(e), 'err');
+      return false;
+    }
+    const i = list.findIndex((e) => e.word === surface);
+    if (hl === null) {
+      if (i >= 0) list.splice(i, 1);
+    } else if (i >= 0) list[i] = { ...list[i], hl };
+    else list.push({ word: surface, hl });
+    delivery.setWords(list);
+    return true;
+  },
+  warn: (message) => setStatus(message),
+});
 
 // ---- list ----
 
@@ -282,6 +321,7 @@ function loadStep(i: number): void {
   delivery.load(st.delivery);
   $('step-title').textContent = `ステップ ${i + 1} / ${steps().length}`;
   renderSteps();
+  accent.schedule(0);
 }
 
 /** 演技パネルの「自動」の値を、いま画面にある声色とセリフで計算し直す。 */
@@ -605,8 +645,16 @@ export async function initSequenceTabs(): Promise<void> {
   ]) {
     $(id).addEventListener('input', markDirty);
   }
-  delivery.onChange(markDirty);
-  $('step-text').addEventListener('input', refreshDerived);
+  delivery.onChange(() => {
+    markDirty();
+    accent.schedule();
+  });
+  $('step-text').addEventListener('input', () => {
+    refreshDerived();
+    accent.schedule(600);
+  });
+  $('step-reading').addEventListener('input', () => accent.schedule(600));
+  $('acc-refresh').addEventListener('click', () => accent.schedule(0));
   $('step-blink').addEventListener('change', lookChanged);
   $('step-inherit').addEventListener('change', inheritToggled);
   $('seq-dir').addEventListener('change', () => {

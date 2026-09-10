@@ -133,6 +133,23 @@
     #status { min-height: 18px; margin-top: 8px; font-size: 12px; }
     #status.ok { color: var(--ok); }
     #status.err { color: var(--err); }
+
+    /* ACC lane: each mora high or low, as the engine will read the line */
+    #acc-lane { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+    .acc-head { display: flex; gap: 10px; align-items: center; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .acc-head button.action { flex: 0 0 auto; margin-left: auto; padding: 3px 10px; }
+    #acc-words { display: flex; flex-wrap: wrap; gap: 4px 2px; align-items: flex-end; min-height: 52px; }
+    .acc-word { display: flex; flex-direction: column; align-items: center; padding: 2px 3px; border: 1px solid transparent; border-radius: 5px; }
+    .acc-word.head { margin-left: 10px; }
+    .acc-word.overridden { border-color: #8f9bff; background: #2f3350; }
+    .acc-surface { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .acc-morae { display: flex; gap: 1px; height: 36px; }
+    .acc-mora { width: 24px; height: 18px; padding: 0; border: none; border-radius: 3px; background: #3a3f5c; color: var(--fg); font: inherit; font-size: 11px; cursor: pointer; }
+    .acc-mora.h { align-self: flex-start; background: #5663c6; }
+    .acc-mora.l { align-self: flex-end; }
+    .acc-sep { align-self: center; padding: 0 2px; font-size: 12px; color: var(--muted); }
+    .acc-q { color: #8f9bff; font-weight: bold; }
+    .acc-x { margin-left: 2px; padding: 0 2px; border: none; background: none; color: var(--muted); cursor: pointer; font-size: 11px; }
   </style>
 </head>
 <body>
@@ -170,6 +187,14 @@
           <div class="strip-actions">
             <button type="button" class="action" id="step-add">＋ ステップを足す</button>
             <button type="button" class="action" id="seq-play-all">▶ 全部再生</button>
+          </div>
+          <div id="acc-lane">
+            <div class="acc-head">
+              <span>ACC（アクセント）</span>
+              <span>エンジンが間違えている語だけを直す。強調には使わない（強調は **太字**）</span>
+              <button type="button" class="action" id="acc-refresh">解析し直す</button>
+            </div>
+            <div id="acc-words"></div>
           </div>
         </div>
       </div>

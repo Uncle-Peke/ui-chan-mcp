@@ -381,6 +381,21 @@ export interface LexiconEntry {
   hlInCompound?: string;
 }
 
+/** エディタの ACC レーンに出す1語。エンジンの解析結果（TSML）から取る。
+ *  記号（読点・？など）は hl が空で入る——句切れと疑問の位置を見せるため。 */
+export interface AccentWord {
+  surface: string;
+  pronunciation: string;
+  /** モーラごとの高低（'h' / 'l'）。記号は空。 */
+  hl: string;
+  /** hl と同じ数に割った読み。 */
+  morae: string[];
+  /** アクセント句の頭（chain="0"）。 */
+  phraseHead: boolean;
+  /** ここで語尾が上がる（is_question）。 */
+  isQuestion: boolean;
+}
+
 export interface TtsAudio {
   wavBase64: string;
   durationMs: number;

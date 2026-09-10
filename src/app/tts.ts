@@ -1,5 +1,12 @@
 import fsSync from 'node:fs';
-import type { CueVoice, Delivery, LexiconEntry, TtsAudio, TtsConfig } from '../shared/types';
+import type {
+  AccentWord,
+  CueVoice,
+  Delivery,
+  LexiconEntry,
+  TtsAudio,
+  TtsConfig,
+} from '../shared/types';
 import {
   applyEnding,
   applyLexicon,
@@ -10,6 +17,7 @@ import {
   forSpeech,
   INTONATION_FALLBACK,
   needsTsml,
+  tsmlWords,
   wantsStretch,
 } from './prosody';
 
@@ -213,6 +221,22 @@ export class VoiSonaTalkClient {
       return hit ? hit[1] : 0;
     });
     return vec.some((w) => w !== 0) ? vec : undefined;
+  }
+
+  /** エディタの ACC レーン用：この行をエンジンに解析させ、語ごとの読みと
+   *  モーラの高低を返す。辞書（tts.lexicon）と行の words、語尾の指定を当てた
+   *  後の、**実際に合成に使われる形**。`text` は合成に渡すのと同じもの
+   *  （ttsTextFor 済み）を受け取る。 */
+  async analyzeWords(text: string, delivery?: Delivery): Promise<AccentWord[] | null> {
+    if (!this.cfg.enabled || !this.hasCredentials() || Date.now() < this.disabledUntil) return null;
+    const lexicon = [...(this.cfg.lexicon ?? []), ...(delivery?.words ?? [])];
+    const tsml = await this.analyzed(
+      forSpeech(text),
+      emphasisTargets(text),
+      lexicon,
+      delivery?.ending,
+    );
+    return tsml ? tsmlWords(tsml) : null;
   }
 
   /**

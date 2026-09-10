@@ -4,7 +4,7 @@ import {
   hasClippedWord,
   wantsStretch,
 } from '../../app/prosody';
-import type { Delivery } from '../../shared/types';
+import type { Delivery, LexiconEntry } from '../../shared/types';
 import { $ } from './bridge';
 import { shared } from './stage';
 
@@ -44,6 +44,10 @@ export interface DeliveryPanel {
   /** 画面の内容を delivery にする。触っていなければ `original` をそのまま返す
    *  （開いて保存しただけでファイルが変わらないように）。words が読めなければ投げる。 */
   read(original: Delivery | undefined): Delivery | undefined;
+  /** 画面の words（読み・アクセントの上書き）。JSON が壊れていれば投げる。 */
+  words(): LexiconEntry[];
+  /** words を差し替える（ACC レーンから）。触ったことになる。 */
+  setWords(list: LexiconEntry[]): void;
   onChange(fn: (() => void) | null): void;
 }
 
@@ -63,11 +67,24 @@ export function deliveryPanel(): DeliveryPanel {
     }
   >();
   const ending = $('dl-ending') as HTMLSelectElement;
-  const words = $('dl-words') as HTMLTextAreaElement;
+  const wordsBox = $('dl-words') as HTMLTextAreaElement;
 
   const fmt = (k: (typeof KNOBS)[number], v: number) => v.toFixed(k.digits);
   const pct = (k: (typeof KNOBS)[number], v: number) =>
     Math.min(Math.max(((v - k.min) / (k.max - k.min)) * 100, 0), 100);
+
+  function parseWords(): LexiconEntry[] {
+    const raw = wordsBox.value.trim();
+    if (!raw) return [];
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      throw new Error(`words が JSON として読めません: ${e instanceof Error ? e.message : e}`);
+    }
+    if (!Array.isArray(parsed)) throw new Error('words は配列で書いてください');
+    return parsed as LexiconEntry[];
+  }
 
   function touch(): void {
     touched = true;
@@ -128,7 +145,7 @@ export function deliveryPanel(): DeliveryPanel {
     });
   }
   ending.addEventListener('change', touch);
-  words.addEventListener('input', touch);
+  wordsBox.addEventListener('input', touch);
 
   return {
     refresh(styleWeights, text) {
@@ -154,7 +171,7 @@ export function deliveryPanel(): DeliveryPanel {
         paint(k);
       }
       ending.value = d?.ending ?? '';
-      words.value = d?.words ? JSON.stringify(d.words) : '';
+      wordsBox.value = d?.words ? JSON.stringify(d.words) : '';
     },
     read(original) {
       if (!touched) return original;
@@ -164,19 +181,15 @@ export function deliveryPanel(): DeliveryPanel {
         if (r?.box.checked) out[k.key] = Number(Number(r.range.value).toFixed(k.digits));
       }
       if (ending.value) out.ending = ending.value;
-      const raw = words.value.trim();
-      if (raw) {
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(raw);
-        } catch (e) {
-          throw new Error(`words が JSON として読めません: ${e instanceof Error ? e.message : e}`);
-        }
-        if (!Array.isArray(parsed)) throw new Error('words は配列で書いてください');
-        out.words = parsed;
-      }
+      const list = parseWords();
+      if (list.length) out.words = list;
       for (const [key, v] of Object.entries(original ?? {})) if (!ORDER.includes(key)) out[key] = v;
       return Object.keys(out).length ? (out as Delivery) : undefined;
+    },
+    words: parseWords,
+    setWords(list) {
+      wordsBox.value = list.length ? JSON.stringify(list) : '';
+      touch();
     },
     onChange(fn) {
       changed = fn;

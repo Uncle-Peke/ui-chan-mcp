@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
+  AccentWord,
   Cue,
   CueSequence,
   Delivery,
@@ -46,4 +47,6 @@ contextBridge.exposeInMainWorld('uiEditor', {
     ipcRenderer.invoke('editor:delete-sequence', rel),
   eventSettings: (): Promise<Record<string, EventCueGroup>> =>
     ipcRenderer.invoke('editor:event-settings'),
+  analyze: (text: string, reading?: string, delivery?: Delivery): Promise<AccentWord[] | null> =>
+    ipcRenderer.invoke('editor:analyze', text, reading, delivery),
 });

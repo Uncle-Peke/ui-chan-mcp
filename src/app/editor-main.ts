@@ -177,6 +177,11 @@ ipcMain.handle(
     tts ? tts.synthesize(ttsTextFor(text, reading), voice, delivery) : null,
 );
 
+// ACC レーン用：この行をエンジンに解析させ、語ごとの読みとモーラの高低を返す。
+ipcMain.handle('editor:analyze', (_ev, text: string, reading?: string, delivery?: Delivery) =>
+  tts ? tts.analyzeWords(ttsTextFor(text, reading), delivery) : null,
+);
+
 // ---- 固定セリフ（sequences/） ----
 //
 // 識別子は sequences/ からの相対パス（`event/turn_done/done_ask.json`）。名前

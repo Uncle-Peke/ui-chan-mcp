@@ -1,4 +1,4 @@
-import type { LexiconEntry } from '../shared/types';
+import type { AccentWord, LexiconEntry } from '../shared/types';
 
 export type { LexiconEntry };
 
@@ -210,6 +210,49 @@ export function applyLexicon(tsml: string, lexicon: LexiconEntry[]): string {
     }
   }
   return out;
+}
+
+const SMALL_KANA = /[ァィゥェォャュョヮぁぃぅぇぉゃゅょゎ]/;
+
+/** カタカナの読みをモーラに割る。拗音の小書き（ャュョ…）は前の字にくっつけ、
+ *  ッ・ン・ーはそれぞれ1モーラ（ショーガ → ショ｜ー｜ガ、チョット → チョ｜ッ｜ト）。 */
+export function splitMorae(kana: string): string[] {
+  const out: string[] = [];
+  for (const ch of kana) {
+    if (SMALL_KANA.test(ch) && out.length) out[out.length - 1] += ch;
+    else out.push(ch);
+  }
+  return out;
+}
+
+/** 読みを n マスに合わせる。辞書で読みだけ差し替えた語（「な」→「ナー」）は、
+ *  読みのモーラ数と hl の長さが食い違う。多ければ余りを最後のマスにまとめ、
+ *  少なければ記号で埋める——マスの数を hl に揃えることが、クリック位置と hl の
+ *  文字の対応を保つ唯一の条件なので。 */
+function fitMorae(kana: string, n: number): string[] {
+  const morae = splitMorae(kana);
+  if (morae.length === n) return morae;
+  if (n === 0) return [];
+  if (morae.length > n) return [...morae.slice(0, n - 1), morae.slice(n - 1).join('')];
+  return [...morae, ...Array(n - morae.length).fill('・')];
+}
+
+/** エディタの ACC レーン用に、TSML の語を表層形・読み・モーラごとの高低で
+ *  取り出す。モーラの数は hl の長さが正（→ fitMorae）。 */
+export function tsmlWords(tsml: string): AccentWord[] {
+  return words(tsml).map(({ raw, surface }) => {
+    const hl = attr(raw, 'hl') ?? '';
+    const pronunciation = attr(raw, 'pronunciation') ?? '';
+    const morae = fitMorae(pronunciation, hl.length);
+    return {
+      surface,
+      pronunciation,
+      hl,
+      morae,
+      phraseHead: attr(raw, 'chain') === '0',
+      isQuestion: attr(raw, 'is_question') === '1',
+    };
+  });
 }
 
 // ---- 音素列の再現 -------------------------------------------------------

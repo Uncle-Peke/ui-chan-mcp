@@ -1,4 +1,5 @@
 import type {
+  AccentWord,
   Cue,
   CueSequence,
   Delivery,
@@ -36,6 +37,7 @@ export interface UiEditorApi {
   writeSequence(rel: string, seq: Omit<CueSequence, 'name'>): Promise<EditorWriteResult>;
   deleteSequence(rel: string): Promise<EditorWriteResult>;
   eventSettings(): Promise<Record<string, EventCueGroup>>;
+  analyze(text: string, reading?: string, delivery?: Delivery): Promise<AccentWord[] | null>;
 }
 declare global {
   interface Window {
