@@ -68,7 +68,7 @@
     "enabled": true,
     "provider": "voisona-talk",
     "url": "http://127.0.0.1:32766",
-    "voice_name": "",
+    "voice_name": "ui_ja_JP",
     "language": "ja_JP",
     "$comment_intonation": "抑揚の振れ幅の既定値。感情を宣言していないCue（style_weightsなし）にだけ使われ、感情があるCueは style_weights から導出する（高覚醒＝喜び・怒りは広く、悲しみは狭い）。無感情の短い相槌がここに落ちるので、控えめにしておくこと",
     "intonation": 1.1,

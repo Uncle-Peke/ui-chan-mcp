@@ -26,13 +26,14 @@ API リファレンスは REST API 有効化後に http://localhost:32766/docs/t
   "enabled": true,
   "provider": "voisona-talk",
   "url": "http://127.0.0.1:32766",
-  "voice_name": "使いたいボイス名（空なら日本語対応の最初のボイス）",
+  "voice_name": "ui_ja_JP",
   "language": "ja_JP",
   "app_name": "VoiSona Talk"
 }
 ```
 
 - `enabled` — TTS のマスタースイッチ。true でも認証情報が届くまでは音声なしで動きます
+- `voice_name` — 既定は雨衣（うい）ちゃんのボイス `ui_ja_JP`。見つからない（未インストール）・空のときは日本語対応の最初のボイスで喋ります。別のボイスにしたいときは `~/.ui-chan/config.json` で上書きしてください
 - `app_name` — MCP サーバ起動時に API へ到達できないとき `open -a` で起動するアプリ名（macOS）
 
 ---
@@ -58,7 +59,6 @@ API リファレンスは REST API 有効化後に http://localhost:32766/docs/t
 
 利用可能なボイス名は `GET {url}/api/talk/v1/voices`（Basic 認証）で確認できます。
 
-- 雨衣（うい）ちゃんのボイスが発売されたら、`voice_name` を差し替えるだけで対応できる想定です
 - エンジンに接続できない場合は音声なしで動き続けます（60 秒のクールダウン後に再試行）。その間のリップシンクはテキスト読み駆動（`set_cue` の `reading`）にフォールバックします
 
 ---
